@@ -1,0 +1,5 @@
+/.venv/
+/ibapi.egg-info/
+/tests/
+.vscode
+__pycache__
