@@ -17,12 +17,16 @@ def main():
 
     while True:
         if discord_client.is_chatbot_ready:
+            logger.log_debug_msg('Chatbot is ready', with_std_out=True)
             break
       
     scanner = Scanner(discord_client)
     scanner.run_scanner()
-        
+    
+    # swing_scanner = SwingTradeScanner(discord_client)
+    # swing_scanner.run_scanner()
+    
     bot_thread.join()
-
+ 
 if __name__ == '__main__':
     main()

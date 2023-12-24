@@ -13,6 +13,7 @@ from utils.logger import Logger
 
 from constant.pattern import Pattern
 from constant.candle.bar_size import BarSize
+from constant.discord.discord_channel import DiscordChannel
 
 from module.discord_chatbot_client import DiscordChatBotClient
 
@@ -34,7 +35,6 @@ PATTERN_TO_CANDLE_DATA_DICT = {
 class Scanner():
     def __init__(self, discord_client: DiscordChatBotClient):
         self.__discord_client = discord_client
-        self.__sqllite_connector = SqliteConnector()
         self.__is_scanner_idle = False
         self.__is_scanner_ready = False
         self.__ib_connection_retry = False
@@ -44,8 +44,10 @@ class Scanner():
         self.__historical_candle_data_dict = {}
         
     def __scan(self):
+        self.__sqllite_connector = SqliteConnector()
+        
         while True: 
-            if self.__discord_client.is_chatbot_ready and self.__is_scanner_ready:
+            if self.__is_scanner_ready:
                 scan_start_time = time.time()
                 logger.log_debug_msg('Start scanning', with_std_out=True)
                 
@@ -72,19 +74,21 @@ class Scanner():
                                         is_message_sent = True
                                         if not is_message_sent:
                                             if message.display_message:
-                                                self.__discord_client.send_messages_to_channel(message)
+                                                self.__discord_client.send_messages_to_channel(message, DiscordChannel.DAY_TRADE_FLOOR)
                                             if message.read_out_message:
-                                                self.__discord_client.send_messages_to_channel(message, with_text_to_speech=True)
+                                                self.__discord_client.send_messages_to_channel(message, DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
                                                 
-                                            add_sent_message_record(self.__sqllite_connector, (message.ticker, message.hit_scanner_datetime, pattern, bar_size))
+                                            add_sent_message_record(self.__sqllite_connector, [(message.ticker, message.hit_scanner_datetime, pattern, bar_size)])
                 except (RequestException, ClientError) as connection_exception:
                     self.__ib_connection_retry = True
-                    self.__discord_client.send_messages_to_channel('Client Portal API connection failed', with_text_to_speech=True)
+                    self.__discord_client.send_messages_to_channel('Client Portal API connection failed', DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
                     logger.log_error_msg(f'Client Portal API connection error, {connection_exception}', with_std_out=True)
                 except (SqliteConnectionError) as sqlite_connection_exception:
-                    self.__discord_client.send_messages_to_channel('SQLite connection error', with_text_to_speech=True)
+                    self.__discord_client.send_messages_to_channel('SQLite connection error', DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+                    logger.log_error_msg(f'SQLite connection error, {sqlite_connection_exception}', with_std_out=True)
                 except Exception as exception:
-                    self.__fatal_error = True      
+                    self.__fatal_error = True   
+                    self.__discord_client.send_messages_to_channel('Fatal error', DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)   
                     logger.log_error_msg(f'Scanner fatal error, {exception}', with_std_out=True)
 
                 self.__wait_till_next_scan(scan_start_time)
@@ -97,11 +101,13 @@ class Scanner():
                         self.__is_scanner_idle = True
                         logger.log_debug_msg('Scanner is idle until valid trading weekday and time', with_std_out=True)
                         logger.log_debug_msg('Delete previously sent message record', with_std_out=True)
-                        no_of_record_delete = delete_all_sent_message_record()
+                        no_of_record_delete = delete_all_sent_message_record(self.__sqllite_connector)
                         logger.log_debug_msg(f'{no_of_record_delete} records has been sucessfully deleted', with_std_out=True)
                     time.sleep(SCANNER_REFRESH_INTERVAL)
     
     def __wait_till_next_scan(self, scan_start_time):
+        refresh_interval = None 
+        
         if self.__ib_connection_retry:
             logger.log_debug_msg(f'Retry client portal API connection after: {CONNECTION_FAIL_RETRY_INTERVAL}', with_std_out=True)
             refresh_interval = CONNECTION_FAIL_RETRY_INTERVAL

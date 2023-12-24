@@ -71,7 +71,11 @@ def check_auth_status():
         authenticated = status_result['authenticated']
         competing = status_result['competing']
         connected = status_result['connected']
-        message = status_result['message']
+        
+        if 'message' in status_result:
+            message = status_result['message']
+        else:
+            message = None
 
         if not authenticated:
             is_connection_success = False
@@ -92,7 +96,7 @@ def check_auth_status():
             if message:
                 error_msg += f', {message}'
             
-            raise Exception(error_msg)
+            raise requests.RequestException(error_msg)
 
 def get_scanner_result(max_no_of_scanner_result: int) -> dict:
     try:
@@ -128,7 +132,7 @@ def get_contract_minute_candle_data(contract_list: list, ticker_to_previous_day_
     result_dict = {}
 
     us_current_datetime = get_current_us_datetime().replace(microsecond=0, second=0)
-    historical_data_interval_in_minute = (us_current_datetime - PRE_MARKET_START_DATETIME).total_seconds() / 60
+    historical_data_interval_in_minute = int((us_current_datetime - PRE_MARKET_START_DATETIME).total_seconds() / 60)
     logger.log_debug_msg(f'Historical candle data retrieval period: {historical_data_interval_in_minute} minutes')
     
     if historical_data_interval_in_minute < 1:
@@ -139,7 +143,10 @@ def get_contract_minute_candle_data(contract_list: list, ticker_to_previous_day_
     previous_day_data_payload_list = []
     one_minute_candle_payload_list = []
     five_minute_candle_payload_list = []
-        
+    
+    previous_day_data_period = '2d' if (datetime.time(4, 0, 0) <= us_current_datetime.time() < datetime.time(20, 0, 0)) else '1d'
+    logger.log_debug_msg(f'Get previous day data period: {previous_day_data_period}')
+    
     for contract in contract_list:
         con_id = contract['con_id']
         ticker_symbol = contract['symbol']
@@ -150,7 +157,7 @@ def get_contract_minute_candle_data(contract_list: list, ticker_to_previous_day_
         if ticker_symbol not in ticker_to_previous_day_data_dict:
             previous_day_data_payload = {
                 'conid': str(con_id),
-                'period': '3d',
+                'period': previous_day_data_period,
                 'bar': BarSize.ONE_DAY.value,
                 'outsideRth': 'true'
             }  
@@ -180,8 +187,8 @@ def get_contract_minute_candle_data(contract_list: list, ticker_to_previous_day_
     if len(previous_day_data_payload_list) > 0:
         set_previous_day_data(previous_day_data_payload_list, ticker_to_previous_day_data_dict)
     
-    candle_start_datetime = us_current_datetime
-    candle_end_datetime = PRE_MARKET_START_DATETIME
+    candle_start_datetime = PRE_MARKET_START_DATETIME
+    candle_end_datetime = us_current_datetime
     
     result_dict[BarSize.ONE_MINUTE] = get_historical_candle_data(candle_start_datetime, candle_end_datetime, BarSize.ONE_MINUTE.value, one_minute_candle_payload_list, ticker_to_previous_day_data_dict)
     result_dict[BarSize.FIVE_MINUTE] = get_historical_candle_data(candle_start_datetime, candle_end_datetime, BarSize.FIVE_MINUTE.value, five_minute_candle_payload_list, ticker_to_previous_day_data_dict)
@@ -289,7 +296,7 @@ def set_sec_def(con_id_list: list, ticker_to_contract_dict: dict):
                 logger.log_debug_msg(f'{ticker} has no sector group')
             
             if ticker in ticker_to_contract_dict:
-                ticker_to_contract_dict[ticker].sector = f'{sector_group, group}'
+                ticker_to_contract_dict[ticker].sector = f'{sector_group}, {group}'
             else:
                 logger.log_debug_msg(f'{ticker} not exist in ticker_to_contract_dict')
 
@@ -367,10 +374,16 @@ def construct_complete_dataframe(start_datetime: datetime, end_datetime: datetim
             datetime_idx_list.append(dt)
         
         logger.log_debug_msg(f'{ticker} Candle US time list: {datetime_idx_list}')
-        datetime_index = pd.DatetimeIndex(pd.to_datetime(datetime_idx_list, unit='ms', utc=False).tz_localize('UTC').tz_convert('US/Eastern')).tz_localize(None)
+        datetime_index = (pd.DatetimeIndex(pd.to_datetime(datetime_idx_list, unit='ms', utc=False)
+                                             .tz_localize('UTC')
+                                             .tz_convert('US/Eastern')).tz_localize(None)
+                                                                       .round(freq='S'))
 
         ticker_to_indicator_column = pd.MultiIndex.from_product([[ticker], [Indicator.OPEN.value, Indicator.HIGH.value, Indicator.LOW.value, Indicator.CLOSE.value, Indicator.VOLUME.value]])
         single_ticker_candle_df = pd.DataFrame(ohlcv_list, columns=ticker_to_indicator_column, index=datetime_index)
+        
+        if single_ticker_candle_df.index.duplicated().any():
+            single_ticker_candle_df = single_ticker_candle_df.loc[~single_ticker_candle_df.index.duplicated(keep='first')]
         
         with pd.option_context('display.max_rows', None,
            'display.max_columns', None,

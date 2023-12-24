@@ -33,7 +33,7 @@ class NewFiveMinuteCandleHigh(PatternAnalyser):
         candle_colour_df = self.__historical_data_df.loc[:, idx[:, CustomisedIndicator.CANDLE_COLOUR.value]]
         candle_lower_body_df = self.__historical_data_df.loc[:, idx[:, CustomisedIndicator.CANDLE_LOWER_BODY.value]]
         
-        gap_up_pct_df = (((candle_lower_body_df.sub(previous_close_df.value))
+        gap_up_pct_df = (((candle_lower_body_df.sub(previous_close_df.values))
                                                .div(candle_lower_body_df.values))
                                                .mul(100))
         
