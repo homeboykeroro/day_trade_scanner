@@ -1,7 +1,8 @@
 import datetime
 
 class DiscordScannerMessage:
-    def __init__(self, display_message: str, read_out_message: str, ticker: str, hit_scanner_datetime: datetime):
+    def __init__(self, embed, display_message: str, read_out_message: str, ticker: str, hit_scanner_datetime: datetime):
+        self.__embed = embed
         self.__display_message = display_message
         self.__read_out_message = read_out_message
         self.__ticker = ticker
@@ -17,6 +18,14 @@ class DiscordScannerMessage:
     def __hash__(self) -> int:
         return hash(self.__members())
 
+    @property
+    def embed(self):
+        return self.__embed
+    
+    @embed.setter
+    def embed(self, embed):
+        self.__embed = embed
+        
     @property
     def display_message(self):
         return self.__display_message

@@ -1,5 +1,5 @@
 from module.discord_chatbot_client import DiscordChatBotClient
-from module.scanner import Scanner
+from module.day_trade_scanner import DayTradeScanner
 from utils.logger import Logger
 
 idle_msg_logged = False
@@ -20,8 +20,8 @@ def main():
             logger.log_debug_msg('Chatbot is ready', with_std_out=True)
             break
       
-    scanner = Scanner(discord_client)
-    scanner.run_scanner()
+    day_trade_scanner = DayTradeScanner(discord_client)
+    day_trade_scanner.run_scanner()
     
     # swing_scanner = SwingTradeScanner(discord_client)
     # swing_scanner.run_scanner()

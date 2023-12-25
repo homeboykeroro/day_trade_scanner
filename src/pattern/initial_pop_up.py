@@ -1,5 +1,6 @@
 import time
 import pandas as pd
+import discord
 from pandas.core.frame import DataFrame
 
 from pattern.pattern_analyser import PatternAnalyser
@@ -34,7 +35,6 @@ class InitialPopUp(PatternAnalyser):
 
         previous_close_df = self.__historical_data_df.loc[:, idx[:, CustomisedIndicator.PREVIOUS_CLOSE.value]]
         previous_close_pct_df = self.__historical_data_df.loc[:, idx[:, CustomisedIndicator.PREVIOUS_CLOSE_CHANGE.value]]
-        candle_colour_df = self.__historical_data_df.loc[:, idx[:, CustomisedIndicator.CANDLE_COLOUR.value]]
         candle_lower_body_df = self.__historical_data_df.loc[:, idx[:, CustomisedIndicator.CANDLE_LOWER_BODY.value]]
         
         gap_up_pct_df = (((candle_lower_body_df.sub(previous_close_df.values))
@@ -43,15 +43,14 @@ class InitialPopUp(PatternAnalyser):
         
         min_gap_up_pct_boolean_df = (gap_up_pct_df >= self.MIN_GAP_UP_PCT).rename(columns={CustomisedIndicator.CANDLE_LOWER_BODY.value: RuntimeIndicator.COMPARE.value})
         min_previous_close_pct_boolean_df = (previous_close_pct_df >= self.MIN_PREVIOUS_CLOSE_PCT).rename(columns={CustomisedIndicator.PREVIOUS_CLOSE_CHANGE.value: RuntimeIndicator.COMPARE.value})
-        is_not_grey_boolean_df = (candle_colour_df != CandleColour.GREY.value).rename(columns={CustomisedIndicator.CANDLE_COLOUR.value: RuntimeIndicator.COMPARE.value})
 
-        pop_up_boolean_df = (min_gap_up_pct_boolean_df) & (min_previous_close_pct_boolean_df) & (is_not_grey_boolean_df)
+        pop_up_boolean_df = (min_gap_up_pct_boolean_df) & (min_previous_close_pct_boolean_df)
         
         numeric_idx_df = derive_idx_df(pop_up_boolean_df)
         first_occurrence_idx_np = numeric_idx_df.where(pop_up_boolean_df.values).idxmin().values
         first_pop_up_occurrence_df = (numeric_idx_df == first_occurrence_idx_np)
         
-        datetime_idx_df = derive_idx_df(first_pop_up_occurrence_df, numeric_idx=False).rename(columns={RuntimeIndicator.COMPARE.value: RuntimeIndicator.INDEX.value})
+        datetime_idx_df = derive_idx_df(pop_up_boolean_df, numeric_idx=False).rename(columns={RuntimeIndicator.COMPARE.value: RuntimeIndicator.INDEX.value})
         pop_up_datetime_idx_df = datetime_idx_df.where(first_pop_up_occurrence_df.values).ffill()
         result_boolean_df = pop_up_datetime_idx_df.notna()
         
@@ -93,15 +92,19 @@ class InitialPopUp(PatternAnalyser):
                 pop_up_time_display = convert_into_human_readable_time(pop_up_time)
                 read_out_pop_up_time = convert_into_read_out_time(pop_up_time)
                 
-                message_title = f'**{ticker}** is popping up {previous_close_pct}% at {pop_up_time_display}\n' 
-                price_display = f'**Close: ${close}   Previous Close: ${previous_close}**\n'
-                pop_up_volume_display = f'**Volume: {volume}   Total Volume: ${total_volume}**\n'
-                display_message = message_title + price_display + pop_up_volume_display + str(contract_info)
+                embed = discord.Embed(title=f'{ticker} is popping up {previous_close_pct}% at {pop_up_time_display}')
+                embed.add_field(name = 'Close:', value= f'${close}', inline = True)
+                embed.add_field(name = '*Previous Close:', value = f'${previous_close}', inline = True)
+                embed.add_field(name = chr(173), value = chr(173))
+                embed.add_field(name = 'Volume:', value = f'${volume}', inline = True)
+                embed.add_field(name = 'Total Volume:', value = f'${total_volume}', inline = True)
+                embed.add_field(name = chr(173), value = chr(173))
+                contract_info.add_contract_info_to_embed_msg(embed)
                 
                 read_out_ticker = " ".join(ticker)
                 read_out_message = f'{read_out_ticker} is popping up {previous_close_pct} percent at {read_out_pop_up_time}'
                 
-                message = DiscordScannerMessage(display_message, read_out_message)
+                message = DiscordScannerMessage(embed=embed, display_message=None, read_out_message=read_out_message, ticker=ticker, hit_scanner_datetime=pop_up_time.strftime('%Y-%m-%d %H:%M:%S'))
                 message_list.append(message)
    
         return message_list

@@ -12,6 +12,7 @@ DAY_TRADE_FLOOR_CHANNEL_ID = int(os.environ['DISCORD_DAY_TRADE_FLOOR_CHANNEL_ID'
 SWING_TRADE_FLOOR_CHANNEL_ID = int(os.environ['DISCORD_SWING_TRADE_FLOOR_CHANNEL_ID'])
 TEXT_TO_SPEECH_CHANNEL_ID = int(os.environ['DISCORD_TEXT_TO_SPEECH_CHANNEL_ID'])
 CHATBOT_LOG_CHANNEL_ID = int(os.environ['DISCORD_CHATBOT_LOG_CHANNEL_ID'])
+DEVELOPMENT_TEST_CHANNEL_ID = int(os.environ['DISCORD_DEVELOPMENT_TEST_CHANNEL_ID'])
 
 logger = Logger()
 
@@ -42,6 +43,7 @@ class DiscordChatBotClient(discord.Client):
         self.__day_trade_floor_channel = self.get_channel(DAY_TRADE_FLOOR_CHANNEL_ID)
         self.__swing_trade_floor_channel = self.get_channel(SWING_TRADE_FLOOR_CHANNEL_ID)
         self.__text_to_speech_channel = self.get_channel(TEXT_TO_SPEECH_CHANNEL_ID)
+        self.__development_test_channel = self.get_channel(DEVELOPMENT_TEST_CHANNEL_ID)
         self.__chatbot_log_channel = self.get_channel(CHATBOT_LOG_CHANNEL_ID)
         logger.log_debug_msg(f'Logged on as {self.user} in Discord', with_std_out=True)
 
@@ -51,7 +53,7 @@ class DiscordChatBotClient(discord.Client):
     
         await message.channel.send(message.content)
             
-    def send_messages_to_channel(self, message: str, channel: DiscordChannel, file_dir: str = None, with_text_to_speech: bool = False):
+    def send_messages_to_channel(self, message: str, channel: DiscordChannel, embed=None, file_dir: str = None, with_text_to_speech: bool = False):
         if self.__is_chatbot_ready: 
             if channel == DiscordChannel.DAY_TRADE_FLOOR:
                 channel = self.__day_trade_floor_channel    
@@ -61,11 +63,13 @@ class DiscordChatBotClient(discord.Client):
                 channel = self.__chatbot_log_channel
             elif channel == DiscordChannel.TEXT_TO_SPEECH:
                 channel = self.__text_to_speech_channel
+            elif channel == DiscordChannel.DEVELOPMENT_TEST:
+                channel = self.__development_test_channel
             else:
                 raise Exception('No Discord channel is specified')
 
-            if not message:
-                raise Exception('No message is sent')
+            if not message and not embed:
+                raise Exception('Either message or embed must be set')
 
             if file_dir:
                 if not os.path.isfile(file_dir):
@@ -75,10 +79,12 @@ class DiscordChatBotClient(discord.Client):
                 loop = self.loop
 
                 try:
+                    discord_file = None
+                    
                     if file_dir:
-                        loop.create_task(channel.send(message, file=discord.File(file_dir), tts=with_text_to_speech))
-                    else:
-                        loop.create_task(channel.send(message, tts=with_text_to_speech))
+                        discord_file = discord.File(file_dir)
+                        
+                    loop.create_task(channel.send(embed=embed, content=message , file=discord_file, tts=with_text_to_speech))
                 except Exception as e:
                     logger.log_error_msg(f'Chatbot fatal error, {e}', with_std_out = True)
                     logger.log_error_msg(traceback.format_exc())

@@ -13,7 +13,7 @@ def derive_idx_df(src_df: DataFrame, numeric_idx: bool = True) -> DataFrame:
         idx_np = src_df.reset_index().iloc[:, [0]].values
     
     return pd.DataFrame(np.repeat(idx_np, len(src_df.columns), axis=1), 
-                        columns=src_df.columns).rename(columns={src_df.columns.get_level_values(1).values[0]: RuntimeIndicator.INDEX})
+                        columns=src_df.columns).rename(columns={src_df.columns.get_level_values(1).values[0]: RuntimeIndicator.INDEX.value})
 
 def get_sorted_value_without_duplicate_df(src_df: DataFrame) -> DataFrame:
     sorted_np = np.sort(src_df.values, axis=0)

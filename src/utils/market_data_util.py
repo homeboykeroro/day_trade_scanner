@@ -161,24 +161,24 @@ def get_contract_minute_candle_data(contract_list: list, ticker_to_previous_day_
                 'bar': BarSize.ONE_DAY.value,
                 'outsideRth': 'true'
             }  
-            
-            one_minute_candle_payload = {
-                'conid': str(con_id),
-                'period': f'{historical_data_interval_in_minute}min',
-                'bar': BarSize.ONE_MINUTE.value,
-                'outsideRth': 'true'
-            }
-            
-            five_minute_candle_payload = {
-                'conid': str(con_id),
-                'period': f'{historical_data_interval_in_minute}min',
-                'bar': BarSize.FIVE_MINUTE.value,
-                'outsideRth': 'true'
-            }
-            
             previous_day_data_payload_list.append(previous_day_data_payload)  
-            one_minute_candle_payload_list.append(one_minute_candle_payload)
-            five_minute_candle_payload_list.append(five_minute_candle_payload)
+            
+        one_minute_candle_payload = {
+            'conid': str(con_id),
+            'period': f'{historical_data_interval_in_minute}min',
+            'bar': BarSize.ONE_MINUTE.value,
+            'outsideRth': 'true'
+        }
+            
+        five_minute_candle_payload = {
+            'conid': str(con_id),
+            'period': f'{historical_data_interval_in_minute}min',
+            'bar': BarSize.FIVE_MINUTE.value,
+            'outsideRth': 'true'
+        }
+            
+        one_minute_candle_payload_list.append(one_minute_candle_payload)
+        five_minute_candle_payload_list.append(five_minute_candle_payload)
    
     if len(snapshot_data_con_id_list) > 0:
         set_contract_snapshot_data(snapshot_data_con_id_list, ticker_to_contract_dict)
@@ -373,7 +373,7 @@ def construct_complete_dataframe(start_datetime: datetime, end_datetime: datetim
             ohlcv_list.append([open, high, low, close, volume])
             datetime_idx_list.append(dt)
         
-        logger.log_debug_msg(f'{ticker} Candle US time list: {datetime_idx_list}')
+        # logger.log_debug_msg(f'{ticker} Candle US time list: {datetime_idx_list}')
         datetime_index = (pd.DatetimeIndex(pd.to_datetime(datetime_idx_list, unit='ms', utc=False)
                                              .tz_localize('UTC')
                                              .tz_convert('US/Eastern')).tz_localize(None)
@@ -385,23 +385,23 @@ def construct_complete_dataframe(start_datetime: datetime, end_datetime: datetim
         if single_ticker_candle_df.index.duplicated().any():
             single_ticker_candle_df = single_ticker_candle_df.loc[~single_ticker_candle_df.index.duplicated(keep='first')]
         
-        with pd.option_context('display.max_rows', None,
-           'display.max_columns', None,
-           'display.precision', 3,
-           ):
-            logger.log_debug_msg(f'Individual ticker original dataframe: {single_ticker_candle_df}', with_log_file=True, with_std_out=False)
+        # with pd.option_context('display.max_rows', None,
+        #    'display.max_columns', None,
+        #    'display.precision', 3,
+        #    ):
+        #     logger.log_debug_msg(f'Individual ticker original dataframe: {single_ticker_candle_df}', with_log_file=True, with_std_out=False)
         
         single_ticker_candle_df = single_ticker_candle_df.reindex(datetime_range_index) # may need ffill() and bfill()
-        with pd.option_context('display.max_rows', None,
-           'display.max_columns', None,
-           'display.precision', 3,
-           ):
-            logger.log_debug_msg(f'Individual ticker reindexed dataframe: {single_ticker_candle_df}', with_log_file=True, with_std_out=False)
+        # with pd.option_context('display.max_rows', None,
+        #    'display.max_columns', None,
+        #    'display.precision', 3,
+        #    ):
+        #     logger.log_debug_msg(f'Individual ticker reindexed dataframe: {single_ticker_candle_df}', with_log_file=True, with_std_out=False)
         
         ticker_candle_df_list.append(single_ticker_candle_df)
                 
     all_ticker_candle_df = pd.concat(ticker_candle_df_list, axis=1)
-    ticker_column_name_list = list(all_ticker_candle_df.columns.levels[0])
+    ticker_column_name_list = list(all_ticker_candle_df.columns.get_level_values(0).unique())
     previous_close_list = [[float(ticker_to_previous_day_data_dict[ticker]['close']) for ticker in ticker_column_name_list]]
     previous_close_df = pd.DataFrame(np.repeat(previous_close_list, 
                                                     len(all_ticker_candle_df), 
@@ -422,9 +422,9 @@ def construct_complete_dataframe(start_datetime: datetime, end_datetime: datetim
     close_pct_df = close_df.pct_change().mul(100).rename(columns={RuntimeIndicator.COMPARE.value: CustomisedIndicator.CLOSE_CHANGE.value})
     close_pct_df.iloc[0] = previous_close_pct_df.iloc[0].values
                 
-    flat_candle_df = (high_df == low_df).replace({True: CandleColour.GREY.value, False: np.nan})
-    green_candle_df = (close_df > open_df).replace({True: CandleColour.GREEN.value})
-    red_candle_df = (close_df < open_df).replace({True: CandleColour.RED.value})
+    flat_candle_df = (open_df == close_df).replace({True: CandleColour.GREY.value, False: np.nan})
+    green_candle_df = (close_df > open_df).replace({True: CandleColour.GREEN.value, False: np.nan})
+    red_candle_df = (close_df < open_df).replace({True: CandleColour.RED.value, False: np.nan})
     colour_df = ((flat_candle_df.fillna(green_candle_df))
                                 .fillna(red_candle_df)
                                 .rename(columns={RuntimeIndicator.COMPARE.value: CustomisedIndicator.CANDLE_COLOUR.value}))
@@ -464,10 +464,10 @@ def construct_complete_dataframe(start_datetime: datetime, end_datetime: datetim
                         
     logger.log_debug_msg(f'Construct DataFrame time: {time.time() - construct_dataframe_start_time}')
                 
-    with pd.option_context('display.max_rows', None,
-           'display.max_columns', None,
-           'display.precision', 3,
-           ):
-        logger.log_debug_msg(f'Candle dataframe: {all_ticker_candle_df}', with_log_file=True, with_std_out=False)
+    # with pd.option_context('display.max_rows', None,
+    #        'display.max_columns', None,
+    #        'display.precision', 3,
+    #        ):
+    #     logger.log_debug_msg(f'Candle dataframe: {all_ticker_candle_df}', with_log_file=True, with_std_out=False)
         
     return complete_df
