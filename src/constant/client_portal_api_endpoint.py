@@ -17,6 +17,7 @@ class ClientPortalApiEndpoint(str, Enum):
     ACCOUNT = '/iserver/accounts'
     SECURITY_DEFINITIONS = '/trsrv/secdef'
     SNAPSHOT = '/iserver/marketdata/snapshot'
+    SECURITY_STOCKS_BY_SYMBOL = '/trsrv/stocks'
     
     
     

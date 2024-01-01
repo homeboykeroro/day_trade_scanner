@@ -35,7 +35,7 @@ async def process_async_request(method: str, endpoint: str, payload_list: list, 
         
             if request_wait_time:
                 logger.log_debug_msg(f'Wait {request_wait_time} seconds')
-                asyncio.sleep(request_wait_time)
+                await asyncio.sleep(request_wait_time)
         
         response_list = await asyncio.gather(*tasks, return_exceptions=True)
         logger.log_debug_msg(f'Completion of all async requests time: {time.time() - all_chunk_start_time} seconds')
