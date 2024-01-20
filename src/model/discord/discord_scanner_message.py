@@ -4,8 +4,9 @@ from constant.pattern import Pattern
 from constant.candle.bar_size import BarSize
 
 class DiscordScannerMessage:
-    def __init__(self, embed, display_message: str, read_out_message: str, ticker: str, hit_scanner_datetime: datetime, pattern: Pattern, bar_size: BarSize, ):
+    def __init__(self, embed, display_message: str, read_out_message: str, candle_chart_dir: str, ticker: str, hit_scanner_datetime: datetime, pattern: Pattern, bar_size: BarSize, ):
         self.__embed = embed
+        self.__candle_chart_dir = candle_chart_dir
         self.__display_message = display_message
         self.__read_out_message = read_out_message
         self.__ticker = ticker
@@ -14,7 +15,7 @@ class DiscordScannerMessage:
         self.__bar_size = bar_size
         
     def __members(self):
-        return (self.__display_message, self.__read_out_message)
+        return (self.__embed, self.__candle_chart_dir, self.__display_message, self.__read_out_message, self.__ticker, self.__hit_scanner_datetime, self.__pattern, self.__bar_size)
 
     def __eq__(self, other: object) -> bool:
         if isinstance(other, DiscordScannerMessage):
@@ -30,7 +31,15 @@ class DiscordScannerMessage:
     @embed.setter
     def embed(self, embed):
         self.__embed = embed
-        
+    
+    @property
+    def candle_chart_dir(self):
+        return self.__candle_chart_dir
+    
+    @candle_chart_dir.setter
+    def candle_chart_dir(self, candle_chart_dir):
+        self.__candle_chart_dir = candle_chart_dir
+            
     @property
     def display_message(self):
         return self.__display_message

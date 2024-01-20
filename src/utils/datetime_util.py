@@ -1,9 +1,16 @@
 import datetime
 import pandas as pd
+import numpy as np
 import pytz
+from pandas.tseries.holiday import USFederalHolidayCalendar
+from pandas.tseries.offsets import CustomBusinessDay
 
 US_EASTERN_TIMEZONE = pytz.timezone('US/Eastern')
+HONG_KONG_TIMEZONE = pytz.timezone('Asia/Hong_Kong')
 PRE_MARKET_START_DATETIME = datetime.datetime.now().astimezone(US_EASTERN_TIMEZONE).replace(hour=4, minute=0, second=0, microsecond=0)
+
+US_BUSINESS_DAY = CustomBusinessDay(calendar=USFederalHolidayCalendar())
+US_FEDERAL_HOLIDAYS = US_BUSINESS_DAY.calendar.holidays
 
 def convert_into_human_readable_time(pop_up_datetime):
     pop_up_hour = pd.to_datetime(pop_up_datetime).hour
@@ -24,13 +31,30 @@ def is_within_trading_day_and_hours() -> bool:
     pre_market_trading_hour_start_time = datetime.time(4, 0, 0)
     after_hours_trading_hour_end_time = datetime.time(20, 0, 0)
     
-    if us_current_datetime.weekday() > 5:
-        return False
-        
-    if pre_market_trading_hour_start_time <= us_current_datetime.time() <= after_hours_trading_hour_end_time:
-        return True
+    # Check if current datetime is a US federal holiday
+    is_us_federal_holiday = us_current_datetime.date() in np.isin(us_current_datetime.date(), US_FEDERAL_HOLIDAYS)
+
+    if not is_us_federal_holiday:
+        if us_current_datetime.weekday() > 5:
+            return False
+
+        if pre_market_trading_hour_start_time <= us_current_datetime.time() <= after_hours_trading_hour_end_time:
+            return True
+        else:
+            return False
     else:
         return False
     
 def get_current_us_datetime() -> datetime:
     return datetime.datetime.now().astimezone(US_EASTERN_TIMEZONE)
+
+def get_us_business_day(offset_day: int, us_date: datetime.datetime = None) -> datetime.datetime:
+    if not us_date: 
+        us_business_day = get_current_us_datetime()
+    else:
+        us_business_day = us_date
+        
+    return us_business_day + (offset_day * US_BUSINESS_DAY)
+
+def convert_us_to_hk_datetime(us_datetime: datetime.datetime) -> datetime.datetime:
+    return us_datetime.astimezone(HONG_KONG_TIMEZONE)

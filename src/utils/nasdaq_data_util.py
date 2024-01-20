@@ -43,6 +43,7 @@ def get_all_ticker_in_the_market():
                     if re.match(regex, symbol) and is_etf == 'N' and is_test_issue == 'N': 
                         ticker_list.append(symbol)
                     else:
+                        print()
                         logger.log_debug_msg(f'Exclude ticker of "{symbol}" from {file}, details: {line}')
     except Exception as read_ticker_list_file_exception:
         logger.log_error_msg(f'Error occurred while reading files: {read_ticker_list_file_exception}')

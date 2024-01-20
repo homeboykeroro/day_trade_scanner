@@ -3,7 +3,7 @@ import sqlite3
 from utils.logger import Logger
 from exception.sqlite_connection_error import SqliteConnectionError
 
-DISCORD_NOTIFICATION_DB_DIR = 'C:/Users/John/Downloads/Trade History/Scanner/discord_notification.db'
+DISCORD_NOTIFICATION_DB_DIR = 'C:/Users/John/Downloads/Trade History/Scanner/stock_screener.db'
 
 logger = Logger()
 

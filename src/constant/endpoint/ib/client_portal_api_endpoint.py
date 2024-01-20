@@ -1,4 +1,7 @@
+import os
 from enum import Enum
+
+ACCOUNT_ID = os.environ['ACCOUNT_ID']
 
 class ClientPortalApiEndpoint(str, Enum):
     #  Endpoint	                     Method	   Limit
@@ -18,6 +21,8 @@ class ClientPortalApiEndpoint(str, Enum):
     SECURITY_DEFINITIONS = '/trsrv/secdef'
     SNAPSHOT = '/iserver/marketdata/snapshot'
     SECURITY_STOCKS_BY_SYMBOL = '/trsrv/stocks'
+    ALERT = f'/iserver/account/{ACCOUNT_ID}/alert'
+    WATCHLIST = '/iserver/watchlist'
     
     
     

@@ -1,15 +1,24 @@
 import pytz
 import datetime
 
-from utils.logger import Logger
+from constant.scanner.ib.instrument import Instrument
+from constant.scanner.ib.scan_code import ScanCode
+from constant.scanner.scanner_target import ScannerTarget
+from constant.scanner.ib.filter_parameter import FilterParameter
 
-from constant.instrument import Instrument
-from constant.filter.scan_code import ScanCode
-from constant.filter.filter_parameter import FilterParameter
+def get_finviz_scanner_filter(scan_target: ScannerTarget):
+  if scan_target == ScannerTarget.TOP_GAINER:
+    scan_type = 'ta_topgainers'
+  elif scan_target == ScannerTarget.TOP_LOSER:
+    scan_type = 'ta_toplosers'
+    
+  scanner_filter = {
+    's': scan_type
+  }
 
-logger = Logger()
+  return scanner_filter
 
-def get_scanner_filter(min_price: float = 0.35, min_percent_change: float = 10, min_usd_volume: int = 20000, max_market_cap_in_million: int = 400, additional_filter_list: list = []) -> dict:
+def get_ib_scanner_filter(scan_target: ScannerTarget = ScannerTarget.TOP_GAINER, min_price: float = 0.3, percent_change_param: float = 10, min_usd_volume: int = 20000, max_market_cap: int = 1e6 * 500, additional_filter_list: list = []) -> dict:
     # Get current datetime in HK time
     hk_datetime = datetime.datetime.now()
     
@@ -23,13 +32,21 @@ def get_scanner_filter(min_price: float = 0.35, min_percent_change: float = 10, 
     normal_trading_hour_end_time = datetime.time(16, 0, 0)
     after_hours_trading_hour_end_time = datetime.time(20, 0, 0)
     
-    scan_code_param = ScanCode.TOP_GAINERS.value
-    min_percent_change_param = FilterParameter.MIN_PERCENT_CHANGE.value
+    if scan_target == ScannerTarget.TOP_GAINER:
+      scan_code_param = ScanCode.TOP_GAINERS.value
+      percent_change_param_code = FilterParameter.MIN_PERCENT_CHANGE.value
+    elif scan_target == ScannerTarget.TOP_LOSER:
+      scan_code_param = ScanCode.TOP_LOSERS.value
+      percent_change_param_code = FilterParameter.MAX_PERCENT_CHANGE.value
     
     if normal_trading_hour_end_time <= us_time.time() < after_hours_trading_hour_end_time:
+      if scan_target == ScannerTarget.TOP_GAINER:
         scan_code_param = ScanCode.TOP_GAINERS_IN_AFTER_HOURS.value
-        min_percent_change_param = FilterParameter.MIN_PERCENT_CHANGE_AFTER_HOURS.value
-    
+        percent_change_param_code = FilterParameter.MIN_PERCENT_CHANGE_AFTER_HOURS.value
+      elif scan_target == ScannerTarget.TOP_LOSER:
+        scan_code_param = ScanCode.TOP_LOSER_IN_AFTER_HOURS.value
+        percent_change_param_code = FilterParameter.MAX_PERCENT_CHANGE_AFTER_HOURS.value
+      
     scanner_filter = {
         # afterHoursChangePercAbove
         'instrument': Instrument.STOCKS.value,
@@ -41,8 +58,8 @@ def get_scanner_filter(min_price: float = 0.35, min_percent_change: float = 10, 
             'value': min_price 
           },
           {
-            'code': min_percent_change_param,
-            'value': min_percent_change
+            'code': percent_change_param_code,
+            'value': percent_change_param
           },
           {
             'code': FilterParameter.MIN_USD_VOLUME.value,
@@ -50,7 +67,7 @@ def get_scanner_filter(min_price: float = 0.35, min_percent_change: float = 10, 
           },
           {
             'code': FilterParameter.MAX_MARKET_CAP.value,
-            'value': max_market_cap_in_million
+            'value': max_market_cap / 1e6
           }
         ]
     }
