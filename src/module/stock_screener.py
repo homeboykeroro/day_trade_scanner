@@ -50,8 +50,8 @@ class StockScreener():
                 
                 try:
                     self.__scanner.scan_top_gainer()
-                    self.__scanner.scan_yesterday_top_gainer()
-                    self.__scanner.scan_top_loser()
+                    #self.__scanner.scan_yesterday_top_gainer()
+                    #self.__scanner.scan_top_loser()
                     logger.log_debug_msg(f'Scan time taken: {time.time() - scan_start_time}') 
                 except (RequestException, ClientError) as connection_exception:
                     self.__ib_connection_retry = True

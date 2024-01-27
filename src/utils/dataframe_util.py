@@ -5,10 +5,11 @@ from pandas.core.frame import DataFrame
 
 from utils.logger import Logger
 
-from constant.indicator.runtime_indicator import RuntimeIndicator
 from constant.indicator.indicator import Indicator
-from constant.candle.candle_colour import CandleColour
 from constant.indicator.customised_indicator import CustomisedIndicator
+from constant.indicator.runtime_indicator import RuntimeIndicator
+from constant.candle.candle_colour import CandleColour
+from constant.indicator.matplot_finance import MatplotFinance
 
 logger = Logger()
 idx = pd.IndexSlice
@@ -21,31 +22,6 @@ def derive_idx_df(src_df: DataFrame, numeric_idx: bool = True) -> DataFrame:
     
     return pd.DataFrame(np.repeat(idx_np, len(src_df.columns), axis=1), 
                         columns=src_df.columns).rename(columns={src_df.columns.get_level_values(1).values[0]: RuntimeIndicator.INDEX.value})
-
-def get_sorted_value_without_duplicate_df(src_df: DataFrame) -> DataFrame:
-    sorted_np = np.sort(src_df.values, axis=0)
-    _, indices = np.unique(sorted_np.flatten(), return_inverse=True)
-    mask = np.ones(sorted_np.size, dtype=bool)
-    mask[indices] = False
-    mask = mask.reshape(sorted_np.shape)
-    sorted_np[mask] = -1
-    sorted_df = pd.DataFrame(np.sort(sorted_np, axis=0), 
-                             columns=src_df.columns).replace(-1, np.nan)   
-    
-    return sorted_df
-
-def get_idx_df_by_value_df(val_src_df: DataFrame, idx_src_df: DataFrame, numeric_idx: bool = True) -> DataFrame:
-    result_df = val_src_df.copy()
-    
-    if numeric_idx:
-        reference_df = idx_src_df.reset_index(drop=True)
-    else:
-        reference_df = idx_src_df
-    
-    for column in result_df.columns:
-        result_df[column] = result_df[column].apply(lambda x: reference_df.index[reference_df[column] == x][0] if pd.notnull(x) else np.nan)
-    
-    return result_df
 
 def append_customised_indicator(src_df: pd.DataFrame) -> pd.DataFrame:
     construct_dataframe_start_time = time.time()
@@ -100,3 +76,67 @@ def append_customised_indicator(src_df: pd.DataFrame) -> pd.DataFrame:
 
     logger.log_debug_msg(f'Construct customised statistics dataframe time: {time.time() - construct_dataframe_start_time}')
     return complete_df
+
+def replace_daily_df_latest_day_with_minute(daily_df: DataFrame, minute_df: DataFrame):
+    daily_df_column_list = list(daily_df.columns.get_level_values(1).unique())
+    concat_minute_df = minute_df.loc[:, idx[:, daily_df_column_list]].copy()
+    concat_daily_df = daily_df.iloc[:-1]
+    concat_minute_df.index = concat_minute_df.index.round('D')
+    
+    return pd.concat([concat_daily_df,
+                      concat_minute_df], axis=0)
+
+def get_candle_description_df(src_df: DataFrame, indicator_list: list = [CustomisedIndicator.CLOSE_CHANGE, Indicator.VOLUME]):
+    ticker_name = src_df.columns.get_level_values(0)[0]
+    
+    max_no_of_indicator_character = 0
+    for indicator in indicator_list:
+        no_of_character = len(indicator.value)
+        if no_of_character >= max_no_of_indicator_character:
+            max_no_of_indicator_character = no_of_character
+    
+    indicator_description_np = np.full((src_df.shape[0], 1), '')
+    for indicator in indicator_list:
+        no_of_whitespace_padding = max_no_of_indicator_character - len(indicator.value)
+        whitespace = ''.join(np.repeat(' ', no_of_whitespace_padding))
+        
+        src_indicator_df = src_df.loc[:, idx[[ticker_name], indicator.value]]
+        src_df_value_np = src_indicator_df.fillna('N/A').values.astype(str)
+        indicator_description_np = np.char.add(indicator_description_np, f'{indicator.value + whitespace}: ') 
+        indicator_description_np = np.char.add(indicator_description_np, src_df_value_np) 
+        
+        if indicator == Indicator.CLOSE:
+            indicator_description_np = np.char.add(indicator_description_np, '%') 
+        
+        indicator_description_np = np.char.add(indicator_description_np, '\n\n')
+        
+    indicator_description_df = pd.DataFrame(indicator_description_np, 
+                                            columns=pd.MultiIndex.from_product([[ticker_name], [MatplotFinance.DESCRIPTION.value]]),
+                                            index=src_df.index)
+    
+    return indicator_description_df
+
+def get_sorted_value_without_duplicate_df(src_df: DataFrame) -> DataFrame:
+    sorted_np = np.sort(src_df.values, axis=0)
+    _, indices = np.unique(sorted_np.flatten(), return_inverse=True)
+    mask = np.ones(sorted_np.size, dtype=bool)
+    mask[indices] = False
+    mask = mask.reshape(sorted_np.shape)
+    sorted_np[mask] = -1
+    sorted_df = pd.DataFrame(np.sort(sorted_np, axis=0), 
+                             columns=src_df.columns).replace(-1, np.nan)   
+    
+    return sorted_df
+
+def get_idx_df_by_value_df(val_src_df: DataFrame, idx_src_df: DataFrame, numeric_idx: bool = True) -> DataFrame:
+    result_df = val_src_df.copy()
+    
+    if numeric_idx:
+        reference_df = idx_src_df.reset_index(drop=True)
+    else:
+        reference_df = idx_src_df
+    
+    for column in result_df.columns:
+        result_df[column] = result_df[column].apply(lambda x: reference_df.index[reference_df[column] == x][0] if pd.notnull(x) else np.nan)
+    
+    return result_df

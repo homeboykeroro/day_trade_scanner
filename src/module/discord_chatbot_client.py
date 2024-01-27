@@ -53,17 +53,17 @@ class DiscordChatBotClient(discord.Client):
     
         await message.channel.send(message.content)
             
-    def send_messages_to_channel(self, message: str, channel: DiscordChannel, embed=None, file_dir: str = None, with_text_to_speech: bool = False):
+    def send_messages_to_channel(self, message: str, channel_type: DiscordChannel, embed=None, attachments: list = None, with_text_to_speech: bool = False):
         if self.__is_chatbot_ready: 
-            if channel == DiscordChannel.DAY_TRADE_FLOOR:
+            if channel_type == DiscordChannel.DAY_TRADE_FLOOR:
                 channel = self.__day_trade_floor_channel    
-            elif channel == DiscordChannel.SWING_TRADE_FLOOR:
+            elif channel_type == DiscordChannel.SWING_TRADE_FLOOR:
                 channel = self.__swing_trade_floor_channel
-            elif channel == DiscordChannel.CHATBOT_LOG:
+            elif channel_type == DiscordChannel.CHATBOT_LOG:
                 channel = self.__chatbot_log_channel
-            elif channel == DiscordChannel.TEXT_TO_SPEECH:
+            elif channel_type == DiscordChannel.TEXT_TO_SPEECH:
                 channel = self.__text_to_speech_channel
-            elif channel == DiscordChannel.DEVELOPMENT_TEST:
+            elif channel_type == DiscordChannel.DEVELOPMENT_TEST:
                 channel = self.__development_test_channel
             else:
                 raise Exception('No Discord channel is specified')
@@ -71,20 +71,14 @@ class DiscordChatBotClient(discord.Client):
             if not message and not embed:
                 raise Exception('Either message or embed must be set')
 
-            if file_dir:
-                if not os.path.isfile(file_dir):
-                    raise Exception('Attached file doesn\'t exist')
-
             if channel:
                 loop = self.loop
 
                 try:
-                    discord_file = None
-                    
-                    if file_dir:
-                        discord_file = discord.File(file_dir)
-                        
-                    loop.create_task(channel.send(embed=embed, content=message , file=discord_file, tts=with_text_to_speech))
+                    if attachments:
+                        loop.create_task(channel.send(embed=embed, content=message, files=attachments, tts=with_text_to_speech))
+                    else:
+                        loop.create_task(channel.send(embed=embed, content=message, tts=with_text_to_speech))
                 except Exception as e:
                     logger.log_error_msg(f'Chatbot fatal error, {e}', with_std_out = True)
                     logger.log_error_msg(traceback.format_exc())

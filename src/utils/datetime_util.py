@@ -58,3 +58,17 @@ def get_us_business_day(offset_day: int, us_date: datetime.datetime = None) -> d
 
 def convert_us_to_hk_datetime(us_datetime: datetime.datetime) -> datetime.datetime:
     return us_datetime.astimezone(HONG_KONG_TIMEZONE)
+
+def get_offsetted_pd_datetime(pd_datetime: pd.Timestamp, positive_offset: int, negative_offset: int, latest_datetime: pd.Timestamp):
+    pre_market_start_time = pd_datetime.replace(hour=4, minute=0, microsecond=0)
+    if ((pd_datetime - pre_market_start_time).total_seconds() / 60) >= negative_offset :
+        candle_start_range = pd_datetime - pd.Timedelta(minutes=negative_offset)
+    else:
+        candle_start_range = pre_market_start_time
+        
+    if ((latest_datetime  - pd_datetime).total_seconds() / 60) >= positive_offset:
+        candle_end_range = pd_datetime + pd.Timedelta(minutes=positive_offset)
+    else:
+        candle_end_range = latest_datetime 
+        
+    return candle_start_range, candle_end_range

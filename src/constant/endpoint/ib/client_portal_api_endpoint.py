@@ -22,6 +22,7 @@ class ClientPortalApiEndpoint(str, Enum):
     SNAPSHOT = '/iserver/marketdata/snapshot'
     SECURITY_STOCKS_BY_SYMBOL = '/trsrv/stocks'
     ALERT = f'/iserver/account/{ACCOUNT_ID}/alert'
+    ALL_WATCHLIST = '/iserver/watchlists'
     WATCHLIST = '/iserver/watchlist'
     
     

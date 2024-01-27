@@ -78,19 +78,11 @@ class Scanner:
         logger.log_debug_msg(f'scan top gainer contract list: {contract_list}', with_log_file=True, with_std_out=False)
         self.__ib_connector.update_contract_info(contract_list)
         one_minute_candle_df = self.__retrieve_intra_day_minute_candle(contract_list, BarSize.ONE_MINUTE)
-        yesterday_daily_candle_df = self.__get_daily_candle(contract_list, 1, False).iloc[[0]]
-        
-        logger.log_debug_msg('scan top gainer df:', with_log_file=True, with_std_out=False)
-        with pd.option_context('display.max_rows', None,
-                   'display.max_columns', None,
-                   'display.precision', 3,
-                   ):
-            logger.log_debug_msg(f'one_minute_candle_df: {one_minute_candle_df}', with_log_file=True, with_std_out=False)
-            logger.log_debug_msg(f'yesterday_daily_candle_df: {yesterday_daily_candle_df}', with_log_file=True, with_std_out=False)
-        
+        daily_df = self.__get_daily_candle(contract_list, 5, False)
+          
         initial_pop_analyser = InitialPop(BarSize.ONE_MINUTE,
                                           one_minute_candle_df, 
-                                          yesterday_daily_candle_df, 
+                                          daily_df, 
                                           self.__ib_connector.get_ticker_to_contract_dict(), 
                                           self.__discord_client,
                                           self.__sqllite_connector)
@@ -100,15 +92,7 @@ class Scanner:
         contract_list = self.__ib_connector.get_screener_results(MAX_NO_OF_SCANNER_RESULT, IB_TOP_LOSER_FILTER)
         self.__ib_connector.update_contract_info(contract_list)
         one_minute_candle_df = self.__retrieve_intra_day_minute_candle(contract_list, BarSize.ONE_MINUTE)
-        yesterday_daily_candle_df = self.__get_daily_candle(contract_list, 1, False).iloc[[0]]
-        
-        logger.log_debug_msg('scan top loser df:', with_log_file=True, with_std_out=False)
-        with pd.option_context('display.max_rows', None,
-                   'display.max_columns', None,
-                   'display.precision', 3,
-                   ):
-            logger.log_debug_msg(f'one_minute_candle_df: {one_minute_candle_df}', with_log_file=True, with_std_out=False)
-            logger.log_debug_msg(f'yesterday_daily_candle_df: {yesterday_daily_candle_df}', with_log_file=True, with_std_out=False)
+        yesterday_daily_candle_df = self.__get_daily_candle(contract_list, 5, False)
         
         initial_dip_analyser = InitialDip(BarSize.ONE_MINUTE,
                                           one_minute_candle_df, 
