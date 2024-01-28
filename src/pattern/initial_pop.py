@@ -119,8 +119,14 @@ class InitialPop(PatternAnalyser):
                     pop_up_time_display = convert_into_human_readable_time(pop_up_time)
                     read_out_pop_up_time = convert_into_read_out_time(pop_up_time)
                   
-                    minute_symbol_df = pop_up_boolean_df.loc[:, idx[[ticker], :]].replace({True: ScatterSymbol.POP.value, False: 'none'})
-                    minute_colour_df = pop_up_boolean_df.loc[:, idx[[ticker], :]].replace({True: ScatterColour.BLUE.value, False: 'none'})
+                    minute_symbol_df = (pop_up_boolean_df.loc[:, idx[[ticker], :]]
+                                                         .where(first_pop_up_occurrence_df.loc[:, idx[[ticker], :]].values)
+                                                         .notnull()
+                                                         .replace({True: ScatterSymbol.POP.value, False: 'none'}))
+                    minute_colour_df = (pop_up_boolean_df.loc[:, idx[[ticker], :]]
+                                                         .where(first_pop_up_occurrence_df.loc[:, idx[[ticker], :]].values)
+                                                         .notnull()
+                                                         .replace({True: ScatterColour.BLUE.value, False: 'none'}))
                     minute_description_df = get_candle_description_df(self.__historical_data_df.loc[:, idx[[ticker], :]])
                     candle_start_range, candle_end_range = get_offsetted_pd_datetime(pd_datetime=pop_up_time, 
                                                                                      negative_offset=2, 
@@ -141,10 +147,15 @@ class InitialPop(PatternAnalyser):
                     daily_colour_df = daily_df.loc[:, idx[:, [Indicator.LOW.value]]].copy()
                     daily_colour_df.loc[:, idx[:, [Indicator.LOW.value]]] = np.full((daily_df.shape[0], 1), 'none')
                     
+                    daily_symbol_df.iat[-1, 0] = ScatterSymbol.POP.value
+                    daily_colour_df.iat[-1, 0] = ScatterColour.BLUE.value
+                    daily_description_df = get_candle_description_df(daily_df.loc[:, idx[[ticker], :]])
+                    
                     daily_chart_dir = get_candlestick_chart(pattern='INITIAL_POP', 
                                                             main_df=daily_df,
                                                             scatter_symbol_df=daily_symbol_df,
                                                             scatter_colour_df=daily_colour_df,
+                                                            description_df=daily_description_df,
                                                             bar_size=BarSize.ONE_DAY)
 
                     embed = discord.Embed(title=f'{ticker} is popping up {round(yesterday_close_to_last_pct, 2)}% at {pop_up_time_display}')

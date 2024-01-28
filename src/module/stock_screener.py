@@ -1,4 +1,5 @@
 import time
+import traceback
 import threading
 
 from module.discord_chatbot_client import DiscordChatBotClient
@@ -55,14 +56,15 @@ class StockScreener():
                     logger.log_debug_msg(f'Scan time taken: {time.time() - scan_start_time}') 
                 except (RequestException, ClientError) as connection_exception:
                     self.__ib_connection_retry = True
-                    self.__discord_client.send_messages_to_channel(message='Client Portal API connection failed', channel=DiscordChannel.CHATBOT_LOG, with_text_to_speech=True)
+                    self.__discord_client.send_messages_to_channel(message='Client Portal API connection failed', channel_type=DiscordChannel.CHATBOT_LOG, with_text_to_speech=True)
                     logger.log_error_msg(f'Client Portal API connection error, {connection_exception}', with_std_out=True)
                 except (SqliteConnectionError) as sqlite_connection_exception:
-                    self.__discord_client.send_messages_to_channel(message='SQLite connection error', channel=DiscordChannel.CHATBOT_LOG, with_text_to_speech=True)
+                    self.__discord_client.send_messages_to_channel(message='SQLite connection error', channel_type=DiscordChannel.CHATBOT_LOG, with_text_to_speech=True)
                     logger.log_error_msg(f'SQLite connection error, {sqlite_connection_exception}', with_std_out=True)
                 except Exception as exception:
                     self.__fatal_error = True   
-                    self.__discord_client.send_messages_to_channel(message='Fatal error', channel=DiscordChannel.CHATBOT_LOG, with_text_to_speech=True)   
+                    self.__discord_client.send_messages_to_channel(message='Fatal error', channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)   
+                    self.__discord_client.send_messages_to_channel(message=traceback.format_exc(), channel_type=DiscordChannel.CHATBOT_LOG, with_text_to_speech=False)
                     logger.log_error_msg(f'Scanner fatal error, {exception}', with_std_out=True)
 
                 self.__wait_till_next_scan()

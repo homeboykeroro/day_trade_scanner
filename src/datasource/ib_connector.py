@@ -180,6 +180,9 @@ class IBConnector:
         else:
             for ticker_to_security_list_dict in security_response:
                 for ticker, security_list in ticker_to_security_list_dict.items():
+                    if ticker == 'error':
+                        raise requests.RequestException('Error occurred while requesting security by ticker')
+                    
                     if security_list:
                         contract_found_no = 0
                         for security in security_list:
@@ -374,6 +377,9 @@ class IBConnector:
                 sef_def_list = sec_def_response['secdef']
 
                 for sec_df in sef_def_list:
+                    if not sec_df:
+                        continue
+                    
                     ticker = sec_df['ticker']
 
                     if 'group' in sec_df:
