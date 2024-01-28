@@ -43,21 +43,21 @@ DEFAULT_CHART_STYLE = mpf.make_mpf_style(base_mpf_style='tradingview',
 
 COMMON_CHART_SETTING = dict(type='candle',
                             volume=True,
-                            show_nontrading=True,
+                            #show_nontrading=True,
                             width_adjuster_version='v0',
                             figsize =(CHART_WIDTH_PIXEL/100, CHART_HEIGHT_PIXEL/100),
                             style=DEFAULT_CHART_STYLE,
-                            scale_padding=dict(left=0.5, right=2.5, bottom=0.5),
+                            scale_padding=dict(left=0.5, right=3, bottom=1, top=2),
                             scale_width_adjustment=dict(volume=1.5,candle=1.5),
                             tight_layout=True,
-                            panel_ratios=(1,0.3))
-                            #figratio=(16,9),
-                            #figscale=0.85,
+                            panel_ratios=(1,0.3),
+                            figratio=(16,9),
+                            figscale=0.8)
                             #panel_ratios=(1,0.3),
                             #scale_width_adjustment=dict(volume=0.7,candle=0.7),
                             #scale_padding=dict(left=0.1, right=0.6, top=0.6, bottom=0.6),)
                             
-DESCRIPTION_X_AXIS_OFFSET = -0.15
+DESCRIPTION_X_AXIS_OFFSET = -0.35
 INDICATOR_Y_AXIS_TICK_OFFSET_FACTOR = 2
 MIN_PRICE_RANGE_Y_AXIS_TICK_OFFSET_FACTOR = 3
 
@@ -76,35 +76,45 @@ def get_candlestick_chart(pattern: str, bar_size: BarSize, main_df: pd.DataFrame
     round_precision = 3 if price_min_range < 1 else 2
     price_y_axis_grid_tick = round((price_range_difference / SCALE_DIVISION), round_precision)
     
-    offseted_price_min_range = (price_min_range - (MIN_PRICE_RANGE_Y_AXIS_TICK_OFFSET_FACTOR * price_y_axis_grid_tick))
-    offseted_price_max_range = price_min_range + (price_y_axis_grid_tick * math.ceil(((price_max_range - price_min_range) / price_y_axis_grid_tick)))
+    if price_y_axis_grid_tick <= 0.2:
+        offseted_price_min_range = (price_min_range - (MIN_PRICE_RANGE_Y_AXIS_TICK_OFFSET_FACTOR * price_y_axis_grid_tick))
+        offseted_price_max_range = price_min_range + (price_y_axis_grid_tick * math.ceil(((price_max_range - price_min_range) / price_y_axis_grid_tick)))
+    else:
+        offseted_price_min_range = price_min_range - price_y_axis_grid_tick
+        offseted_price_max_range = price_min_range + (price_y_axis_grid_tick * math.ceil(((price_max_range - price_min_range) / price_y_axis_grid_tick)))
     
+    round_volume_max_range = round_to_nth_digit(volume_max_range, 1)
     volume_y_axis_grid_tick = round_to_nth_digit((volume_max_range / 3), 2)
     
     ticker_level_dropped_scatter_symbol_df = scatter_symbol_df.copy()
     ticker_level_dropped_scatter_symbol_df.columns = ticker_level_dropped_scatter_symbol_df.columns.droplevel(0)
     
+    dt_str_list = []
+    x_axis_unit = None
+    
     if bar_size == BarSize.ONE_DAY:
-        x_axis_unit = dates.DayLocator()
-        chart_setting.update(dict(datetime_format = DAILY_CANDLE_DISPLAY_FORMAT))
+        description_x_axis_offfset = pd.Timedelta(days=description_offset)
+        chart_setting.update(dict(datetime_format = DAILY_CANDLE_DISPLAY_FORMAT, show_nontrading=False))
     elif bar_size == BarSize.ONE_MINUTE:
+        description_x_axis_offfset = pd.Timedelta(minutes=description_offset)
+        dt_str_list = [dt.strftime((MINUTE_CANDLE_DISPLAY_FORMAT)) for dt in main_df.index.tolist()]
         x_axis_unit = dates.MinuteLocator(interval=1)
-        chart_setting.update(dict(datetime_format = '%H:%M'))
+        chart_setting.update(dict(datetime_format = MINUTE_CANDLE_DISPLAY_FORMAT, show_nontrading=True))
     
     description_dict_list = []
     
     if description_df is not None:
         for idx_datetime, description_series in description_df.iterrows():
             description_dict_list.append(
-                dict(x_axis = dates.date2num((idx_datetime + pd.Timedelta(minutes=description_offset)).to_pydatetime()), 
+                dict(x_axis = dates.date2num((idx_datetime + description_x_axis_offfset).to_pydatetime()), 
                      y_axis = main_df.loc[idx_datetime, (ticker_name, Indicator.HIGH.value)],
                      description = description_series[0]
             ))
     
     if scatter_symbol_df is not None and scatter_colour_df is not None:
-        indicator_plot = mpf.make_addplot(ticker_level_dropped_df[Indicator.LOW.value] - (2 * price_y_axis_grid_tick), 
+        indicator_plot = mpf.make_addplot(ticker_level_dropped_df[Indicator.LOW.value] - (INDICATOR_Y_AXIS_TICK_OFFSET_FACTOR * price_y_axis_grid_tick), 
                                            type='scatter', 
-                                           markersize=450, 
+                                           markersize=800, 
                                            marker=scatter_symbol_df.values.flatten(), 
                                            color=scatter_colour_df.values.flatten())
         
@@ -120,21 +130,26 @@ def get_candlestick_chart(pattern: str, bar_size: BarSize, main_df: pd.DataFrame
             axis_list[0].text(description['x_axis'], 
                               description['y_axis'], 
                               description['description'], 
-                              fontsize=16, 
+                              fontsize=14, 
                               fontweight='bold', 
                               color='white')
     
-    axis_list[0].yaxis.set_major_locator(ticker.MultipleLocator(price_y_axis_grid_tick))
     axis_list[0].set_ylabel('')
+    axis_list[0].yaxis.set_major_locator(ticker.MultipleLocator(price_y_axis_grid_tick))
     axis_list[0].set_ylim(offseted_price_min_range, offseted_price_max_range)
-    axis_list[2].yaxis.set_major_locator(ticker.MultipleLocator(volume_y_axis_grid_tick))
     axis_list[2].set_ylabel('')
+    axis_list[2].yaxis.set_major_locator(ticker.MultipleLocator(volume_y_axis_grid_tick))
+    axis_list[2].set_ylim(0, round_volume_max_range)
     
-    new_x_ticks = [dates.date2num(dt) for dt in main_df.index.tolist()]
-    axis_list[3].set_xticks(new_x_ticks)
-    axis_list[3].set_xticklabels(dt_str_list)
-    axis_list[3].xaxis.set_major_locator(x_axis_unit)
+    # if volume_y_axis_unit and y_list:
+    #     axis_list[2].yaxis.set_major_locator(ticker.MultipleLocator(volume_y_axis_grid_tick))
+
     
+    if x_axis_unit and dt_str_list:
+        new_x_ticks = [dates.date2num(dt) for dt in main_df.index.tolist()]
+        axis_list[3].set_xticks(new_x_ticks)
+        axis_list[3].set_xticklabels(dt_str_list)
+        axis_list[3].xaxis.set_major_locator(x_axis_unit)
     
     # j = ['** ']
     # j2 = [offseted_price_min_range - price_y_axis_grid_tick]
@@ -150,7 +165,6 @@ def get_candlestick_chart(pattern: str, bar_size: BarSize, main_df: pd.DataFrame
     # axis_list[2].set_yticklabels(['0', '1200', '2400', '     *'])
     # axis_list[2].yaxis.set_major_locator(ticker.MultipleLocator(volume_y_axis_grid_tick))
     
-
     current_datetime_str = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     output_dir =  f"{CHART_ROOT_DIR}/{pattern}_{ticker_name}_{bar_size.value}_{current_datetime_str}.png"
     chart.savefig(output_dir)

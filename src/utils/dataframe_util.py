@@ -101,11 +101,16 @@ def get_candle_description_df(src_df: DataFrame, indicator_list: list = [Customi
         whitespace = ''.join(np.repeat(' ', no_of_whitespace_padding))
         
         src_indicator_df = src_df.loc[:, idx[[ticker_name], indicator.value]]
-        src_df_value_np = src_indicator_df.fillna('N/A').values.astype(str)
+        
+        if indicator == CustomisedIndicator.CLOSE_CHANGE:
+            src_df_value_np = np.around(src_indicator_df, 2).fillna('N/A').values.astype(str)
+        else:
+            src_df_value_np = src_indicator_df.fillna('N/A').values.astype(str)
+            
         indicator_description_np = np.char.add(indicator_description_np, f'{indicator.value + whitespace}: ') 
         indicator_description_np = np.char.add(indicator_description_np, src_df_value_np) 
         
-        if indicator == Indicator.CLOSE:
+        if indicator == CustomisedIndicator.CLOSE_CHANGE:
             indicator_description_np = np.char.add(indicator_description_np, '%') 
         
         indicator_description_np = np.char.add(indicator_description_np, '\n\n')

@@ -29,7 +29,7 @@ class PatternAnalyser(ABC):
         if message_list:
             for message in message_list:
                 if message.display_message or message.embed:
-                    self.__discord_client.send_messages_to_channel(embed=message.embed, message=message.display_message, attachments=message.candle_chart_list, channel=DiscordChannel.DEVELOPMENT_TEST)
+                    self.__discord_client.send_messages_to_channel(embed=message.embed, message=message.display_message, attachments=message.candle_chart_list, channel_type=DiscordChannel.DEVELOPMENT_TEST)
                 
                 if message.read_out_message:
                     read_out_message_list.append(message.read_out_message)
@@ -41,5 +41,5 @@ class PatternAnalyser(ABC):
             
             for chunk in read_out_message_chunk_list:
                 read_out_message = '\n'.join(chunk)
-                self.__discord_client.send_messages_to_channel(message=read_out_message, channel=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+                self.__discord_client.send_messages_to_channel(message=read_out_message, channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
             
