@@ -9,6 +9,8 @@ from constant.indicator.indicator import Indicator
 from constant.indicator.customised_indicator import CustomisedIndicator
 from constant.indicator.runtime_indicator import RuntimeIndicator
 from constant.candle.candle_colour import CandleColour
+from constant.indicator.scatter_colour import ScatterColour
+from constant.indicator.scatter_symbol import ScatterSymbol
 from constant.indicator.matplot_finance import MatplotFinance
 
 logger = Logger()
@@ -79,14 +81,38 @@ def append_customised_indicator(src_df: pd.DataFrame) -> pd.DataFrame:
 
 def replace_daily_df_latest_day_with_minute(daily_df: DataFrame, minute_df: DataFrame):
     daily_df_column_list = list(daily_df.columns.get_level_values(1).unique())
-    concat_minute_df = minute_df.loc[:, idx[:, daily_df_column_list]].copy()
     concat_daily_df = daily_df.iloc[:-1]
-    concat_minute_df.index = concat_minute_df.index.round('D')
+    
+    concat_minute_df = minute_df.loc[:, idx[:, daily_df_column_list]].copy()
+    yesterday_close_df = daily_df.loc[daily_df.index[-2], idx[:, Indicator.CLOSE.value]]
+    yesterday_candle_upper_body_df = daily_df.loc[daily_df.index[-2], idx[:, Indicator.CLOSE.value]]
+    minute_close_df = minute_df.loc[:, idx[:, Indicator.CLOSE.value]]
+    minute_candle_lower_body_df = minute_df.loc[:, idx[:, CustomisedIndicator.CANDLE_LOWER_BODY.value]]
+    close_pct_df = (minute_close_df.sub(yesterday_close_df.values)
+                                   .div(yesterday_close_df.values)
+                                   .mul(100)).rename(columns={Indicator.CLOSE.value: CustomisedIndicator.CLOSE_CHANGE.value})
+    gap_up_pct_df = (minute_candle_lower_body_df.sub(yesterday_candle_upper_body_df.values)
+                                                .div(yesterday_candle_upper_body_df.values)
+                                                .mul(100))
+    concat_minute_df.loc[:, idx[:, CustomisedIndicator.CLOSE_CHANGE.value]] = close_pct_df
+    concat_minute_df.loc[:, idx[:, CustomisedIndicator.GAP_PCT_CHANGE.value]] = gap_up_pct_df
+    concat_minute_df.index = concat_minute_df.index.floor('D')
     
     return pd.concat([concat_daily_df,
                       concat_minute_df], axis=0)
 
-def get_candle_description_df(src_df: DataFrame, indicator_list: list = [CustomisedIndicator.CLOSE_CHANGE, Indicator.VOLUME]):
+def get_scatter_symbol_and_colour_df(src_df: DataFrame, occurrence_idx_list: list, scatter_symbol: ScatterSymbol, scatter_colour: ScatterColour):
+    symbol_df = src_df.copy()
+    symbol_df.loc[:, :] = np.full(src_df.shape, 'none')
+    symbol_df.loc[occurrence_idx_list, :] = scatter_symbol.value
+    
+    colour_df = src_df.copy()
+    colour_df.loc[:, :] = np.full(src_df.shape, 'none')
+    colour_df.loc[occurrence_idx_list, :] = scatter_colour.value
+    
+    return symbol_df, colour_df
+
+def get_candle_comments_df(src_df: DataFrame, indicator_list: list = [CustomisedIndicator.CLOSE_CHANGE, Indicator.VOLUME]):
     ticker_name = src_df.columns.get_level_values(0)[0]
     
     max_no_of_indicator_character = 0
@@ -102,15 +128,17 @@ def get_candle_description_df(src_df: DataFrame, indicator_list: list = [Customi
         
         src_indicator_df = src_df.loc[:, idx[[ticker_name], indicator.value]]
         
-        if indicator == CustomisedIndicator.CLOSE_CHANGE:
-            src_df_value_np = np.around(src_indicator_df, 2).fillna('N/A').values.astype(str)
-        else:
+        if indicator == CustomisedIndicator.CLOSE_CHANGE or indicator == CustomisedIndicator.GAP_PCT_CHANGE:
+            src_df_value_np = np.around(src_indicator_df, 1).fillna('N/A').values.astype(str)
+        elif indicator == Indicator.VOLUME:
+            src_df_value_np = src_indicator_df.values.astype(int).astype(str)
+        else: 
             src_df_value_np = src_indicator_df.fillna('N/A').values.astype(str)
             
         indicator_description_np = np.char.add(indicator_description_np, f'{indicator.value + whitespace}: ') 
         indicator_description_np = np.char.add(indicator_description_np, src_df_value_np) 
         
-        if indicator == CustomisedIndicator.CLOSE_CHANGE:
+        if indicator == CustomisedIndicator.CLOSE_CHANGE or indicator == CustomisedIndicator.GAP_PCT_CHANGE:
             indicator_description_np = np.char.add(indicator_description_np, '%') 
         
         indicator_description_np = np.char.add(indicator_description_np, '\n\n')
@@ -121,6 +149,24 @@ def get_candle_description_df(src_df: DataFrame, indicator_list: list = [Customi
     
     return indicator_description_df
 
+def get_ticker_to_occurrence_idx_list(occurrence_df: DataFrame, occurrence_limit: int) -> dict:
+    result_dict = {}
+    ticker_list = occurrence_df.columns.get_level_values(0).unique().tolist()
+    idx_df = derive_idx_df(occurrence_df)
+
+    occurrence_cumsum_df = occurrence_df.cumsum().where(occurrence_df.values) 
+    truncated_occurrence_cumsum_df = occurrence_cumsum_df.where((occurrence_cumsum_df <= occurrence_limit).values)
+    normalised_idx_df = idx_df.where(truncated_occurrence_cumsum_df.notnull().values)
+    
+    normalised_cumsum_idx_np = np.sort(normalised_idx_df.values.T)[:, :occurrence_limit] 
+    
+    for index, ticker in enumerate(ticker_list):
+        cumsum_idx_list = normalised_cumsum_idx_np[index] if not np.isnan(normalised_cumsum_idx_np[index]).all() else []
+        datetime_idx_list = [occurrence_df.index[int(cumsum_idx)] if not np.isnan(cumsum_idx) else None for cumsum_idx in cumsum_idx_list]
+        result_dict[ticker] = datetime_idx_list
+        
+    return result_dict
+    
 def get_sorted_value_without_duplicate_df(src_df: DataFrame) -> DataFrame:
     sorted_np = np.sort(src_df.values, axis=0)
     _, indices = np.unique(sorted_np.flatten(), return_inverse=True)

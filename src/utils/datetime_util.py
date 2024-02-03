@@ -5,6 +5,8 @@ import pytz
 from pandas.tseries.holiday import USFederalHolidayCalendar
 from pandas.tseries.offsets import CustomBusinessDay
 
+from constant.candle.bar_size import BarSize
+
 US_EASTERN_TIMEZONE = pytz.timezone('US/Eastern')
 HONG_KONG_TIMEZONE = pytz.timezone('Asia/Hong_Kong')
 PRE_MARKET_START_DATETIME = datetime.datetime.now().astimezone(US_EASTERN_TIMEZONE).replace(hour=4, minute=0, second=0, microsecond=0)
@@ -59,16 +61,17 @@ def get_us_business_day(offset_day: int, us_date: datetime.datetime = None) -> d
 def convert_us_to_hk_datetime(us_datetime: datetime.datetime) -> datetime.datetime:
     return us_datetime.astimezone(HONG_KONG_TIMEZONE)
 
-def get_offsetted_pd_datetime(pd_datetime: pd.Timestamp, positive_offset: int, negative_offset: int, latest_datetime: pd.Timestamp):
-    pre_market_start_time = pd_datetime.replace(hour=4, minute=0, microsecond=0)
-    if ((pd_datetime - pre_market_start_time).total_seconds() / 60) >= negative_offset :
-        candle_start_range = pd_datetime - pd.Timedelta(minutes=negative_offset)
-    else:
-        candle_start_range = pre_market_start_time
-        
-    if ((latest_datetime  - pd_datetime).total_seconds() / 60) >= positive_offset:
-        candle_end_range = pd_datetime + pd.Timedelta(minutes=positive_offset)
-    else:
-        candle_end_range = latest_datetime 
-        
+def get_offsetted_hit_scanner_datetime(indice: pd.DatetimeIndex, hit_scanner_datetime: pd.Timestamp, positive_offset: int, negative_offset: int):
+    datetime_idx_list = indice.tolist()
+    
+    if positive_offset is None and negative_offset is None:
+        return datetime_idx_list[0], datetime_idx_list[-1]
+    
+    hit_scanner_datetime_idx_positiion = datetime_idx_list.index(hit_scanner_datetime)
+    negative_offsetted_idx_position = hit_scanner_datetime_idx_positiion - negative_offset
+    positive_offsetted_idx_position = hit_scanner_datetime_idx_positiion + positive_offset
+    
+    candle_start_range = datetime_idx_list[0] if negative_offsetted_idx_position < 0 else datetime_idx_list[negative_offsetted_idx_position]
+    candle_end_range = datetime_idx_list[-1] if positive_offsetted_idx_position > len(datetime_idx_list) else datetime_idx_list[positive_offsetted_idx_position]
+    
     return candle_start_range, candle_end_range
