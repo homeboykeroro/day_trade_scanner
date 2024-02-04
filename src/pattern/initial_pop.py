@@ -113,8 +113,7 @@ class InitialPop(PatternAnalyser):
                         daily_chart_dir = get_candlestick_chart(candle_data_df=daily_df,
                                                                 ticker=ticker, pattern='INITIAL_POP', bar_size=BarSize.ONE_DAY,
                                                                 hit_scanner_datetime=daily_df.index[-1],
-                                                                scatter_symbol=ScatterSymbol.POP, scatter_colour=ScatterColour.BLUE,
-                                                                candle_comment_list=[CustomisedIndicator.GAP_PCT_CHANGE, CustomisedIndicator.CLOSE_CHANGE, Indicator.VOLUME])
+                                                                scatter_symbol=ScatterSymbol.POP, scatter_colour=ScatterColour.BLUE)
                         
                         embed = discord.Embed(title=f'{ticker} is popping up {round(yesterday_close_to_last_pct, 2)}% at {pop_up_time_display}')
                         embed.add_field(name = 'Close:', value= f'${close}', inline = True)

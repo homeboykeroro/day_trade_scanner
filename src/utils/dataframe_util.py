@@ -67,7 +67,6 @@ def append_customised_indicator(src_df: pd.DataFrame) -> pd.DataFrame:
                                              .where(gap_down_boolean_df.values)).rename(columns={RuntimeIndicator.COMPARE.value: CustomisedIndicator.GAP_PCT_CHANGE.value})
     gap_pct_df = ((gap_up_pct_df.fillna(gap_down_pct_df)
                                 .where(~no_gap_boolean_df.values)))
-        
     complete_df = pd.concat([src_df, 
                             close_pct_df,
                             gap_pct_df,
@@ -84,8 +83,8 @@ def replace_daily_df_latest_day_with_minute(daily_df: DataFrame, minute_df: Data
     concat_daily_df = daily_df.iloc[:-1]
     
     concat_minute_df = minute_df.loc[:, idx[:, daily_df_column_list]].copy()
-    yesterday_close_df = daily_df.loc[daily_df.index[-2], idx[:, Indicator.CLOSE.value]]
-    yesterday_candle_upper_body_df = daily_df.loc[daily_df.index[-2], idx[:, Indicator.CLOSE.value]]
+    yesterday_close_df = daily_df.loc[[daily_df.index[-2]], idx[:, Indicator.CLOSE.value]]
+    yesterday_candle_upper_body_df = daily_df.loc[[daily_df.index[-2]], idx[:, CustomisedIndicator.CANDLE_UPPER_BODY.value]]
     minute_close_df = minute_df.loc[:, idx[:, Indicator.CLOSE.value]]
     minute_candle_lower_body_df = minute_df.loc[:, idx[:, CustomisedIndicator.CANDLE_LOWER_BODY.value]]
     close_pct_df = (minute_close_df.sub(yesterday_close_df.values)
@@ -93,7 +92,7 @@ def replace_daily_df_latest_day_with_minute(daily_df: DataFrame, minute_df: Data
                                    .mul(100)).rename(columns={Indicator.CLOSE.value: CustomisedIndicator.CLOSE_CHANGE.value})
     gap_up_pct_df = (minute_candle_lower_body_df.sub(yesterday_candle_upper_body_df.values)
                                                 .div(yesterday_candle_upper_body_df.values)
-                                                .mul(100))
+                                                .mul(100)).rename(columns={CustomisedIndicator.CANDLE_LOWER_BODY.value: CustomisedIndicator.GAP_PCT_CHANGE.value})    
     concat_minute_df.loc[:, idx[:, CustomisedIndicator.CLOSE_CHANGE.value]] = close_pct_df
     concat_minute_df.loc[:, idx[:, CustomisedIndicator.GAP_PCT_CHANGE.value]] = gap_up_pct_df
     concat_minute_df.index = concat_minute_df.index.floor('D')
@@ -141,7 +140,7 @@ def get_candle_comments_df(src_df: DataFrame, indicator_list: list = [Customised
         if indicator == CustomisedIndicator.CLOSE_CHANGE or indicator == CustomisedIndicator.GAP_PCT_CHANGE:
             indicator_description_np = np.char.add(indicator_description_np, '%') 
         
-        indicator_description_np = np.char.add(indicator_description_np, '\n\n')
+        indicator_description_np = np.char.add(indicator_description_np, '\n')
         
     indicator_description_df = pd.DataFrame(indicator_description_np, 
                                             columns=pd.MultiIndex.from_product([[ticker_name], [MatplotFinance.DESCRIPTION.value]]),

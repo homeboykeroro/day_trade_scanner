@@ -92,7 +92,7 @@ def generate_chart(pattern: str, bar_size: BarSize, main_df: pd.DataFrame, scatt
             offseted_price_min_range_list = [price_min_range - (i * price_y_axis_grid_tick) for i in range(1, MIN_PRICE_RANGE_Y_AXIS_TICK_OFFSET_FACTOR + 1)]
             offseted_price_min_range_list.sort()
         else:
-            offseted_price_min_range_list = [price_y_axis_grid_tick]
+            offseted_price_min_range_list = [price_min_range]
 
         no_of_price_tick =  math.ceil(price_range_difference / price_y_axis_grid_tick)
         price_tick_list = [price_min_range + (i * price_y_axis_grid_tick) for i in range(no_of_price_tick + 2)]
@@ -169,7 +169,7 @@ def generate_chart(pattern: str, bar_size: BarSize, main_df: pd.DataFrame, scatt
                 axis_list[0].text(description['x_axis'], 
                                   description['y_axis'], 
                                   description['description'], 
-                                  fontsize=14, 
+                                  fontsize=16, 
                                   fontweight='bold', 
                                   color='white')
 
@@ -206,7 +206,7 @@ def get_candlestick_chart(candle_data_df: pd.DataFrame,
                           hit_scanner_datetime: pd.Timestamp, 
                           scatter_symbol: ScatterSymbol, scatter_colour: ScatterColour,
                           positive_offset: int = None, negative_offset: int = None,
-                          candle_comment_list: list = [CustomisedIndicator.CLOSE_CHANGE, Indicator.VOLUME]) -> str:
+                          candle_comment_list: list = [CustomisedIndicator.CLOSE_CHANGE, CustomisedIndicator.GAP_PCT_CHANGE, Indicator.CLOSE, Indicator.VOLUME]) -> str:
     symbol_df, colour_df = get_scatter_symbol_and_colour_df(src_df=candle_data_df.loc[:, idx[[ticker], Indicator.LOW.value]], 
                                                             occurrence_idx_list=[hit_scanner_datetime], 
                                                             scatter_symbol=scatter_symbol, 
