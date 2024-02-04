@@ -1,6 +1,5 @@
 import os
 import time
-import numpy as np
 import pandas as pd
 import discord
 from pandas.core.frame import DataFrame
@@ -19,7 +18,7 @@ from constant.candle.bar_size import BarSize
 
 from utils.chart_util import get_candlestick_chart
 from utils.dataframe_util import replace_daily_df_latest_day_with_minute, get_ticker_to_occurrence_idx_list
-from utils.datetime_util import convert_into_human_readable_time, convert_into_read_out_time, get_offsetted_hit_scanner_datetime
+from utils.datetime_util import convert_into_human_readable_time, convert_into_read_out_time
 from utils.logger import Logger
 
 idx = pd.IndexSlice
@@ -54,8 +53,8 @@ class InitialPop(PatternAnalyser):
         yesterday_upper_body_df = yesterday_daily_candle_df.loc[:, idx[:, CustomisedIndicator.CANDLE_UPPER_BODY.value]]
         candle_lower_body_df = self.__historical_data_df.loc[:, idx[:, CustomisedIndicator.CANDLE_LOWER_BODY.value]]
         gap_up_pct_df = (candle_lower_body_df.sub(yesterday_upper_body_df.values)
-                                      .div(yesterday_upper_body_df.values)
-                                      .mul(100))
+                                             .div(yesterday_upper_body_df.values)
+                                             .mul(100))
         
         self.__historical_data_df.loc[[self.__historical_data_df.index[0]], idx[:, CustomisedIndicator.CLOSE_CHANGE.value]] = yesterday_close_to_last_pct_df.iloc[[0]]
         self.__historical_data_df.loc[[self.__historical_data_df.index[0]], idx[:, CustomisedIndicator.GAP_PCT_CHANGE.value]] = gap_up_pct_df.iloc[[0]]
@@ -72,7 +71,7 @@ class InitialPop(PatternAnalyser):
         ticker_to_occurrence_idx_list_dict = get_ticker_to_occurrence_idx_list(pop_up_boolean_df, self.MAX_POP_OCCURRENCE)
         logger.log_debug_msg(f'Initial pop ticker to occurrence idx list: {ticker_to_occurrence_idx_list_dict}')
         logger.log_debug_msg(f'Initial pop analysis time: {time.time() - start_time} seconds')
-            
+    
         if len(top_gainer_ticker_list) > 0:
             for ticker in top_gainer_ticker_list:
                 occurrence_idx_list = ticker_to_occurrence_idx_list_dict[ticker]
@@ -86,9 +85,9 @@ class InitialPop(PatternAnalyser):
                                                     hit_scanner_datetime=pop_up_time.strftime('%Y-%m-%d %H:%M:%S'),
                                                     pattern='INITIAL_POP',
                                                     bar_size=self.__bar_size.value)
-                
+
                     is_message_sent = self.check_if_message_sent(message)
-                
+
                     if not is_message_sent:
                         logger.log_debug_msg(f'{ticker} Dataframe: {self.__historical_data_df.loc[:, idx[[ticker], :]]}')
                         contract_info = self.__ticker_to_contract_info_dict[ticker]
@@ -101,7 +100,7 @@ class InitialPop(PatternAnalyser):
 
                         pop_up_time_display = convert_into_human_readable_time(pop_up_time)
                         read_out_pop_up_time = convert_into_read_out_time(pop_up_time)
-
+                        
                         daily_df = replace_daily_df_latest_day_with_minute(daily_df=self.__daily_df.loc[:, idx[[ticker], :]], 
                                                                            minute_df=self.__historical_data_df.loc[[pop_up_time], idx[[ticker], :]])
                         
@@ -132,8 +131,8 @@ class InitialPop(PatternAnalyser):
                         message.read_out_message = f'{" ".join(ticker)} is popping up {round(yesterday_close_to_last_pct, 2)} percent at {read_out_pop_up_time}'
                         message_list.append(message)
         
-        if message_list:  
-            send_msg_start_time = time.time()     
+        if message_list:
+            send_msg_start_time = time.time()
             self.send_notification(message_list)
             logger.log_debug_msg(f'Initial pop send message time: {time.time() - send_msg_start_time} seconds')
     
