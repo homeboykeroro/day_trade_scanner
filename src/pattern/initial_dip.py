@@ -15,6 +15,7 @@ from constant.indicator.scatter_symbol import ScatterSymbol
 from constant.indicator.scatter_colour import ScatterColour
 from constant.candle.candle_colour import CandleColour
 from constant.candle.bar_size import BarSize
+from constant.discord.discord_channel import DiscordChannel
 
 from utils.chart_util import get_candlestick_chart
 from utils.dataframe_util import replace_daily_df_latest_day_with_minute, get_ticker_to_occurrence_idx_list
@@ -30,10 +31,11 @@ class InitialDip(PatternAnalyser):
     MAX_YESTERDAY_CLOSE_TO_LAST_PCT = -10
         
     def __init__(self, bar_size: BarSize, historical_data_df: DataFrame, daily_df: DataFrame, ticker_to_contract_info_dict: dict, discord_client, sqlite_connector):
+        ticker_list = list(historical_data_df.columns.get_level_values(0).unique())
         super().__init__(discord_client, sqlite_connector)
         self.__bar_size = bar_size
         self.__historical_data_df = historical_data_df
-        self.__daily_df = daily_df
+        self.__daily_df = daily_df.loc[:, idx[ticker_list, :]] #bug fix
         self.__ticker_to_contract_info_dict = ticker_to_contract_info_dict
 
     def analyse(self) -> None:
@@ -41,7 +43,7 @@ class InitialDip(PatternAnalyser):
         logger.log_debug_msg('Initial dip scan')
         start_time = time.time()
         
-        yesterday_daily_candle_df = self.__daily_df.iloc[[-2]]
+        yesterday_daily_candle_df = self.__daily_df.iloc[[-1]]
         candle_colour_df = self.__historical_data_df.loc[:, idx[:, CustomisedIndicator.CANDLE_COLOUR.value]]
         close_df = self.__historical_data_df.loc[:, idx[:, Indicator.CLOSE.value]]
         
@@ -128,11 +130,11 @@ class InitialDip(PatternAnalyser):
                         message.embed = embed
                         message.candle_chart_list = [discord.File(minute_chart_dir, filename=os.path.basename(minute_chart_dir)),
                                                      discord.File(daily_chart_dir, filename=os.path.basename(daily_chart_dir))]
-                        message.read_out_message = f'{" ".join(ticker)} is dippinging up {round(yesterday_close_to_last_pct, 2)} percent at {read_out_dip_time}'
+                        message.read_out_message = f'{" ".join(ticker)} is dippinging {round(yesterday_close_to_last_pct, 2)} percent at {read_out_dip_time}'
                         message_list.append(message)
 
         if message_list:
             send_msg_start_time = time.time()
-            self.send_notification(message_list)
+            self.send_notification(message_list, DiscordChannel.INITIAL_DIP)
             logger.log_debug_msg(f'Initial dip send message time: {time.time() - send_msg_start_time} seconds')
     

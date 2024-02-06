@@ -41,7 +41,6 @@ class StockScreener():
         
     def __scan(self):
         self.__sqllite_connector = SqliteConnector()
-        self.__clean_sent_discord_message_record()
         self.__scanner = Scanner(self.__discord_client, self.__ib_connector, self.__finviz_connector, self.__sqllite_connector)
         
         while True: 
@@ -73,6 +72,7 @@ class StockScreener():
                     logger.log_debug_msg('Scanner is ready', with_std_out=True)
                     logger.log_debug_msg('Scanner is idle until valid trading weekday and time', with_std_out=True)
                     self.__is_scanner_idle = True
+                    self.__clean_sent_discord_message_record() #bug fix Delete Discord Message Record in Idle Time
                 
                 time.sleep(SCANNER_REFRESH_INTERVAL)
     

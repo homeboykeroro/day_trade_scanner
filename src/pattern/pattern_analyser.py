@@ -23,13 +23,13 @@ class PatternAnalyser(ABC):
     def check_if_message_sent(self, message: DiscordScannerMessage):
         return check_if_message_sent(self.__sqlite_connector, message.ticker, message.hit_scanner_datetime, message.pattern, message.bar_size)
         
-    def send_notification(self, message_list: list):
+    def send_notification(self, message_list: list, discord_channel: DiscordChannel):
         read_out_message_list = []
         
         if message_list:
             for message in message_list:
                 if message.display_message or message.embed:
-                    self.__discord_client.send_messages_to_channel(embed=message.embed, message=message.display_message, attachments=message.candle_chart_list, channel_type=DiscordChannel.DEVELOPMENT_TEST)
+                    self.__discord_client.send_messages_to_channel(embed=message.embed, message=message.display_message, attachments=message.candle_chart_list, channel_type=discord_channel)
                 
                 if message.read_out_message:
                     read_out_message_list.append(message.read_out_message)

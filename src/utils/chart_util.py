@@ -203,8 +203,8 @@ def get_candlestick_chart(candle_data_df: pd.DataFrame,
                                             indicator_list=candle_comment_list)
     candle_start_range, candle_end_range = get_offsetted_hit_scanner_datetime(hit_scanner_datetime=hit_scanner_datetime, 
                                                                               indice=candle_data_df.index,
-                                                                              negative_offset=positive_offset, 
-                                                                              positive_offset=negative_offset)
+                                                                              negative_offset=negative_offset, 
+                                                                              positive_offset=positive_offset)
     
     logger.log_debug_msg(f'{ticker} candle start range: {candle_start_range}, candle end range: {candle_end_range}')
     

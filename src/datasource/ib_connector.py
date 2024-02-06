@@ -135,8 +135,8 @@ class IBConnector:
             logger.log_error_msg(f'Error occurred while requesting scanner result: {scanner_request_exception}')
             raise scanner_request_exception
         else:
-            logger.log_debug_msg(f'Scanner full result json: {scanner_response.json()}')
-            logger.log_debug_msg(f'Scanner full result size: {scanner_response.json()}')
+            logger.log_debug_msg(f'Scanner full result json: {[contract.get("symbol") for contract in scanner_response.json().get("contracts")]}')
+            logger.log_debug_msg(f'Scanner full result size: {len(scanner_response.json().get("contracts"))}') #bug fix Add 
             logger.log_debug_msg(f'Maximum scanner result size: {max_no_of_scanner_result}')
             scanner_result = scanner_response.json()['contracts']
             scanner_result_without_otc_stock = []
@@ -409,11 +409,11 @@ class IBConnector:
             subtract_day = int(period[:-1])
             
             if not candle_retrieval_start_time:
-                datetime_idx_range_end_datetime = get_current_us_datetime().date()
+                datetime_idx_range_end_datetime = get_us_business_day(-1).date()
             else:
-                datetime_idx_range_end_datetime = candle_retrieval_start_time.date()
+                datetime_idx_range_end_datetime = get_us_business_day(-1, candle_retrieval_start_time).date() if candle_retrieval_start_time.date() == get_current_us_datetime().date() else candle_retrieval_start_time.date()
             
-            datetime_idx_range_start_datetime = get_us_business_day(offset_day=-subtract_day, us_date=datetime_idx_range_end_datetime).date()
+            datetime_idx_range_start_datetime = get_us_business_day(offset_day=-(subtract_day - 1)).date() 
             interval = US_BUSINESS_DAY
         else:
             if not candle_retrieval_start_time:
@@ -507,7 +507,7 @@ class IBConnector:
             complete_df_ticker_list = complete_df.columns.get_level_values(0).unique()
             
             incomplete_response_ticker_list = np.setdiff1d(ticker_list, complete_df_ticker_list)
-            if incomplete_response_ticker_list:
+            if len(incomplete_response_ticker_list) > 0:
                 logger.log_debug_msg(f'Get incomplete response in {bar_size.value} historical candle data, incomplete response ticker list: {incomplete_response_ticker_list}, full ticker list: {ticker_list}')
                 ticker_list = [ticker for ticker in ticker_list if ticker not in incomplete_response_ticker_list]
                 
