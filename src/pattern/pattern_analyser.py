@@ -30,6 +30,7 @@ class PatternAnalyser(ABC):
         
     def send_notification(self, scanner_result_list: list, discord_channel: DiscordChannel):
         if scanner_result_list:
+            save_notification_db_record_tuple_list = []
             title_to_read_out_message_dict = {}
             title_to_ticker_dict = {}
             
@@ -37,6 +38,9 @@ class PatternAnalyser(ABC):
                 title = scanner_result.embed.title
                 title_to_read_out_message_dict[title] = scanner_result.readout_msg
                 title_to_ticker_dict[title] = scanner_result.ticker
+                
+                notification_db_record_tuple = (scanner_result.ticker, scanner_result.hit_scanner_datetime, scanner_result.pattern, scanner_result.bar_size)
+                save_notification_db_record_tuple_list.append(notification_db_record_tuple)
             
             response_list = self.__discord_client.send_message_by_list_with_response(message_list=scanner_result_list, channel_type=discord_channel)
 
@@ -48,5 +52,8 @@ class PatternAnalyser(ABC):
                 ticker = title_to_ticker_dict[title]
                 message = DiscordMessage(ticker=ticker, jump_url=jump_url, content=readout_msg)
                 notification_message_list.append(message)
-                
+            
             self.__discord_client.send_message_by_list_with_response(message_list=notification_message_list, channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+            
+            for save_notification in save_notification_db_record_tuple_list:
+                add_sent_message_record(self.__sqlite_connector, [save_notification])
