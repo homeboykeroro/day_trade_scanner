@@ -1,7 +1,11 @@
 import os
-import traceback
+import time
+import asyncio
 import threading
 import discord
+
+from model.discord.discord_message import DiscordMessage
+from model.discord.view.redirect_button import RedirectButton
 
 from utils.logger import Logger
 
@@ -60,48 +64,100 @@ class DiscordChatBotClient(discord.Client):
             return
     
         await message.channel.send(message.content)
+    
+    def send_message(self, message: DiscordMessage, channel_type: DiscordChannel, with_text_to_speech: bool = False):
+        loop = self.loop
+        channel = self.__get_channel(channel_type)
+
+        try:
+            msg_param = dict(content=message.content, embed=message.embed, view=message.view, files=message.files, tts=with_text_to_speech)
             
-    def send_messages_to_channel(self, message: str, channel_type: DiscordChannel, embed=None, attachments: list = None, with_text_to_speech: bool = False):
-        if self.__is_chatbot_ready: 
-            if channel_type == DiscordChannel.INITIAL_POP:
-                channel = self.__initial_pop_channel    
-            elif channel_type == DiscordChannel.INITIAL_DIP:
-                channel = self.__initial_dip_channel
-            elif channel_type == DiscordChannel.TOP_GAINER_SCANNER_LIST:
-                channel = self.__top_gainer_scanner_list
-            elif channel_type == DiscordChannel.TOP_LOSER_SCANNER_LIST:
-                channel = self.__top_loser_scanner_list
-            elif channel_type == DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST:
-                channel = self.__yesterday_top_scanner_list
-            elif channel_type == DiscordChannel.TEXT_TO_SPEECH:
-                channel = self.__text_to_speech_channel
-            elif channel_type == DiscordChannel.CHATBOT_LOG:
-                channel = self.__chatbot_log_channel
-            elif channel_type == DiscordChannel.CHATBOT_ERROR_LOG:
-                channel = self.__chatbot_error_log_channel
-            elif channel_type == DiscordChannel.DEVELOPMENT_TEST:
-                channel = self.__development_test_channel
+            if message.jump_url:
+                view=RedirectButton(ticker=message.ticker, jump_url=message.jump_url)
+                msg_param.update(dict(view=view))
+            
+            loop.create_task(channel.send(**msg_param))
+        except Exception as e:
+            logger.log_error_msg(f'Failed to send message to channel, {e}', with_std_out = True)
+            
+    def send_message_by_list(self, message_list: list, channel_type: DiscordChannel, with_text_to_speech: bool = False, delay: float = None):
+        try:
+            for message in message_list:
+                self.send_message(message=message, channel_type=channel_type, with_text_to_speech=with_text_to_speech)
+                
+                if delay:
+                    time.sleep(delay)
+                
+        except Exception as e:
+            logger.log_error_msg(f'Failed to send message by list, {e}', with_std_out = True)
+        
+    def send_message_by_list_with_response(self, message_list: list, channel_type: DiscordChannel, with_text_to_speech: bool = False):
+        try:
+            result_message_list = asyncio.run(self.add_send_message_task(message_list, channel_type, with_text_to_speech))
+            return result_message_list
+        except Exception as e:
+            logger.log_error_msg(f'Send message by list with response failed, {e}', with_std_out = True)
+        
+    async def add_send_message_task(self, message_list: list, channel_type: DiscordChannel, with_text_to_speech: bool = False):
+        try:
+            loop = asyncio.get_event_loop()
+        except RuntimeError:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            
+        tasks = []
+        
+        for message in message_list:
+            msg_param = dict(content=message.content, embed=message.embed, view=message.view, files=message.files, tts=with_text_to_speech)
+            
+            if message.jump_url:
+                view=RedirectButton(ticker=message.ticker, jump_url=message.jump_url)
+                msg_param.update(dict(view=view))
+            
+            task = loop.create_task(self.send_message_to_channel_coro(msg_param,
+                                                                      channel_type=channel_type))
+            tasks.append(task)
+
+        result_message_list = await asyncio.gather(*tasks, return_exceptions=True)
+        return result_message_list
+    
+    async def send_message_to_channel_coro(self, msg_param: dict, channel_type: DiscordChannel = None):
+        loop = self.loop
+        channel = self.__get_channel(channel_type)
+        
+        task = loop.create_task(channel.send(**msg_param))
+            
+        while True:
+            if task.done():
+                break
             else:
-                raise Exception('No Discord channel is specified')
+                await asyncio.sleep(0.1)
+            
+        return task.result()
 
-            if not message and not embed:
-                raise Exception('Either message or embed must be set')
-
-            if channel:
-                loop = self.loop
-
-                try:
-                    if attachments:
-                        loop.create_task(channel.send(embed=embed, content=message, files=attachments, tts=with_text_to_speech))
-                    else:
-                        loop.create_task(channel.send(embed=embed, content=message, tts=with_text_to_speech))
-                except Exception as e:
-                    logger.log_error_msg(f'Chatbot fatal error, {e}', with_std_out = True)
-                    logger.log_error_msg(traceback.format_exc())
-            else:
-                logger.log_debug_msg('Channel not found. Cannot send message', with_std_out=True)
+    def __get_channel(self, channel_type: DiscordChannel):
+        if channel_type == DiscordChannel.INITIAL_POP:
+            channel = self.__initial_pop_channel    
+        elif channel_type == DiscordChannel.INITIAL_DIP:
+            channel = self.__initial_dip_channel
+        elif channel_type == DiscordChannel.TOP_GAINER_SCANNER_LIST:
+            channel = self.__top_gainer_scanner_list
+        elif channel_type == DiscordChannel.TOP_LOSER_SCANNER_LIST:
+            channel = self.__top_loser_scanner_list
+        elif channel_type == DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST:
+            channel = self.__yesterday_top_scanner_list
+        elif channel_type == DiscordChannel.TEXT_TO_SPEECH:
+            channel = self.__text_to_speech_channel
+        elif channel_type == DiscordChannel.CHATBOT_LOG:
+            channel = self.__chatbot_log_channel
+        elif channel_type == DiscordChannel.CHATBOT_ERROR_LOG:
+            channel = self.__chatbot_error_log_channel
+        elif channel_type == DiscordChannel.DEVELOPMENT_TEST:
+            channel = self.__development_test_channel
         else:
-            logger.log_debug_msg('Chatbot is not ready yet', with_std_out=True)
+            raise Exception('No Discord channel is specified')
+            
+        return channel
 
     def run_chatbot(self) -> threading.Thread:
         bot_thread = threading.Thread(target=self.run, name="discord_chatbot_thread", args=(CHATBOT_TOKEN,))

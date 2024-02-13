@@ -11,6 +11,8 @@ from datasource.finviz_connector import FinvizConnector
 
 from sql.sqlite_connector import SqliteConnector
 
+from model.discord.discord_message import DiscordMessage
+
 from utils.datetime_util import is_within_trading_day_and_hours
 from utils.discord_message_record_util import delete_all_sent_message_record
 from utils.logger import Logger
@@ -42,6 +44,7 @@ class StockScreener():
     def __scan(self):
         self.__sqllite_connector = SqliteConnector()
         self.__scanner = Scanner(self.__discord_client, self.__ib_connector, self.__finviz_connector, self.__sqllite_connector)
+        self.__clean_sent_discord_message_record()
         
         while True: 
             if is_within_trading_day_and_hours():
@@ -55,15 +58,15 @@ class StockScreener():
                     logger.log_debug_msg(f'Scan time taken: {time.time() - scan_start_time}') 
                 except (RequestException, ClientError) as connection_exception:
                     self.__ib_connection_retry = True
-                    self.__discord_client.send_messages_to_channel(message='Client Portal API connection failed', channel_type=DiscordChannel.CHATBOT_LOG, with_text_to_speech=True)
+                    self.__discord_client.send_message(DiscordMessage(content='Client Portal API connection failed'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
                     logger.log_error_msg(f'Client Portal API connection error, {connection_exception}', with_std_out=True)
                 except (SqliteConnectionError) as sqlite_connection_exception:
-                    self.__discord_client.send_messages_to_channel(message='SQLite connection error', channel_type=DiscordChannel.CHATBOT_LOG, with_text_to_speech=True)
+                    self.__discord_client.send_message(DiscordMessage(content='SQLite connection error'), channel_type=DiscordChannel.CHATBOT_LOG, with_text_to_speech=True)
                     logger.log_error_msg(f'SQLite connection error, {sqlite_connection_exception}', with_std_out=True)
                 except Exception as exception:
                     self.__fatal_error = True   
-                    self.__discord_client.send_messages_to_channel(message='Fatal error', channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)   
-                    self.__discord_client.send_messages_to_channel(message=traceback.format_exc(), channel_type=DiscordChannel.CHATBOT_LOG, with_text_to_speech=False)
+                    self.__discord_client.send_message(DiscordMessage(content='Fatal error'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)   
+                    self.__discord_client.send_message(DiscordMessage(content=traceback.format_exc()), channel_type=DiscordChannel.CHATBOT_LOG, with_text_to_speech=False)
                     logger.log_error_msg(f'Scanner fatal error, {exception}', with_std_out=True)
 
                 self.__wait_till_next_scan()
@@ -72,7 +75,7 @@ class StockScreener():
                     logger.log_debug_msg('Scanner is ready', with_std_out=True)
                     logger.log_debug_msg('Scanner is idle until valid trading weekday and time', with_std_out=True)
                     self.__is_scanner_idle = True
-                    self.__clean_sent_discord_message_record() #bug fix Delete Discord Message Record in Idle Time
+                    #self.__clean_sent_discord_message_record()
                 
                 time.sleep(SCANNER_REFRESH_INTERVAL)
     

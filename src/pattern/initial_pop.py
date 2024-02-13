@@ -1,12 +1,11 @@
 import os
 import time
 import pandas as pd
-import discord
 from pandas.core.frame import DataFrame
 
 from pattern.pattern_analyser import PatternAnalyser
 
-from model.discord.discord_scanner_message import DiscordScannerMessage
+from model.discord.scanner_result_message import ScannerResultMessage
 
 from constant.indicator.indicator import Indicator
 from constant.indicator.customised_indicator import CustomisedIndicator
@@ -24,6 +23,7 @@ from utils.logger import Logger
 
 idx = pd.IndexSlice
 logger = Logger()
+PATTERN_NAME = 'INITIAL_POP'
 
 class InitialPop(PatternAnalyser):
     MAX_POP_OCCURRENCE = 3
@@ -35,7 +35,7 @@ class InitialPop(PatternAnalyser):
         super().__init__(discord_client, sqlite_connector)
         self.__bar_size = bar_size
         self.__historical_data_df = historical_data_df
-        self.__daily_df = daily_df.loc[:, idx[ticker_list, :]] #bug fix
+        self.__daily_df = daily_df.loc[:, idx[ticker_list, :]]
         self.__ticker_to_contract_info_dict = ticker_to_contract_info_dict
 
     def analyse(self) -> None:
@@ -83,54 +83,46 @@ class InitialPop(PatternAnalyser):
                         continue
                     
                     pop_up_time = occurrence_idx
-                    message = DiscordScannerMessage(ticker=ticker, 
-                                                    hit_scanner_datetime=pop_up_time.strftime('%Y-%m-%d %H:%M:%S'),
-                                                    pattern='INITIAL_POP',
-                                                    bar_size=self.__bar_size.value)
-
-                    is_message_sent = self.check_if_message_sent(message)
+                    is_message_sent = self.check_if_message_sent(ticker=ticker, hit_scanner_datetime=pop_up_time, pattern=PATTERN_NAME, bar_size=self.__bar_size)
 
                     if not is_message_sent:
                         logger.log_debug_msg(f'{ticker} Dataframe: {self.__historical_data_df.loc[:, idx[[ticker], :]]}')
+                        
                         contract_info = self.__ticker_to_contract_info_dict[ticker]
-
                         close = self.__historical_data_df.loc[pop_up_time, (ticker, Indicator.CLOSE.value)]
                         volume = "{:,}".format(self.__historical_data_df.loc[pop_up_time, (ticker, Indicator.VOLUME.value)])
                         total_volume = "{:,}".format(self.__historical_data_df.loc[pop_up_time, (ticker, CustomisedIndicator.TOTAL_VOLUME.value)])
                         yesterday_close = yesterday_close_df.loc[yesterday_close_df.index[-1], (ticker, Indicator.CLOSE.value)]
                         yesterday_close_to_last_pct = yesterday_close_to_last_pct_df.loc[pop_up_time, (ticker, Indicator.CLOSE.value)]
-
-                        pop_up_time_display = convert_into_human_readable_time(pop_up_time)
-                        read_out_pop_up_time = convert_into_read_out_time(pop_up_time)
                         
                         daily_df = replace_daily_df_latest_day_with_minute(daily_df=self.__daily_df.loc[:, idx[[ticker], :]], 
                                                                            minute_df=self.__historical_data_df.loc[[pop_up_time], idx[[ticker], :]])
                         
                         minute_chart_dir = get_candlestick_chart(candle_data_df=self.__historical_data_df,
-                                                                 ticker=ticker, pattern='INITIAL_POP', bar_size=self.__bar_size,
+                                                                 ticker=ticker, pattern=PATTERN_NAME, bar_size=self.__bar_size,
                                                                  hit_scanner_datetime=pop_up_time,
                                                                  positive_offset=3, negative_offset=2,
                                                                  scatter_symbol=ScatterSymbol.POP, scatter_colour=ScatterColour.BLUE)
                         daily_chart_dir = get_candlestick_chart(candle_data_df=daily_df,
-                                                                ticker=ticker, pattern='INITIAL_POP', bar_size=BarSize.ONE_DAY,
+                                                                ticker=ticker, pattern=PATTERN_NAME, bar_size=BarSize.ONE_DAY,
                                                                 hit_scanner_datetime=daily_df.index[-1],
                                                                 scatter_symbol=ScatterSymbol.POP, scatter_colour=ScatterColour.BLUE)
                         
-                        embed = discord.Embed(title=f'{ticker} is popping up {round(yesterday_close_to_last_pct, 2)}% at {pop_up_time_display}')
-                        embed.add_field(name = 'Close:', value= f'${close}', inline = True)
-                        embed.add_field(name = 'Previous Close:', value = f'${yesterday_close}', inline = True)
-                        embed.add_field(name = chr(173), value = chr(173))
-                        embed.add_field(name = 'Volume:', value = f'{volume}', inline = True)
-                        embed.add_field(name = 'Total Volume:', value = f'{total_volume}', inline = True)
-                        embed.add_field(name = chr(173), value = chr(173))
-                        embed.set_image(url=f"attachment://{os.path.basename(minute_chart_dir)}")
-                        embed.set_image(url=f"attachment://{os.path.basename(daily_chart_dir)}")
-                        contract_info.add_contract_info_to_embed_msg(embed)
-
-                        message.embed = embed
-                        message.candle_chart_list = [discord.File(minute_chart_dir, filename=os.path.basename(minute_chart_dir)),
-                                                     discord.File(daily_chart_dir, filename=os.path.basename(daily_chart_dir))]
-                        message.read_out_message = f'{" ".join(ticker)} is popping up {round(yesterday_close_to_last_pct, 2)} percent at {read_out_pop_up_time}'
+                        hit_scanner_datetime_display = convert_into_human_readable_time(pop_up_time)
+                        read_out_pop_up_time = convert_into_read_out_time(pop_up_time)
+                        
+                        message = ScannerResultMessage(title=f'{ticker} is popping up {round(yesterday_close_to_last_pct, 2)}% at {hit_scanner_datetime_display}',
+                                                       readout_msg=f'{" ".join(ticker)} is popping up {round(yesterday_close_to_last_pct, 2)}% at {read_out_pop_up_time}',
+                                                       close=close,
+                                                       yesterday_close=yesterday_close,
+                                                       volume=volume, total_volume=total_volume,
+                                                       contract_info=contract_info,
+                                                       minute_chart_dir=minute_chart_dir,
+                                                       daily_chart_dir=daily_chart_dir, 
+                                                       ticker=ticker,
+                                                       hit_scanner_datetime=pop_up_time.strftime('%Y-%m-%d %H:%M:%S'),
+                                                       pattern=PATTERN_NAME,
+                                                       bar_size=self.__bar_size.value)
                         message_list.append(message)
         
         if message_list:

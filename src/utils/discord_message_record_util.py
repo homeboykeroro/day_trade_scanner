@@ -2,7 +2,7 @@ import datetime
 
 from constant.query.sqlite_query import SqliteQuery
 
-def check_if_message_sent(connector, ticker: str, hit_scanner_datetime: datetime, scan_pattern: str, bar_size: str) -> bool:
+def check_if_message_sent(connector, ticker: str, hit_scanner_datetime: str, scan_pattern: str, bar_size: str) -> bool:
     cursor = connector.cursor
     cursor.execute(SqliteQuery.CHECK_MESSAGE_EXIST_QUERY.value, (ticker, hit_scanner_datetime, scan_pattern, bar_size))
     

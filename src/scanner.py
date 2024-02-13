@@ -6,11 +6,12 @@ from module.discord_chatbot_client import DiscordChatBotClient
 
 from datasource.ib_connector import IBConnector
 from datasource.finviz_connector import FinvizConnector
-
 from sql.sqlite_connector import SqliteConnector
 
 from pattern.initial_pop import InitialPop
 from pattern.initial_dip import InitialDip
+
+from model.discord.discord_message import DiscordMessage
 
 from utils.filter_util import get_ib_scanner_filter, get_finviz_scanner_filter
 from utils.nasdaq_data_util import get_all_ticker_in_the_market
@@ -20,6 +21,7 @@ from utils.logger import Logger
 
 from constant.scanner.scanner_target import ScannerTarget
 from constant.candle.bar_size import BarSize
+from constant.discord.discord_channel import DiscordChannel
 
 idx = pd.IndexSlice
 logger = Logger()
@@ -75,11 +77,13 @@ class Scanner:
         
     def scan_top_gainer(self) -> None:
         contract_list = self.__ib_connector.get_screener_results(MAX_NO_OF_SCANNER_RESULT, IB_TOP_GAINER_FILTER)
-        logger.log_debug_msg(f'scan top gainer contract list: {contract_list}', with_log_file=True, with_std_out=False)
         self.__ib_connector.update_contract_info(contract_list)
         one_minute_candle_df = self.__retrieve_intra_day_minute_candle(contract_list, BarSize.ONE_MINUTE)
-        daily_df = self.__get_daily_candle(contract_list, 5, False)
-          
+        daily_df = self.__get_daily_candle(contract_list, 5, True)
+
+        logger.log_debug_msg(f'top gainer scanner result: {[contract["symbol"] for contract in contract_list]}')
+        self.__discord_client.send_message(DiscordMessage(content=f'{[contract["symbol"] for contract in contract_list]}'), DiscordChannel.TOP_GAINER_SCANNER_LIST)
+        
         initial_pop_analyser = InitialPop(BarSize.ONE_MINUTE,
                                           one_minute_candle_df, 
                                           daily_df, 
@@ -92,11 +96,14 @@ class Scanner:
         contract_list = self.__ib_connector.get_screener_results(MAX_NO_OF_SCANNER_RESULT, IB_TOP_LOSER_FILTER)
         self.__ib_connector.update_contract_info(contract_list)
         one_minute_candle_df = self.__retrieve_intra_day_minute_candle(contract_list, BarSize.ONE_MINUTE)
-        yesterday_daily_candle_df = self.__get_daily_candle(contract_list, 5, False)
+        daily_df = self.__get_daily_candle(contract_list, 5, False)
+        
+        logger.log_debug_msg(f'top loser scanner result: {[contract["symbol"] for contract in contract_list]}')
+        self.__discord_client.send_message(DiscordMessage(content=f'{[contract["symbol"] for contract in contract_list]}'), DiscordChannel.TOP_LOSER_SCANNER_LIST)
         
         initial_dip_analyser = InitialDip(BarSize.ONE_MINUTE,
                                           one_minute_candle_df, 
-                                          yesterday_daily_candle_df, 
+                                          daily_df, 
                                           self.__ib_connector.get_ticker_to_contract_dict(), 
                                           self.__discord_client,
                                           self.__sqllite_connector)
