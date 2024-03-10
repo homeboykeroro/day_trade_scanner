@@ -56,6 +56,12 @@ def get_us_business_day(offset_day: int, us_date: datetime.datetime = None) -> d
         
     return us_business_day + (offset_day * US_BUSINESS_DAY)
 
+def check_if_us_business_day(us_date: datetime.datetime) -> bool:
+    us_business_day = get_us_business_day(0, us_date)
+    
+    return us_business_day == us_date
+    
+
 def convert_us_to_hk_datetime(us_datetime: datetime.datetime) -> datetime.datetime:
     return us_datetime.astimezone(HONG_KONG_TIMEZONE)
 

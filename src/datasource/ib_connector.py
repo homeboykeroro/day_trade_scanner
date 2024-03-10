@@ -2,6 +2,7 @@ import re
 import time
 from datetime import datetime, timedelta
 import html
+import pytz
 import requests
 import numpy as np
 import pandas as pd
@@ -77,6 +78,31 @@ class IBConnector:
                 logger.log_debug_msg('Brokerage account retrieval success', with_std_out = True)
             else:
                 raise requests.RequestException('No brokerage account information is found')
+    
+    def reauthenticate(self):
+        reauthenticate_time = time.time()
+        
+        try:
+            sso_validate_response = session.get(f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.SSO_VALIDATE}', verify=False)
+            reauthenticate_response = session.post(f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.REAUTHENTICATE}', verify=False)
+            logger.log_debug_msg(f'Session re-authentication response time: {time.time() - reauthenticate_time} seconds')
+
+            if not sso_validate_response.ok and not reauthenticate_response.ok:
+               raise requests.RequestException('Failed to reauthenticate and validate session')
+
+            sso_validate_result = sso_validate_response.json()
+            reauthenticate_result = reauthenticate_response.json()
+
+            reauthenticate_message = reauthenticate_result.get('message')
+            sso_validate_result = sso_validate_result.get('RESULT')
+            
+            if not sso_validate_result:
+                raise requests.RequestException('Failed to validate session')
+            
+            if not reauthenticate_message:
+                raise requests.RequestException('Failed to reauthenticate session')
+        except Exception as reauthenticate_exception:
+            raise reauthenticate_exception
     
     def check_auth_status(self):
         is_connection_success = True
@@ -409,7 +435,7 @@ class IBConnector:
             subtract_day = int(period[:-1])
             
             if not candle_retrieval_start_time:
-                datetime_idx_range_end_datetime = get_us_business_day(-1).date()
+                datetime_idx_range_end_datetime = get_current_us_datetime().date()
             else:
                 datetime_idx_range_end_datetime = get_us_business_day(-1, candle_retrieval_start_time).date() if candle_retrieval_start_time.date() == get_current_us_datetime().date() else candle_retrieval_start_time.date()
             

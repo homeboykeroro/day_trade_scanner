@@ -1,5 +1,6 @@
 from module.discord_chatbot_client import DiscordChatBotClient
 from module.stock_screener import StockScreener
+from module.pl_report_generator import PLReportGenerator
 
 from utils.logger import Logger
 
@@ -16,6 +17,9 @@ def main():
      
     stock_screener = StockScreener(discord_client)
     stock_screener.run_screener()
+    
+    pl_report_generator = PLReportGenerator(discord_client)
+    pl_report_generator.run_pl_report()
    
     bot_thread.join()
  

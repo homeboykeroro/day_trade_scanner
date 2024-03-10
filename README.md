@@ -17,3 +17,4 @@ WRITE DEPENDENCY LIST TO requirements.txt:
 
 Discord Setup
 - [Mute Specific Channels Notifications](https://support.discord.com/hc/en-us/articles/209791877-How-do-I-mute-and-disable-notifications-for-specific-channels)
+- [Prevent People from Joining Server](https://www.youtube.com/watch?v=j9OFFZw2beY&ab_channel=NoIntroTutorials)
