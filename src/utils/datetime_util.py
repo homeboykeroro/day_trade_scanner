@@ -60,7 +60,16 @@ def check_if_us_business_day(us_date: datetime.datetime) -> bool:
     us_business_day = get_us_business_day(0, us_date)
     
     return us_business_day == us_date
+
+def get_last_us_business_day(year, month):
+    # Get the last day of the month
+    last_day = pd.Timestamp(year, month, 1) + pd.offsets.MonthEnd(1)
     
+    # If the last day of the month is not a US business day, roll it forward to the next business day
+    if US_BUSINESS_DAY.rollforward(last_day) != last_day:
+        last_day -= US_BUSINESS_DAY
+    
+    return last_day
 
 def convert_us_to_hk_datetime(us_datetime: datetime.datetime) -> datetime.datetime:
     return us_datetime.astimezone(HONG_KONG_TIMEZONE)

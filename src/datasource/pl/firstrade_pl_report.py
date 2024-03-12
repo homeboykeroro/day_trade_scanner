@@ -18,7 +18,7 @@ from model.pl.interest_profit import InterestProfit
 from constant.broker import Broker
 
 from utils.logger import Logger
-from utils.datetime_util import check_if_us_business_day, get_current_us_datetime
+from utils.datetime_util import get_current_us_datetime, get_last_us_business_day
 
 logger = Logger()
 idx = pd.IndexSlice
@@ -45,7 +45,8 @@ SWING_TRADE_SUMMARY = 'SWING_TRADE_SUMMARY'
 
 class FirstradePLReport(PLReport):
     def __init__(self, ib_connector: IBConnector, sqlite_connector: SqliteConnector, discord_client: DiscordChatBotClient) -> None:
-        super().__init__(discord_client, sqlite_connector)
+        super().__init__(sqlite_connector, discord_client)
+        self.__ib_connector = ib_connector
         
     @property
     def account_summary_data(self):
@@ -66,6 +67,8 @@ class FirstradePLReport(PLReport):
     
     def __get_interest_message_dict(self, src_df: pd.DataFrame) -> dict:
         current_date = get_current_us_datetime()
+        last_us_business_day = get_last_us_business_day(current_date.year, current_date.month)
+        is_on_or_after_settle_date = current_date.date() >= last_us_business_day.date()
         monthly_interest_dict = {}
         
         interest_fee_boolean_df = (src_df[ACTION] == 'Interest')
@@ -82,19 +85,11 @@ class FirstradePLReport(PLReport):
                     monthly_interest_dict[(report_year, report_month)] = 0
 
                 monthly_interest_dict[(report_year, report_month)] += total_interest
-            elif report_year == current_date.year and report_month == current_date.month:
-                is_business_day = check_if_us_business_day(current_date)
-                last_day_of_month = (calendar.monthrange(report_year, report_month))[1]
+            elif is_on_or_after_settle_date:
+                if (report_year, report_month) not in monthly_interest_dict:
+                    monthly_interest_dict[(report_year, report_month)] = 0
                 
-                if((not is_business_day 
-                        and current_date.day == last_day_of_month)
-                        or (is_business_day 
-                                and current_date.day == last_day_of_month
-                                and current_date.time() >= datetime.time(20, 0, 0))):
-                    if (report_year, report_month) not in monthly_interest_dict:
-                        monthly_interest_dict[(report_year, report_month)] = 0
-
-                    monthly_interest_dict[(report_year, report_month)] += total_interest
+                monthly_interest_dict[(report_year, report_month)] += total_interest
         
         interest_message_list = []
         for year_month, interest in monthly_interest_dict.items():
@@ -102,7 +97,7 @@ class FirstradePLReport(PLReport):
             
             interest_message = InterestProfit(settle_date=datetime(year_month[0], year_month[1], last_day_of_month),
                                               interest_value=interest,
-                                              paid_by=Broker.IB)
+                                              paid_by=Broker.FIRSTRADE)
             interest_message_list.append(interest_message)
 
         return interest_message_list
@@ -170,7 +165,7 @@ class FirstradePLReport(PLReport):
                     if order_type == 'BUY':
                         accumulated_buy_share += share
                         accumulated_buy_cost += (trade_price * share)
-                        latest_fillied_buy_order_datetime = trade_datetime
+                        latest_fillied_buy_order_datetime = trade_datetime # minor bug fix, need to change to earilest load share datetime
                     else:
                         accumulated_sell_share += share
                         accumulated_sell_market_value += (trade_price * share)
@@ -323,27 +318,54 @@ class FirstradePLReport(PLReport):
             
             monthly_pl_dict[year_month] += pl
             yearly_pl_dict[year] += pl
-
+        
+        for date, _ in daily_pl_dict.items():
+            for check_date, pl in daily_pl_dict.items():
+                if check_date.year == date.year and check_date.month == date.month and check_date.day <= date.day:
+                    if date not in month_to_date_pl_dict:
+                        month_to_date_pl_dict[date] = 0
+                    
+                    month_to_date_pl_dict[date] += pl
+                elif check_date > date:
+                    break
+        
+        for date, _ in daily_pl_dict.items():
+            for check_date, pl in daily_pl_dict.items():
+                if check_date.year == date.year and (check_date.month < date.month or (date.month == check_date.month and check_date.day <= date.day)):
+                    if date not in year_to_date_pl_dict:
+                        year_to_date_pl_dict[date] = 0
+                
+                    year_to_date_pl_dict[date] += pl
+                elif check_date > date:
+                    break
+        
+        # reversed_month_to_date_pl_dict = OrderedDict(reversed(sorted(month_to_date_pl_dict.items(), key=lambda t: t[0])))
+        # reversed_year_to_date_pl_dict = OrderedDict(reversed(sorted(year_to_date_pl_dict.items(), key=lambda t: t[0])))
+        
+        # filtered_month_to_date_pl_dict = {}
+        # filtered_year_to_date_pl_dict = {}
+        
+        # for date, pl in reversed_month_to_date_pl_dict.items():
+        #     if date.year == current_date.year and date.month == current_date.month:
+        #         filtered_month_to_date_pl_dict[date] = pl
+        #         break
+            
+        # for date, pl in reversed_year_to_date_pl_dict.items():
+        #     if date.year == current_date.year:
+        #         filtered_year_to_date_pl_dict[date] = pl
+        #         break
+        
         current_date = get_current_us_datetime()
-        last_day_of_end_of_year = (calendar.monthrange(current_date.year, 12))[1]
-        last_day_of_end_of_year_date = datetime(current_date.year, 12, last_day_of_end_of_year)
-        is_last_day_of_end_of_year_business_day = check_if_us_business_day(last_day_of_end_of_year_date)
+        last_us_business_day_in_end_of_year = get_last_us_business_day(current_date.year, 12)
+        is_last_us_business_day_of_end_of_year = current_date.date() == last_us_business_day_in_end_of_year.date()
+        is_after_last_us_business_day_weekend_or_holiday = current_date.date() > last_us_business_day_in_end_of_year.date()
         filtered_yearly_pl_dict = {}
         for year, pl in yearly_pl_dict.items():
             if (year < current_date.year
-                    or (year == current_date.year 
-                            and current_date.month == 12 
-                            and current_date.day == last_day_of_end_of_year 
-                            and not is_last_day_of_end_of_year_business_day)
-                    or (year == current_date.year
-                            and current_date.month == 12
-                            and current_date.day == last_day_of_end_of_year
-                            and current_date.time() >= datetime.time(20, 0, 0)
-                            and is_last_day_of_end_of_year_business_day)):
+                    or is_after_last_us_business_day_weekend_or_holiday
+                    or (is_last_us_business_day_of_end_of_year
+                            and current_date.time() >= datetime.time(20, 0, 0))):
                 filtered_yearly_pl_dict[year] = pl       
-                
-            if year == current_date.year:
-                year_to_date_pl_dict[year] = pl
                 
         filtered_monthly_pl_dict = {}
         for year_month, pl in monthly_pl_dict.items():
@@ -353,18 +375,14 @@ class FirstradePLReport(PLReport):
             if year < current_date.year or (year == current_date.year and month < current_date.month):
                 filtered_monthly_pl_dict[year_month] = pl
             elif year == current_date.year and month == current_date.month:
-                last_day_of_month = (calendar.monthrange(current_date.year, current_date.month))[1]
-                is_business_day = check_if_us_business_day(current_date)
+                last_us_business_day_of_month = get_last_us_business_day(current_date.year, current_date.month)
+                is_last_us_business_day_of_month = current_date.date() == last_us_business_day_of_month.date()
+                is_after_last_us_business_day_weekend_or_holiday = current_date.date() > last_us_business_day_of_month.date()
                 
-                if ((not is_business_day 
-                        and current_date.day == last_day_of_month)
-                        or (is_business_day 
-                                and current_date.day == last_day_of_month
+                if (is_after_last_us_business_day_weekend_or_holiday
+                        or (is_last_us_business_day_of_month 
                                 and current_date.time() >= datetime.time(20, 0, 0))):
                     filtered_monthly_pl_dict[year_month] = pl
-
-            if year == current_date.year and month == current_date.month:
-                month_to_date_pl_dict[year_month] = pl
         
         result_dict = {}
         result_dict[DAILY_REALISED_PL] = daily_pl_dict
@@ -393,15 +411,15 @@ class FirstradePLReport(PLReport):
         swing_trade_history_list = trade_summary_dict[SWING_TRADE_SUMMARY]
         interest_message_list = self.__get_interest_message_dict(normalised_transaction_df)
 
-        self.send_daily_pl_messages(daily_pl_dict, None, Broker.IB)
-        self.send_weekly_pl_messages(weekly_pl_dict_dict, None, Broker.IB)
-        self.send_month_to_date_pl_messages(month_to_date_pl_dict, None, Broker.IB)
-        self.send_year_to_date_pl_messages(year_to_date_pl_dict, None, Broker.IB)
-        self.send_monthly_pl_messages(monthly_pl_dict, None, Broker.IB)
-        self.send_yearly_pl_messages(yearly_pl_dict, None, Broker.IB)
+        self.send_daily_pl_messages(daily_pl_dict, None, Broker.FIRSTRADE)
+        self.send_weekly_pl_messages(weekly_pl_dict_dict, None, Broker.FIRSTRADE)
+        self.send_month_to_date_pl_messages(month_to_date_pl_dict, None, Broker.FIRSTRADE)
+        self.send_year_to_date_pl_messages(year_to_date_pl_dict, None, Broker.FIRSTRADE)
+        self.send_monthly_pl_messages(monthly_pl_dict, None, Broker.FIRSTRADE)
+        self.send_yearly_pl_messages(yearly_pl_dict, None, Broker.FIRSTRADE)
+        self.send_trade_summary_message(day_trade_history_list, Broker.FIRSTRADE)
+        self.send_trade_summary_message(swing_trade_history_list, Broker.FIRSTRADE)
         self.send_interest_messages(interest_message_list)
-        self.send_trade_summary_message(day_trade_history_list, Broker.IB)
-        self.send_trade_summary_message(swing_trade_history_list, Broker.IB)
         
     def update_account_nav_value(self, account_summary_file_dir: str) -> dict:
         pdf = pdfquery.PDFQuery(account_summary_file_dir)

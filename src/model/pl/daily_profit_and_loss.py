@@ -17,9 +17,9 @@ class DailyProfitAndLoss(DiscordMessage):
         self.__account_value = account_value
         self.__trading_platform = trading_platform
         
-        realised_pl_display = f'${realised_pl}' if realised_pl > 0 else f'-${abs(realised_pl)}'
+        realised_pl_display = f'${realised_pl}' if realised_pl >= 0 else f'-${abs(realised_pl)}'
         
-        embed = discord.Embed(title=f'Daily Realised Profit on {settle_date.strftime("%Y-%m-%d")}\n')
+        embed = discord.Embed(title=f'Daily Realised Profit and Loss on {settle_date.strftime("%Y-%m-%d")}\n')
         embed.add_field(name = 'Realised:', value=f'{realised_pl_display}', inline=True)
         
         if account_value:

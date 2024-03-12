@@ -13,7 +13,7 @@ from datasource.pl.pl_report import PLReport
 from model.pl.trade_profit_and_loss import TradeProfitAndLoss
 from model.pl.interest_profit import InterestProfit
 
-from utils.datetime_util import check_if_us_business_day, get_current_us_datetime
+from utils.datetime_util import get_current_us_datetime, get_last_us_business_day
 from utils.logger import Logger
 
 from constant.broker import Broker
@@ -70,7 +70,45 @@ class IBPLReport(PLReport):
         src_df[TRADE_COMMISSIONS] = src_df[TRADE_COMMISSIONS].abs()
         src_df[QUANTITY] = src_df[QUANTITY].astype(int).abs()
         src_df[AMOUNT] = (src_df[QUANTITY] * src_df[TRADE_PRICE]) + src_df[TRADE_COMMISSIONS]
+        
         return src_df
+    
+    def __get_interest_message(self, interest_df: pd.DataFrame) -> list:
+        current_date = get_current_us_datetime()
+        last_us_business_day = get_last_us_business_day(current_date.year, current_date.month)
+        is_on_or_after_settle_date = current_date.date() >= last_us_business_day.date()
+        monthly_interest_dict = {}
+        
+        for row in range(len(interest_df)):
+            interest_report_date = datetime.strptime(interest_df.loc[row, INTEREST_REPORT_DATE], "%Y-%m-%d")
+            report_year = interest_report_date.year
+            report_month = interest_report_date.month
+            total_interest = float(interest_df.loc[row, TOTAL_INTEREST])
+            
+            if report_year < current_date.year or (report_year == current_date.year and report_month < current_date.month):
+                if (report_year, report_month) not in monthly_interest_dict:
+                    monthly_interest_dict[(report_year, report_month)] = 0
+
+                monthly_interest_dict[(report_year, report_month)] += total_interest
+            elif is_on_or_after_settle_date:
+                if (report_year, report_month) not in monthly_interest_dict:
+                    monthly_interest_dict[(report_year, report_month)] = 0
+                
+                monthly_interest_dict[(report_year, report_month)] += total_interest
+        
+        interest_message_list = []
+        for year_month, interest in monthly_interest_dict.items():
+            last_day_of_month = (calendar.monthrange(year_month[0], year_month[1]))[1]
+            
+            interest_message = InterestProfit(settle_date=datetime(year_month[0], year_month[1], last_day_of_month),
+                                              interest_value=interest,
+                                              paid_by=Broker.IB)
+            interest_message_list.append(interest_message)
+
+        return interest_message_list
+    
+    def get_entry_and_exit_data(self, src_df: pd.DataFrame):
+        pass
     
     def get_trade_summary(self, src_df: pd.DataFrame):
         buy_order_boolean_df = (src_df[ORDER_TYPE] == 'BUY')
@@ -159,7 +197,7 @@ class IBPLReport(PLReport):
                                                      realised_pl=round(realised_pl), realised_pl_percent=realised_pl_percent,
                                                      accumulated_cost=accumulated_buy_cost, adjusted_cost=adjusted_cost, market_value=round(accumulated_sell_market_value),
                                                      accumulated_shares=accumulated_buy_share, sell_quantity=accumulated_sell_share, remaining_positions=(accumulated_buy_share - accumulated_sell_share),
-                                                     avg_entry_price=round(avg_entry_price, 3), avg_exit_price=round(avg_exit_price, 3), 
+                                                     avg_entry_price=round(avg_entry_price, 3), avg_exit_price=round(avg_exit_price, 3), # minor bug fix
                                                      trading_platform=Broker.IB,
                                                      contract_info={})
                         pl_message = TradeProfitAndLoss(**pl_message_param_dict)
@@ -283,27 +321,38 @@ class IBPLReport(PLReport):
             
             monthly_pl_dict[year_month] += pl
             yearly_pl_dict[year] += pl
-
+            
+        for date, _ in daily_pl_dict.items():
+            for check_date, pl in daily_pl_dict.items():
+                if check_date.year == date.year and check_date.month == date.month and check_date.day <= date.day:
+                    if date not in month_to_date_pl_dict:
+                        month_to_date_pl_dict[date] = 0
+                    
+                    month_to_date_pl_dict[date] += pl
+                elif check_date > date:
+                    break
+        
+        for date, _ in daily_pl_dict.items():
+            for check_date, pl in daily_pl_dict.items():
+                if check_date.year == date.year and (check_date.month < date.month or (date.month == check_date.month and check_date.day <= date.day)):
+                    if date not in year_to_date_pl_dict:
+                        year_to_date_pl_dict[date] = 0
+                
+                    year_to_date_pl_dict[date] += pl
+                elif check_date > date:
+                    break
+        
         current_date = get_current_us_datetime()
-        last_day_of_end_of_year = (calendar.monthrange(current_date.year, 12))[1]
-        last_day_of_end_of_year_date = datetime(current_date.year, 12, last_day_of_end_of_year)
-        is_last_day_of_end_of_year_business_day = check_if_us_business_day(last_day_of_end_of_year_date)
+        last_us_business_day_in_end_of_year = get_last_us_business_day(current_date.year, 12)
+        is_last_us_business_day_of_end_of_year = current_date.date() == last_us_business_day_in_end_of_year.date()
+        is_after_last_us_business_day_weekend_or_holiday = current_date.date() > last_us_business_day_in_end_of_year.date()
         filtered_yearly_pl_dict = {}
         for year, pl in yearly_pl_dict.items():
             if (year < current_date.year
-                    or (year == current_date.year 
-                            and current_date.month == 12 
-                            and current_date.day == last_day_of_end_of_year 
-                            and not is_last_day_of_end_of_year_business_day)
-                    or (year == current_date.year
-                            and current_date.month == 12
-                            and current_date.day == last_day_of_end_of_year
-                            and current_date.time() >= datetime.time(20, 0, 0)
-                            and is_last_day_of_end_of_year_business_day)):
+                    or is_after_last_us_business_day_weekend_or_holiday
+                    or (is_last_us_business_day_of_end_of_year
+                            and current_date.time() >= datetime.time(20, 0, 0))):
                 filtered_yearly_pl_dict[year] = pl       
-                
-            if year == current_date.year:
-                year_to_date_pl_dict[year] = pl
                 
         filtered_monthly_pl_dict = {}
         for year_month, pl in monthly_pl_dict.items():
@@ -313,18 +362,14 @@ class IBPLReport(PLReport):
             if year < current_date.year or (year == current_date.year and month < current_date.month):
                 filtered_monthly_pl_dict[year_month] = pl
             elif year == current_date.year and month == current_date.month:
-                last_day_of_month = (calendar.monthrange(current_date.year, current_date.month))[1]
-                is_business_day = check_if_us_business_day(current_date)
+                last_us_business_day_of_month = get_last_us_business_day(current_date.year, current_date.month)
+                is_last_us_business_day_of_month = current_date.date() == last_us_business_day_of_month.date()
+                is_after_last_us_business_day_weekend_or_holiday = current_date.date() > last_us_business_day_of_month.date()
                 
-                if ((not is_business_day 
-                        and current_date.day == last_day_of_month)
-                        or (is_business_day 
-                                and current_date.day == last_day_of_month
+                if (is_after_last_us_business_day_weekend_or_holiday
+                        or (is_last_us_business_day_of_month 
                                 and current_date.time() >= datetime.time(20, 0, 0))):
                     filtered_monthly_pl_dict[year_month] = pl
-
-            if year == current_date.year and month == current_date.month:
-                month_to_date_pl_dict[year_month] = pl
         
         result_dict = {}
         result_dict[DAILY_REALISED_PL] = daily_pl_dict
@@ -337,46 +382,6 @@ class IBPLReport(PLReport):
         result_dict[SWING_TRADE_SUMMARY] = swing_trade_summary_list
         
         return result_dict
-    
-    def __get_interest_message(self, interest_df: pd.DataFrame) -> list:
-        current_date = get_current_us_datetime()
-        monthly_interest_dict = {}
-        
-        for row in range(len(interest_df)):
-            interest_report_date = datetime.strptime(interest_df.loc[row, INTEREST_REPORT_DATE], "%Y-%m-%d")
-            report_year = interest_report_date.year
-            report_month = interest_report_date.month
-            total_interest = float(interest_df.loc[row, TOTAL_INTEREST])
-            
-            if report_year < current_date.year or (report_year == current_date.year and report_month < current_date.month):
-                if (report_year, report_month) not in monthly_interest_dict:
-                    monthly_interest_dict[(report_year, report_month)] = 0
-
-                monthly_interest_dict[(report_year, report_month)] += total_interest
-            elif report_year == current_date.year and report_month == current_date.month:
-                is_business_day = check_if_us_business_day(current_date)
-                last_day_of_month = (calendar.monthrange(report_year, report_month))[1]
-                
-                if((not is_business_day 
-                        and current_date.day == last_day_of_month)
-                        or (is_business_day 
-                                and current_date.day == last_day_of_month
-                                and current_date.time() >= datetime.time(20, 0, 0))):
-                    if (report_year, report_month) not in monthly_interest_dict:
-                        monthly_interest_dict[(report_year, report_month)] = 0
-
-                    monthly_interest_dict[(report_year, report_month)] += total_interest
-        
-        interest_message_list = []
-        for year_month, interest in monthly_interest_dict.items():
-            last_day_of_month = (calendar.monthrange(year_month[0], year_month[1]))[1]
-            
-            interest_message = InterestProfit(settle_date=datetime(year_month[0], year_month[1], last_day_of_month),
-                                              interest_value=interest,
-                                              paid_by=Broker.IB)
-            interest_message_list.append(interest_message)
-
-        return interest_message_list
     
     def update_realised_pl_and_trade_summary(self, trade_data_file_dir: str):
         specific_rows = [0, 1]
@@ -414,8 +419,6 @@ class IBPLReport(PLReport):
         self.send_year_to_date_pl_messages(year_to_date_pl_dict, None, Broker.IB)
         self.send_monthly_pl_messages(monthly_pl_dict, None, Broker.IB)
         self.send_yearly_pl_messages(yearly_pl_dict, None, Broker.IB)
-        self.send_interest_messages(interest_message_list)
         self.send_trade_summary_message(day_trade_history_list, Broker.IB)
         self.send_trade_summary_message(swing_trade_history_list, Broker.IB)
-        
-        print()
+        self.send_interest_messages(interest_message_list)
