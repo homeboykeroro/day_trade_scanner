@@ -39,7 +39,8 @@ class SqliteQuery(str, Enum):
         LEFT JOIN aggregated_daily_reliased_pl
             ON daily_realised_pl.settle_date = aggregated_daily_reliased_pl.settle_date
         GROUP BY daily_realised_pl.settle_date, aggregated_daily_reliased_pl.settle_date
-        HAVING aggregated_daily_reliased_pl.settle_date IS NULL'''
+        HAVING aggregated_daily_reliased_pl.settle_date IS NULL
+        ORDER BY daily_realised_pl.settle_date'''
     GET_SEND_AGGREGATED_WEEKLY_REALISED_PL_QUERY = '''
         SELECT weekly_realised_pl.start_week_date, 
                weekly_realised_pl.end_week_date, 
@@ -53,7 +54,8 @@ class SqliteQuery(str, Enum):
         GROUP BY weekly_realised_pl.start_week_date, weekly_realised_pl.end_week_date, 
                 aggregated_weekly_realised_pl.start_week_date, aggregated_weekly_realised_pl.end_week_date
         HAVING aggregated_weekly_realised_pl.start_week_date IS NULL 
-            AND aggregated_weekly_realised_pl.end_week_date IS NULL'''
+            AND aggregated_weekly_realised_pl.end_week_date IS NULL
+            ORDER BY weekly_realised_pl.start_week_date, weekly_realised_pl.end_week_date'''
     GET_SEND_AGGREGATED_MONTH_TO_DATE_REALISED_PL_QUERY = '''
         SELECT month_to_date_realised_pl.settle_date, 
                sum(month_to_date_realised_pl.realised_pl) AS realised_pl, 
@@ -62,7 +64,8 @@ class SqliteQuery(str, Enum):
         LEFT JOIN aggregated_month_to_date_realised_pl
            ON month_to_date_realised_pl.settle_date = aggregated_month_to_date_realised_pl.settle_date
         GROUP BY month_to_date_realised_pl.settle_date, aggregated_month_to_date_realised_pl.settle_date
-        HAVING aggregated_month_to_date_realised_pl.settle_date IS NULL'''
+        HAVING aggregated_month_to_date_realised_pl.settle_date IS NULL
+        ORDER BY month_to_date_realised_pl.settle_date'''
     GET_SEND_AGGREGATED_YEAR_TO_DATE_REALISED_PL_QUERY = '''
         SELECT year_to_date_realised_pl.settle_date, 
                sum(year_to_date_realised_pl.realised_pl) AS realised_pl, 
@@ -71,7 +74,8 @@ class SqliteQuery(str, Enum):
         LEFT JOIN aggregated_year_to_date_realised_pl
             ON year_to_date_realised_pl.settle_date = aggregated_year_to_date_realised_pl.settle_date
         GROUP BY year_to_date_realised_pl.settle_date, aggregated_year_to_date_realised_pl.settle_date
-        HAVING aggregated_year_to_date_realised_pl.settle_date IS NULL'''
+        HAVING aggregated_year_to_date_realised_pl.settle_date IS NULL
+        ORDER BY year_to_date_realised_pl.settle_date'''
     GET_SEND_AGGREGATED_MONTHLY_REALISED_PL_EXIST_QUERY = '''
         SELECT monthly_realised_pl.start_month_date, 
                monthly_realised_pl.end_month_date, 
@@ -87,7 +91,8 @@ class SqliteQuery(str, Enum):
                  aggregated_monthly_realised_pl.start_month_date, 
                  aggregated_monthly_realised_pl.end_month_date
         HAVING aggregated_monthly_realised_pl.start_month_date IS NULL 
-            AND aggregated_monthly_realised_pl.end_month_date IS NULL'''
+            AND aggregated_monthly_realised_pl.end_month_date IS NULL
+        ORDER BY monthly_realised_pl.start_month_date, monthly_realised_pl.end_month_date'''
     GET_SEND_AGGREGATED_YEARLY_REALISED_PL_EXIST_QUERY = '''
         SELECT yearly_realised_pl.start_year_date, 
                yearly_realised_pl.end_year_date, 
@@ -103,13 +108,18 @@ class SqliteQuery(str, Enum):
                  aggregated_yearly_realised_pl.start_year_date, 
                  aggregated_yearly_realised_pl.end_year_date
         HAVING aggregated_yearly_realised_pl.start_year_date IS NULL 
-            AND aggregated_yearly_realised_pl.end_year_date IS NULL'''
+            AND aggregated_yearly_realised_pl.end_year_date IS NULL
+        ORDER BY yearly_realised_pl.start_year_date, yearly_realised_pl.end_year_date'''
     ADD_AGGREGATED_DAILY_REALISED_PL_QUERY = "INSERT INTO aggregated_daily_reliased_pl VALUES(?, ?)"
     ADD_AGGREGATED_WEEKLY_REALISED_PL_QUERY = "INSERT INTO aggregated_weekly_realised_pl VALUES(?, ?, ?)"
     ADD_AGGREGATED_MONTH_TO_DATE_REALISED_PL_QUERY = "INSERT INTO aggregated_month_to_date_realised_pl VALUES(?, ?)"
     ADD_AGGREGATED_YEAR_TO_DATE_REALISED_PL_QUERY = "INSERT INTO aggregated_year_to_date_realised_pl VALUES(?, ?)"
     ADD_AGGREGATED_MONTHLY_REALISED_PL_QUERY = "INSERT INTO aggregated_monthly_realised_pl VALUES(?, ?, ?)"
     ADD_AGGREGATED_YEARLY_REALISED_PL_QUERY = "INSERT INTO aggregated_yearly_realised_pl VALUES(?, ?, ?)"
-    
-    
+    DELETE_ALL_AGGREGATED_DAILY_REALISED_PL_QUERY = 'DELETE FROM aggregated_daily_reliased_pl'
+    DELETE_ALL_AGGREGATED_WEEKLY_REALISED_PL_QUERY = 'DELETE FROM aggregated_weekly_realised_pl'
+    DELETE_ALL_AGGREGATED_MONTH_TO_DATE_REALISED_PL_QUERY = 'DELETE FROM aggregated_month_to_date_realised_pl'
+    DELETE_ALL_AGGREGATED_YEAR_TO_DATE_REALISED_PL_QUERY = 'DELETE FROM aggregated_year_to_date_realised_pl'
+    DELETE_ALL_AGGREGATED_MONTHLY_REALISED_PL_QUERY = 'DELETE FROM aggregated_monthly_realised_pl'
+    DELETE_ALL_AGGREGATED_YEARLY_REALISED_PL_QUERY = 'DELETE FROM aggregated_yearly_realised_pl'
     ADD_DAY_TRADE_SUMMARY_QUERY = "INSERT INTO aggregated_yearly_realised_pl VALUES(?, ?, ?)"

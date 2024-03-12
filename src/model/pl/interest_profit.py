@@ -15,8 +15,9 @@ class InterestProfit(DiscordMessage):
         self.__interest_value = interest_value
         self.__paid_by = paid_by
         
+        interest_display = f'${round(interest_value, 2)}' if interest_value >= 0 else f'-${abs(round(interest_value, 3))}'
         embed = discord.Embed(title=f'Interest Summary on {settle_date.strftime("%Y-%m-%d")}\n')
-        embed.add_field(name = 'Interest:', value=f'${interest_value}', inline=True)
+        embed.add_field(name = 'Interest:', value=interest_display, inline=True)
         embed.add_field(name = 'Paid by:', value=f'{paid_by.value}', inline=False)
         self.embed = embed
 

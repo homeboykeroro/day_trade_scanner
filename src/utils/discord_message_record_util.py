@@ -273,6 +273,12 @@ def get_all_aggregated_daily_pl_records(connector) -> list:
         return []
     else:
         return rows
+    
+def delete_all_aggregated_daily_pl_records(connector) -> None:
+    cursor = connector.cursor
+    cursor.execute(SqliteQuery.DELETE_ALL_AGGREGATED_DAILY_REALISED_PL_QUERY.value)
+    cursor.connection.commit()
+    return cursor.rowcount
 
 def get_all_aggregated_weekly_pl_records(connector) -> list:
     cursor = connector.cursor
@@ -284,6 +290,12 @@ def get_all_aggregated_weekly_pl_records(connector) -> list:
     else:
         return rows
     
+def delete_all_aggregated_weekly_pl_records(connector) -> None:
+    cursor = connector.cursor
+    cursor.execute(SqliteQuery.DELETE_ALL_AGGREGATED_WEEKLY_REALISED_PL_QUERY.value)
+    cursor.connection.commit()
+    return cursor.rowcount
+    
 def get_all_aggregated_month_to_date_pl_records(connector) -> list:
     cursor = connector.cursor
     cursor.execute(SqliteQuery.GET_SEND_AGGREGATED_MONTH_TO_DATE_REALISED_PL_QUERY.value)
@@ -293,6 +305,12 @@ def get_all_aggregated_month_to_date_pl_records(connector) -> list:
         return []
     else:
         return rows
+    
+def delete_all_aggregated_month_to_date_pl_records(connector) -> None:
+    cursor = connector.cursor
+    cursor.execute(SqliteQuery.DELETE_ALL_AGGREGATED_MONTH_TO_DATE_REALISED_PL_QUERY.value)
+    cursor.connection.commit()
+    return cursor.rowcount
     
 def get_all_aggregated_year_to_date_pl_records(connector) -> list:
     cursor = connector.cursor
@@ -304,6 +322,12 @@ def get_all_aggregated_year_to_date_pl_records(connector) -> list:
     else:
         return rows
     
+def delete_all_aggregated_year_to_date_pl_records(connector) -> None:
+    cursor = connector.cursor
+    cursor.execute(SqliteQuery.DELETE_ALL_AGGREGATED_YEAR_TO_DATE_REALISED_PL_QUERY.value)
+    cursor.connection.commit()
+    return cursor.rowcount
+    
 def get_all_aggregated_monthly_pl_records(connector) -> list:
     cursor = connector.cursor
     cursor.execute(SqliteQuery.GET_SEND_AGGREGATED_MONTHLY_REALISED_PL_EXIST_QUERY.value)
@@ -314,6 +338,12 @@ def get_all_aggregated_monthly_pl_records(connector) -> list:
     else:
         return rows
     
+def delete_all_aggregated_monthly_pl_records(connector) -> None:
+    cursor = connector.cursor
+    cursor.execute(SqliteQuery.DELETE_ALL_AGGREGATED_MONTHLY_REALISED_PL_QUERY.value)
+    cursor.connection.commit()
+    return cursor.rowcount
+    
 def get_all_aggregated_yearly_pl_records(connector) -> list:
     cursor = connector.cursor
     cursor.execute(SqliteQuery.GET_SEND_AGGREGATED_YEARLY_REALISED_PL_EXIST_QUERY.value)
@@ -323,6 +353,12 @@ def get_all_aggregated_yearly_pl_records(connector) -> list:
         return []
     else:
         return rows
+    
+def delete_all_aggregated_yearly_pl_records(connector) -> None:
+    cursor = connector.cursor
+    cursor.execute(SqliteQuery.DELETE_ALL_AGGREGATED_YEARLY_REALISED_PL_QUERY.value)
+    cursor.connection.commit()
+    return cursor.rowcount
 
 def add_sent_aggregated_daily_pl_records(connector, message_list: list):
     cursor = connector.cursor

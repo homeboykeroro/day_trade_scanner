@@ -13,7 +13,7 @@ from model.pl.year_to_date_profit_and_loss import YearToDateProfitAndLoss
 from model.pl.monthly_profit_and_loss import MonthlyProfitAndLoss
 from model.pl.yearly_profit_and_loss import YearlyProfitAndLoss
 
-from utils.discord_message_record_util import add_sent_aggregated_daily_pl_records, add_sent_daily_realised_pl_message_record, add_sent_interest_history_message_record, add_sent_month_to_date_realised_pl_message_record, add_sent_monthly_realised_pl_message_record, add_sent_trade_summary_message_record, add_sent_weekly_realised_pl_message_record, add_sent_year_to_date_realised_pl_message_record, add_sent_yearly_realised_pl_message_record, check_if_daily_realised_pl_message_sent, check_if_interest_history_message_sent, check_if_month_to_date_realised_pl_message_sent, check_if_monthly_realised_pl_message_sent, check_if_trade_summary_message_sent, check_if_weekly_realised_pl_message_sent, check_if_year_to_date_realised_pl_message_sent, check_if_yearly_realised_pl_message_sent, get_all_aggregated_daily_pl_records, get_all_aggregated_month_to_date_pl_records, get_all_aggregated_monthly_pl_records, get_all_aggregated_weekly_pl_records, get_all_aggregated_year_to_date_pl_records, get_all_aggregated_yearly_pl_records
+from utils.discord_message_record_util import add_sent_aggregated_daily_pl_records, add_sent_aggregated_month_to_date_pl_records, add_sent_aggregated_monthly_records, add_sent_aggregated_weekly_pl_records, add_sent_aggregated_year_to_date_pl_records, add_sent_aggregated_yearly_pl_records, add_sent_daily_realised_pl_message_record, add_sent_interest_history_message_record, add_sent_month_to_date_realised_pl_message_record, add_sent_monthly_realised_pl_message_record, add_sent_trade_summary_message_record, add_sent_weekly_realised_pl_message_record, add_sent_year_to_date_realised_pl_message_record, add_sent_yearly_realised_pl_message_record, check_if_daily_realised_pl_message_sent, check_if_interest_history_message_sent, check_if_month_to_date_realised_pl_message_sent, check_if_monthly_realised_pl_message_sent, check_if_trade_summary_message_sent, check_if_weekly_realised_pl_message_sent, check_if_year_to_date_realised_pl_message_sent, check_if_yearly_realised_pl_message_sent, delete_all_sent_daily_realised_pl_message_record, delete_all_sent_imported_pl_file_message_record, delete_all_sent_interest_history_message_record, delete_all_sent_month_to_date_realised_pl_message_record, delete_all_sent_monthly_realised_pl_message_record, delete_all_sent_trade_summary_message_record, delete_all_sent_weekly_realised_pl_message_record, delete_all_sent_year_to_date_realised_pl_message_record, delete_all_sent_yearly_realised_pl_message_record, get_all_aggregated_daily_pl_records, get_all_aggregated_month_to_date_pl_records, get_all_aggregated_monthly_pl_records, get_all_aggregated_weekly_pl_records, get_all_aggregated_year_to_date_pl_records, get_all_aggregated_yearly_pl_records
 
 from constant.broker import Broker
 from constant.discord.discord_channel import DiscordChannel
@@ -200,27 +200,94 @@ class PLReport(ABC):
             self.__discord_client.send_message_by_list_with_response([trade_summary_message], DiscordChannel.DEVELOPMENT_TEST)
             add_sent_trade_summary_message_record(connector=self.__sqlite_connector,
                                                   message_list=[trade_summary_message]) 
-     
+    
+    @staticmethod
+    def clear_all_pl_and_trade_records(sqlite_connector: SqliteConnector):
+        delete_all_sent_trade_summary_message_record(sqlite_connector)
+        delete_all_sent_daily_realised_pl_message_record(sqlite_connector)
+        delete_all_sent_weekly_realised_pl_message_record(sqlite_connector)
+        delete_all_sent_monthly_realised_pl_message_record(sqlite_connector)
+        delete_all_sent_yearly_realised_pl_message_record(sqlite_connector)
+        delete_all_sent_month_to_date_realised_pl_message_record(sqlite_connector)
+        delete_all_sent_year_to_date_realised_pl_message_record(sqlite_connector)
+        delete_all_sent_interest_history_message_record(sqlite_connector)
+        delete_all_sent_imported_pl_file_message_record(sqlite_connector)
+    
     @staticmethod
     def send_aggregated_messages(sqlite_connector: SqliteConnector, discord_client: DiscordChatBotClient):
         aggregated_daily_pl_record_list = get_all_aggregated_daily_pl_records(sqlite_connector)
-        aggregated_weekly_pl_record_list = get_all_aggregated_weekly_pl_records(sqlite_connector)
-        aggregated_month_to_date_pl_record_list = get_all_aggregated_month_to_date_pl_records(sqlite_connector)
-        aggregated_year_to_date_pl_record_list = get_all_aggregated_year_to_date_pl_records(sqlite_connector)
-        aggregated_monthly_pl_record_list = get_all_aggregated_monthly_pl_records(sqlite_connector)
-        aggregated_yearly_pl_record_list = get_all_aggregated_yearly_pl_records(sqlite_connector)
+        aggregated_daily_pl_message_list = []
+        for aggregated_daily_pl_record in aggregated_daily_pl_record_list:
+            daily_pl_message = DailyProfitAndLoss(settle_date=datetime.strptime(aggregated_daily_pl_record[0], "%Y-%m-%d %H:%M:%S"),
+                                                  realised_pl=aggregated_daily_pl_record[1])
+            aggregated_daily_pl_message_list.append(daily_pl_message)
         
-        for daily_pl_record in aggregated_daily_pl_record_list:
-            discord_client.send_message_by_list_with_response([daily_pl_record], DiscordChannel.DEVELOPMENT_TEST)
+        for aggregated_daily_pl_message in aggregated_daily_pl_message_list:
+            discord_client.send_message_by_list_with_response([aggregated_daily_pl_message], DiscordChannel.DEVELOPMENT_TEST)
             add_sent_aggregated_daily_pl_records(connector=sqlite_connector,
-                                                 message_list=[daily_pl_record])
+                                                  message_list=[aggregated_daily_pl_message]) 
         
-        # for weekly_pl_record in weekly_pl_record_list:
+        aggregated_weekly_pl_record_list = get_all_aggregated_weekly_pl_records(sqlite_connector)
+        aggregated_weekly_pl_message_list = []
+        for aggregated_weekly_pl_record in aggregated_weekly_pl_record_list:
+            weekly_pl_message = WeeklyProfitAndLoss(start_week_date=datetime.strptime(aggregated_weekly_pl_record[0], "%Y-%m-%d %H:%M:%S"),
+                                                    end_week_date=datetime.strptime(aggregated_weekly_pl_record[1], "%Y-%m-%d %H:%M:%S"),
+                                                    realised_pl=aggregated_weekly_pl_record[2])
+            aggregated_weekly_pl_message_list.append(weekly_pl_message)
         
-        # for month_to_date_pl_record in month_to_date_pl_record_list:
+        for weekly_realised_pl_message in aggregated_weekly_pl_message_list:
+            discord_client.send_message_by_list_with_response([weekly_realised_pl_message], DiscordChannel.DEVELOPMENT_TEST)
+            add_sent_aggregated_weekly_pl_records(connector=sqlite_connector,
+                                                  message_list=[weekly_realised_pl_message])
         
-        # for year_to_date_pl_record in year_to_date_pl_record_list:
+        aggregated_month_to_date_pl_record_list = get_all_aggregated_month_to_date_pl_records(sqlite_connector)
+        aggregated_month_to_date_pl_message_list = []
+        for aggregated_month_to_date_pl_record in aggregated_month_to_date_pl_record_list:
+            month_to_date_pl_message = MonthToDateProfitAndLoss(settle_date=datetime.strptime(aggregated_month_to_date_pl_record[0], "%Y-%m-%d %H:%M:%S"),
+                                                                realised_pl=aggregated_month_to_date_pl_record[1])
+            aggregated_month_to_date_pl_message_list.append(month_to_date_pl_message)
+            
+        for aggregated_month_to_date_pl_message in aggregated_month_to_date_pl_message_list:
+            discord_client.send_message_by_list_with_response([aggregated_month_to_date_pl_message], DiscordChannel.DEVELOPMENT_TEST)
+            add_sent_aggregated_month_to_date_pl_records(connector=sqlite_connector,
+                                                         message_list=[aggregated_month_to_date_pl_message])
         
-        # for monthly_pl_record in monthly_pl_record_list:
+        aggregated_year_to_date_pl_record_list = get_all_aggregated_year_to_date_pl_records(sqlite_connector)
+        aggregated_year_to_date_pl_message_list = []
+        for aggregated_year_to_date_pl_record in aggregated_year_to_date_pl_record_list:
+            year_to_date_pl_message = YearToDateProfitAndLoss(settle_date=datetime.strptime(aggregated_year_to_date_pl_record[0], "%Y-%m-%d %H:%M:%S"),
+                                                              realised_pl=aggregated_year_to_date_pl_record[1])
+            aggregated_year_to_date_pl_message_list.append(year_to_date_pl_message)
         
-        # for yearly_pl_record in yearly_pl_record_list:
+        for aggregated_year_to_date_pl_message in aggregated_year_to_date_pl_message_list:
+            discord_client.send_message_by_list_with_response([aggregated_year_to_date_pl_message], DiscordChannel.DEVELOPMENT_TEST)
+            add_sent_aggregated_year_to_date_pl_records(connector=sqlite_connector,
+                                                        message_list=[aggregated_year_to_date_pl_message])
+        
+        aggregated_monthly_pl_record_list = get_all_aggregated_monthly_pl_records(sqlite_connector)
+        aggregated_monthly_pl_message_list = []
+        for aggregated_monthly_pl_record in aggregated_monthly_pl_record_list:
+            monthly_pl_message = MonthlyProfitAndLoss(start_month_date=datetime.strptime(aggregated_monthly_pl_record[0], "%Y-%m-%d %H:%M:%S"),
+                                                      end_month_date=datetime.strptime(aggregated_monthly_pl_record[1], "%Y-%m-%d %H:%M:%S"),
+                                                      realised_pl=aggregated_monthly_pl_record[2])
+            aggregated_monthly_pl_message_list.append(monthly_pl_message)
+            
+        for aggregated_monthly_pl_message in aggregated_monthly_pl_message_list:
+            discord_client.send_message_by_list_with_response([aggregated_monthly_pl_message], DiscordChannel.DEVELOPMENT_TEST)
+            add_sent_aggregated_monthly_records(connector=sqlite_connector,
+                                                message_list=[aggregated_monthly_pl_message])
+        
+        aggregated_yearly_pl_record_list = get_all_aggregated_yearly_pl_records(sqlite_connector)
+        aggregated_yearly_pl_message_list = []   
+        for aggregated_yearly_pl_record in aggregated_yearly_pl_record_list:
+            yearly_pl_message = YearlyProfitAndLoss(start_year_date=datetime.strptime(aggregated_yearly_pl_record[0], "%Y-%m-%d %H:%M:%S"),
+                                                    end_year_date=datetime.strptime(aggregated_yearly_pl_record[1], "%Y-%m-%d %H:%M:%S"),
+                                                    realised_pl=aggregated_yearly_pl_record[2])
+            aggregated_yearly_pl_message_list.append(yearly_pl_message)
+            
+        for aggregated_yearly_pl_message in aggregated_yearly_pl_message_list:
+            discord_client.send_message_by_list_with_response([aggregated_yearly_pl_message], DiscordChannel.DEVELOPMENT_TEST)
+            add_sent_aggregated_yearly_pl_records(connector=sqlite_connector,
+                                                  message_list=[aggregated_yearly_pl_message])
+
+        
