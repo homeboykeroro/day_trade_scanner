@@ -4,7 +4,10 @@ from constant.broker import Broker
 
 def check_if_pattern_analysis_message_sent(connector, ticker: str, hit_scanner_datetime: datetime, scan_pattern: str, bar_size: str) -> bool:
     cursor = connector.cursor
-    cursor.execute(SqliteQuery.CHECK_PATTERN_ANALYSIS_MESSAGE_EXIST_QUERY.value, (ticker, hit_scanner_datetime.strftime('%Y-%m-%d %H:%M:%S'), scan_pattern, bar_size))
+    
+    hit_scanner_datetime_str = hit_scanner_datetime.strftime('%Y-%m-%d %H:%M:%S') if isinstance(hit_scanner_datetime, datetime) else hit_scanner_datetime.strftime('%Y-%m-%d')
+    
+    cursor.execute(SqliteQuery.CHECK_PATTERN_ANALYSIS_MESSAGE_EXIST_QUERY.value, (ticker, hit_scanner_datetime_str, scan_pattern, bar_size))
     
     row = cursor.fetchone()
     if row is None:

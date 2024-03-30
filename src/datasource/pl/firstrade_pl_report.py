@@ -16,6 +16,7 @@ from model.pl.trade_profit_and_loss import TradeProfitAndLoss
 from model.pl.interest_profit import InterestProfit
 
 from constant.broker import Broker
+from constant.discord.discord_channel import DiscordChannel
 
 from utils.logger import Logger
 from utils.datetime_util import get_current_us_datetime, get_last_us_business_day
@@ -432,9 +433,9 @@ class FirstradePLReport(PLReport):
         self.send_year_to_date_pl_messages(year_to_date_pl_dict, None, Broker.FIRSTRADE)
         self.send_monthly_pl_messages(monthly_pl_dict, None, Broker.FIRSTRADE)
         self.send_yearly_pl_messages(yearly_pl_dict, None, Broker.FIRSTRADE)
-        self.send_trade_summary_message(day_trade_history_list, Broker.FIRSTRADE)
-        self.send_trade_summary_message(swing_trade_history_list, Broker.FIRSTRADE)
-        self.send_interest_messages(interest_message_list)
+        self.send_trade_summary_message(day_trade_history_list, Broker.FIRSTRADE, DiscordChannel.FIRSTRADE_DAY_TRADE_SUMMARY)
+        self.send_trade_summary_message(swing_trade_history_list, Broker.FIRSTRADE, DiscordChannel.FIRSTRADE_SWING_TRADE_SUMMARY)
+        self.send_interest_messages(interest_message_list, Broker.FIRSTRADE)
         
     def update_account_nav_value(self, account_summary_file_dir: str) -> dict:
         pdf = pdfquery.PDFQuery(account_summary_file_dir)

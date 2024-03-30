@@ -10,6 +10,7 @@ import requests
 from module.discord_chatbot_client import DiscordChatBotClient
 
 from datasource.ib_connector import IBConnector
+from datasource.pl.pl_report import PLReport
 from datasource.pl.firstrade_pl_report import FirstradePLReport
 from datasource.pl.ib_pl_report import IBPLReport
 from sql.sqlite_connector import SqliteConnector
@@ -138,9 +139,9 @@ class PLReportGenerator():
         
         while not self.__stop_thread:
             try:
-                #self.__scan_firstrade_trade_data_file_and_update()
+                self.__scan_firstrade_trade_data_file_and_update()
                 self.__scan_ib_trade_data_file_and_update()
-                #PLReport.send_aggregated_messages(self.__sqlite_connector, self.__discord_client)
+                PLReport.send_aggregated_messages(self.__sqlite_connector, self.__discord_client)
                 time.sleep(SCAN_INTERVAL)
             except Exception as exception: # Must be 2000 or fewer in length
                 self.__discord_client.send_message(DiscordMessage(content=exception), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)

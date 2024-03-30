@@ -19,6 +19,7 @@ TEXT_TO_SPEECH_CHANNEL_ID = int(os.environ['DISCORD_TEXT_TO_SPEECH_CHANNEL_ID'])
 # For Pattern Analysis
 INITIAL_POP_CHANNEL_ID = int(os.environ['DISCORD_INITIAL_POP_CHANNEL_ID'])
 INITIAL_DIP_CHANNEL_ID = int(os.environ['DISCORD_INITIAL_DIP_CHANNEL_ID'])
+YESTERDAY_BULLISH_DAILY_CANDLE_CHANNEL_ID = int(os.environ['DISCORD_YESTERDAY_BULLISH_DAILY_CANDLE_CHANNEL_ID'])
 
 # Scanner List Log
 TOP_GAINER_SCANNER_LIST_CHANNEL_ID = int(os.environ['DISCORD_TOP_GAINER_SCANNER_LIST_CHANNEL_ID'])
@@ -49,8 +50,10 @@ DAY_TRADE_ENTRY_AND_EXIT_CHANNEL_ID = int(os.environ['DISCORD_DAY_TRADE_ENTRY_AN
 SWING_TRADE_ENTRY_AND_EXIT_CHANNEL_ID = int(os.environ['DISCORD_SWING_TRADE_ENTRY_AND_EXIT_CHANNEL_ID'])
 
 # Trade History
-DAY_TRADE_SUMMARY_CHANNEL_ID = int(os.environ['DISCORD_DAY_TRADE_SUMMARY_CHANNEL_ID'])
-SWING_TRADE_SUMMARY_CHANNEL_ID = int(os.environ['DISCORD_SWING_TRADE_SUMMARY_CHANNEL_ID'])
+FIRSTRADE_DAY_TRADE_SUMMARY_CHANNEL_ID = int(os.environ['DISCORD_FIRSTRADE_DAY_TRADE_SUMMARY_CHANNEL_ID'])
+FIRSTRADE_SWING_TRADE_SUMMARY_CHANNEL_ID = int(os.environ['DISCORD_FIRSTRADE_SWING_TRADE_SUMMARY_CHANNEL_ID'])
+IB_DAY_TRADE_SUMMARY_CHANNEL_ID = int(os.environ['DISCORD_IB_DAY_TRADE_SUMMARY_CHANNEL_ID'])
+IB_SWING_TRADE_SUMMARY_CHANNEL_ID = int(os.environ['DISCORD_IB_SWING_TRADE_SUMMARY_CHANNEL_ID'])
 
 # Aggregate Result
 DAILY_PROFIT_AND_LOSS_CHANNEL_ID = int(os.environ['DISCORD_DAILY_PROFIT_AND_LOSS_CHANNEL_ID'])
@@ -110,6 +113,7 @@ class DiscordChatBotClient(discord.Client):
         
         self.__initial_pop_channel = self.get_channel(INITIAL_POP_CHANNEL_ID)
         self.__initial_dip_channel = self.get_channel(INITIAL_DIP_CHANNEL_ID)
+        self.__yesterday_bullish_DAILY_candle_channel = self.get_channel(YESTERDAY_BULLISH_DAILY_CANDLE_CHANNEL_ID)
         
         self.__top_gainer_scanner_list_channel = self.get_channel(TOP_GAINER_SCANNER_LIST_CHANNEL_ID)
         self.__top_loser_scanner_list_channel = self.get_channel(TOP_LOSER_SCANNER_LIST_CHANNEL_ID)
@@ -124,8 +128,10 @@ class DiscordChatBotClient(discord.Client):
         self.__day_trade_entry_and_exit_channel = self.get_channel(DAY_TRADE_ENTRY_AND_EXIT_CHANNEL_ID)
         self.__swing_trade_entry_and_exit_channel = self.get_channel(SWING_TRADE_ENTRY_AND_EXIT_CHANNEL_ID)
         
-        self.__day_trade_history_channel = self.get_channel(DAY_TRADE_SUMMARY_CHANNEL_ID)
-        self.__swing_trade_history_channel = self.get_channel(SWING_TRADE_SUMMARY_CHANNEL_ID)
+        self.__firstrade_day_trade_summary_channel = self.get_channel(FIRSTRADE_DAY_TRADE_SUMMARY_CHANNEL_ID)
+        self.__firstrade_swing_trade_summary_channel = self.get_channel(FIRSTRADE_SWING_TRADE_SUMMARY_CHANNEL_ID)
+        self.__ib_day_trade_summary_channel = self.get_channel(IB_DAY_TRADE_SUMMARY_CHANNEL_ID)
+        self.__ib_swing_trade_summary_channel = self.get_channel(IB_SWING_TRADE_SUMMARY_CHANNEL_ID)
         
         self.__nav = self.get_channel(NAV_CHANNEL_ID)
         self.__citibank_nav = self.get_channel(CITIBANK_NAV_CHANNEL_ID)
@@ -243,6 +249,8 @@ class DiscordChatBotClient(discord.Client):
             channel = self.__initial_pop_channel    
         elif channel_type == DiscordChannel.INITIAL_DIP:
             channel = self.__initial_dip_channel
+        elif channel_type == DiscordChannel.YESTERDAY_BULLISH_DAILY_CANDLE:
+            channel = self.__yesterday_bullish_DAILY_candle_channel
         elif channel_type == DiscordChannel.TOP_GAINER_SCANNER_LIST:
             channel = self.__top_gainer_scanner_list_channel
         elif channel_type == DiscordChannel.TOP_LOSER_SCANNER_LIST:
@@ -261,10 +269,14 @@ class DiscordChatBotClient(discord.Client):
             channel = self.__day_trade_entry_and_exit_channel
         elif channel_type == DiscordChannel.SWING_TRADE_ENTRY_AND_EXIT:
             channel = self.__swing_trade_entry_and_exit_channel
-        elif channel_type == DiscordChannel.DAY_TRADE_SUMMARY:
-            channel = self.__day_trade_history_channel
-        elif channel_type == DiscordChannel.SWING_TRADE_SUMMARY:
-            channel = self.__swing_trade_history_channel
+        elif channel_type == DiscordChannel.FIRSTRADE_DAY_TRADE_SUMMARY:
+            channel = self.__firstrade_day_trade_summary_channel
+        elif channel_type == DiscordChannel.FIRSTRADE_SWING_TRADE_SUMMARY:
+            channel = self.__firstrade_swing_trade_summary_channel
+        elif channel_type == DiscordChannel.IB_DAY_TRADE_SUMMARY:
+            channel = self.__ib_day_trade_summary_channel
+        elif channel_type == DiscordChannel.IB_SWING_TRADE_SUMMARY:
+            channel = self.__ib_swing_trade_summary_channel
         elif channel_type == DiscordChannel.FIRSTRADE_DAILY_PROFIT_AND_LOSS:
             channel = self.__firstrade_daily_profit_and_loss_channel
         elif channel_type == DiscordChannel.FIRSTRADE_WEEKY_PROFIT_AND_LOSS:

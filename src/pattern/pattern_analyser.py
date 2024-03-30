@@ -1,13 +1,9 @@
 from abc import ABC
 import datetime
 
-import discord
-
 from model.discord.discord_message import DiscordMessage
-from model.discord.view.redirect_button import RedirectButton
 
 from utils.discord_message_record_util import check_if_pattern_analysis_message_sent, add_sent_pattern_analysis_message_record
-from utils.collection_util import get_chunk_list
 from utils.logger import Logger
 
 from constant.discord.discord_channel import DiscordChannel
@@ -26,7 +22,7 @@ class PatternAnalyser(ABC):
         return NotImplemented
     
     def check_if_pattern_analysis_message_sent(self, ticker: str, hit_scanner_datetime: datetime, pattern: str, bar_size: BarSize):
-        return check_if_pattern_analysis_message_sent(self.__sqlite_connector, ticker, hit_scanner_datetime.strftime('%Y-%m-%d %H:%M:%S'), pattern, bar_size.value)
+        return check_if_pattern_analysis_message_sent(self.__sqlite_connector, ticker, hit_scanner_datetime, pattern, bar_size.value)
         
     def send_notification(self, scanner_result_list: list, discord_channel: DiscordChannel):
         if scanner_result_list:

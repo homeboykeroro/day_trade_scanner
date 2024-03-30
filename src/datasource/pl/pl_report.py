@@ -143,59 +143,101 @@ class PLReport(ABC):
     def send_daily_pl_messages(self, daily_realised_pl_dict: dict, account_nav_value: float, trading_platform: Broker):
         daily_realised_pl_message_list = self.__get_daily_realised_pl_message(daily_realised_pl_dict, account_nav_value, trading_platform)
         
+        channel = None
+        if trading_platform == Broker.FIRSTRADE:
+            channel = DiscordChannel.FIRSTRADE_DAILY_PROFIT_AND_LOSS
+        elif trading_platform == Broker.IB:
+            channel = DiscordChannel.IB_DAILY_PROFIT_AND_LOSS
+        
         for daily_realised_pl_message in daily_realised_pl_message_list:
-            self.__discord_client.send_message_by_list_with_response([daily_realised_pl_message], DiscordChannel.DEVELOPMENT_TEST)
+            self.__discord_client.send_message_by_list_with_response([daily_realised_pl_message], channel)
             add_sent_daily_realised_pl_message_record(connector=self.__sqlite_connector,
                                                       message_list=[daily_realised_pl_message])
             
     def send_weekly_pl_messages(self, weekly_realised_pl_dict_list: dict, account_nav_value: float, trading_platform: Broker):
         weekly_realised_pl_message_list = self.__get_weekly_realised_pl_message(weekly_realised_pl_dict_list, account_nav_value, trading_platform)
         
+        channel = None
+        if trading_platform == Broker.FIRSTRADE:
+            channel = DiscordChannel.FIRSTRADE_WEEKY_PROFIT_AND_LOSS
+        elif trading_platform == Broker.IB:
+            channel = DiscordChannel.IB_WEEKY_PROFIT_AND_LOSS
+        
         for weekly_realised_pl_message in weekly_realised_pl_message_list:
-            self.__discord_client.send_message_by_list_with_response([weekly_realised_pl_message], DiscordChannel.DEVELOPMENT_TEST)
+            self.__discord_client.send_message_by_list_with_response([weekly_realised_pl_message], channel)
             add_sent_weekly_realised_pl_message_record(connector=self.__sqlite_connector,
                                                               message_list=[weekly_realised_pl_message])
     
     def send_month_to_date_pl_messages(self, month_to_date_realised_pl_dict: dict, account_nav_value: float, trading_platform: Broker):
         month_to_date_realised_pl_message_list = self.__get_month_to_date_realised_pl_message(month_to_date_realised_pl_dict, account_nav_value, trading_platform)
         
+        channel = None
+        if trading_platform == Broker.FIRSTRADE:
+            channel = DiscordChannel.FIRSTRADE_MONTH_TO_DATE_PROFIT_AND_LOSS
+        elif trading_platform == Broker.IB:
+            channel = DiscordChannel.IB_MONTH_TO_DATE_PROFIT_AND_LOSS
+        
         for month_to_date_realised_pl_message in month_to_date_realised_pl_message_list:
-            self.__discord_client.send_message_by_list_with_response([month_to_date_realised_pl_message], DiscordChannel.DEVELOPMENT_TEST)
+            self.__discord_client.send_message_by_list_with_response([month_to_date_realised_pl_message], channel)
             add_sent_month_to_date_realised_pl_message_record(connector=self.__sqlite_connector,
                                                               message_list=[month_to_date_realised_pl_message])
     
     def send_year_to_date_pl_messages(self, year_to_date_realised_pl_dict: dict, account_nav_value: float, trading_platform: Broker):
         year_to_date_realised_pl_message_list = self.__get_year_to_date_realised_pl_message(year_to_date_realised_pl_dict, account_nav_value, trading_platform)
         
+        channel = None
+        if trading_platform == Broker.FIRSTRADE:
+            channel = DiscordChannel.FIRSTRADE_YEAR_TO_DATE_PROFIT_AND_LOSS
+        elif trading_platform == Broker.IB:
+            channel = DiscordChannel.IB_YEAR_TO_DATE_PROFIT_AND_LOSS
+        
         for year_to_date_realised_pl_message in year_to_date_realised_pl_message_list:
-            self.__discord_client.send_message_by_list_with_response([year_to_date_realised_pl_message], DiscordChannel.DEVELOPMENT_TEST)
+            self.__discord_client.send_message_by_list_with_response([year_to_date_realised_pl_message], channel)
             add_sent_year_to_date_realised_pl_message_record(connector=self.__sqlite_connector,
                                                               message_list=[year_to_date_realised_pl_message])
     
     def send_monthly_pl_messages(self, monthly_realised_pl_dict: dict, account_nav_value: float, trading_platform: Broker):  
         monthly_realised_pl_message_list = self.__get_monthly_realised_pl_message(monthly_realised_pl_dict, account_nav_value, trading_platform)
         
+        channel = None
+        if trading_platform == Broker.FIRSTRADE:
+            channel = DiscordChannel.FIRSTRADE_MONTHLY_PROFIT_AND_LOSS
+        elif trading_platform == Broker.IB:
+            channel = DiscordChannel.IB_MONTHLY_PROFIT_AND_LOSS
+        
         for monthly_realised_pl_message in monthly_realised_pl_message_list:
-            self.__discord_client.send_message_by_list_with_response([monthly_realised_pl_message], DiscordChannel.DEVELOPMENT_TEST)
+            self.__discord_client.send_message_by_list_with_response([monthly_realised_pl_message], channel)
             add_sent_monthly_realised_pl_message_record(connector=self.__sqlite_connector,
                                                               message_list=[monthly_realised_pl_message]) 
             
     def send_yearly_pl_messages(self, yearly_realised_pl_dict: dict, account_nav_value: float, trading_platform: Broker):
         yearly_realised_pl_message_list = self.__get_yearly_realised_pl_message(yearly_realised_pl_dict, account_nav_value, trading_platform)
         
+        channel = None
+        if trading_platform == Broker.FIRSTRADE:
+            channel = DiscordChannel.FIRSTRADE_YEARLY_PROFIT_AND_LOSS
+        elif trading_platform == Broker.IB:
+            channel = DiscordChannel.IB_YEARLY_PROFIT_AND_LOSS
+        
         for yearly_realised_pl_message in yearly_realised_pl_message_list:
-            self.__discord_client.send_message_by_list_with_response([yearly_realised_pl_message], DiscordChannel.DEVELOPMENT_TEST)
+            self.__discord_client.send_message_by_list_with_response([yearly_realised_pl_message], channel)
             add_sent_yearly_realised_pl_message_record(connector=self.__sqlite_connector,
                                                               message_list=[yearly_realised_pl_message]) 
 
-    def send_interest_messages(self, interest_list: list):
+    def send_interest_messages(self, interest_list: list, trading_platform: Broker):
+        channel = None
+        if trading_platform == Broker.FIRSTRADE:
+            channel = DiscordChannel.FIRSTRADE_INTERESTS
+        elif trading_platform == Broker.IB:
+            channel = DiscordChannel.IB_INTERESTS
+        
         for interest_message in interest_list:
-            self.__discord_client.send_message_by_list_with_response([interest_message], DiscordChannel.DEVELOPMENT_TEST)
+            self.__discord_client.send_message_by_list_with_response([interest_message], channel)
             add_sent_interest_history_message_record(connector=self.__sqlite_connector,
                                                      message_list=[interest_message]) 
     
-    def send_trade_summary_message(self, day_trade_summary_list: list, broker: Broker):
-        trade_summary_message_list = self.__get_trade_summary_message(day_trade_summary_list, broker)
+    def send_trade_summary_message(self, day_trade_summary_list: list, channel: DiscordChannel):
+        trade_summary_message_list = self.__get_trade_summary_message(day_trade_summary_list, channel)
         for trade_summary_message in trade_summary_message_list:
             self.__discord_client.send_message_by_list_with_response([trade_summary_message], DiscordChannel.DEVELOPMENT_TEST)
             add_sent_trade_summary_message_record(connector=self.__sqlite_connector,
@@ -223,7 +265,7 @@ class PLReport(ABC):
             aggregated_daily_pl_message_list.append(daily_pl_message)
         
         for aggregated_daily_pl_message in aggregated_daily_pl_message_list:
-            discord_client.send_message_by_list_with_response([aggregated_daily_pl_message], DiscordChannel.DEVELOPMENT_TEST)
+            discord_client.send_message_by_list_with_response([aggregated_daily_pl_message], DiscordChannel.DAILY_PROFIT_AND_LOSS)
             add_sent_aggregated_daily_pl_records(connector=sqlite_connector,
                                                   message_list=[aggregated_daily_pl_message]) 
         
@@ -236,7 +278,7 @@ class PLReport(ABC):
             aggregated_weekly_pl_message_list.append(weekly_pl_message)
         
         for weekly_realised_pl_message in aggregated_weekly_pl_message_list:
-            discord_client.send_message_by_list_with_response([weekly_realised_pl_message], DiscordChannel.DEVELOPMENT_TEST)
+            discord_client.send_message_by_list_with_response([weekly_realised_pl_message], DiscordChannel.WEEKLY_PROFIT_AND_LOSS)
             add_sent_aggregated_weekly_pl_records(connector=sqlite_connector,
                                                   message_list=[weekly_realised_pl_message])
         
@@ -248,7 +290,7 @@ class PLReport(ABC):
             aggregated_month_to_date_pl_message_list.append(month_to_date_pl_message)
             
         for aggregated_month_to_date_pl_message in aggregated_month_to_date_pl_message_list:
-            discord_client.send_message_by_list_with_response([aggregated_month_to_date_pl_message], DiscordChannel.DEVELOPMENT_TEST)
+            discord_client.send_message_by_list_with_response([aggregated_month_to_date_pl_message], DiscordChannel.MONTH_TO_DATE_PROFIT_AND_LOSS)
             add_sent_aggregated_month_to_date_pl_records(connector=sqlite_connector,
                                                          message_list=[aggregated_month_to_date_pl_message])
         
@@ -260,7 +302,7 @@ class PLReport(ABC):
             aggregated_year_to_date_pl_message_list.append(year_to_date_pl_message)
         
         for aggregated_year_to_date_pl_message in aggregated_year_to_date_pl_message_list:
-            discord_client.send_message_by_list_with_response([aggregated_year_to_date_pl_message], DiscordChannel.DEVELOPMENT_TEST)
+            discord_client.send_message_by_list_with_response([aggregated_year_to_date_pl_message], DiscordChannel.YEAR_TO_DATE_PROFIT_AND_LOSS)
             add_sent_aggregated_year_to_date_pl_records(connector=sqlite_connector,
                                                         message_list=[aggregated_year_to_date_pl_message])
         
@@ -273,7 +315,7 @@ class PLReport(ABC):
             aggregated_monthly_pl_message_list.append(monthly_pl_message)
             
         for aggregated_monthly_pl_message in aggregated_monthly_pl_message_list:
-            discord_client.send_message_by_list_with_response([aggregated_monthly_pl_message], DiscordChannel.DEVELOPMENT_TEST)
+            discord_client.send_message_by_list_with_response([aggregated_monthly_pl_message], DiscordChannel.MONTHLY_PROFIT_AND_LOSS)
             add_sent_aggregated_monthly_records(connector=sqlite_connector,
                                                 message_list=[aggregated_monthly_pl_message])
         
@@ -286,7 +328,7 @@ class PLReport(ABC):
             aggregated_yearly_pl_message_list.append(yearly_pl_message)
             
         for aggregated_yearly_pl_message in aggregated_yearly_pl_message_list:
-            discord_client.send_message_by_list_with_response([aggregated_yearly_pl_message], DiscordChannel.DEVELOPMENT_TEST)
+            discord_client.send_message_by_list_with_response([aggregated_yearly_pl_message], DiscordChannel.YEARLY_PROFIT_AND_LOSS)
             add_sent_aggregated_yearly_pl_records(connector=sqlite_connector,
                                                   message_list=[aggregated_yearly_pl_message])
 

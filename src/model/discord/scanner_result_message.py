@@ -14,7 +14,7 @@ class ScannerResultMessage(DiscordMessage):
                        readout_msg,
                        close, 
                        yesterday_close,
-                       volume, total_volume,
+                       volume: int, total_volume: int,
                        contract_info: ContractInfo = None,
                        minute_chart_dir: str = None, 
                        daily_chart_dir: str = None, 
@@ -27,8 +27,8 @@ class ScannerResultMessage(DiscordMessage):
         embed.add_field(name = 'Close:', value= f'${close}', inline = True)
         embed.add_field(name = 'Yesterday Close:', value = f'${yesterday_close}', inline = True)
         embed.add_field(name = chr(173), value = chr(173), inline = True)
-        embed.add_field(name = 'Volume:', value = f'{volume}', inline = True)
-        embed.add_field(name = 'Total Volume:', value = f'{total_volume}', inline = True)
+        embed.add_field(name = 'Volume:', value = f'{"{:,}".format(int(volume))}', inline = True)
+        embed.add_field(name = 'Total Volume:', value = f'{"{:,}".format(int(total_volume))}', inline = True)
         embed.add_field(name = chr(173), value = chr(173), inline = True)
         
         candle_chart_list = []
@@ -40,9 +40,10 @@ class ScannerResultMessage(DiscordMessage):
             embed.set_image(url=f"attachment://{os.path.basename(daily_chart_dir)}")
             candle_chart_list.append(discord.File(daily_chart_dir, filename=os.path.basename(daily_chart_dir)))
         
-        contract_info.add_contract_info_to_embed_msg(embed)
+        if contract_info:
+            contract_info.add_contract_info_to_embed_msg(embed)
 
-        self.__ticker = contract_info.symbol
+        self.__ticker = ticker
         self.embed = embed
         self.__readout_msg = readout_msg
         self.files = candle_chart_list
