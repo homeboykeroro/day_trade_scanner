@@ -84,7 +84,7 @@ class InitialDip(PatternAnalyser):
                         continue
                     
                     dip_time = occurrence_idx
-                    is_message_sent = self.check_if_message_sent(ticker=ticker, hit_scanner_datetime=dip_time, pattern=PATTERN_NAME, bar_size=self.__bar_size)
+                    is_message_sent = self.check_if_pattern_analysis_message_sent(ticker=ticker, hit_scanner_datetime=dip_time, pattern=PATTERN_NAME, bar_size=self.__bar_size)
 
                     if not is_message_sent:
                         logger.log_debug_msg(f'{ticker} Dataframe: {self.__historical_data_df.loc[:, idx[[ticker], :]]}')
@@ -103,11 +103,11 @@ class InitialDip(PatternAnalyser):
                                                                  ticker=ticker, pattern=PATTERN_NAME, bar_size=self.__bar_size,
                                                                  hit_scanner_datetime=dip_time,
                                                                  positive_offset=3, negative_offset=2,
-                                                                 scatter_symbol=ScatterSymbol.POP, scatter_colour=ScatterColour.BLUE)
+                                                                 scatter_symbol=ScatterSymbol.DIP, scatter_colour=ScatterColour.PURPLE)
                         daily_chart_dir = get_candlestick_chart(candle_data_df=daily_df,
                                                                 ticker=ticker, pattern=PATTERN_NAME, bar_size=BarSize.ONE_DAY,
                                                                 hit_scanner_datetime=daily_df.index[-1],
-                                                                scatter_symbol=ScatterSymbol.POP, scatter_colour=ScatterColour.BLUE)
+                                                                scatter_symbol=ScatterSymbol.DIP, scatter_colour=ScatterColour.PURPLE)
                         
                         hit_scanner_datetime_display = convert_into_human_readable_time(dip_time)
                         read_out_dip_time = convert_into_read_out_time(dip_time)

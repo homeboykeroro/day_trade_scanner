@@ -57,13 +57,16 @@ class FirstradePLReport(PLReport):
         self.__account_summary_data = account_summary_data
     
     def __normalise_column_dtype(self, src_df: pd.DataFrame) -> pd.DataFrame:
-        src_df[SYMBOL] = src_df[SYMBOL].str.strip()
-        src_df[TRADE_DATE] = pd.to_datetime(src_df[TRADE_DATE], errors='coerce')
-        src_df[QUANTITY] = src_df[QUANTITY].astype(int).abs()
-        src_df[TRADE_PRICE] = src_df[TRADE_PRICE].astype(float)
-        src_df[AMOUNT] = src_df[AMOUNT].astype(float).abs()
+        result_df = src_df.copy()
+        result_df[SYMBOL] = result_df[SYMBOL].str.strip()
+        result_df[TRADE_DATE] = pd.to_datetime(result_df[TRADE_DATE], errors='coerce')
+        result_df[QUANTITY] = result_df[QUANTITY].astype(int).abs()
+        result_df[TRADE_PRICE] = result_df[TRADE_PRICE].astype(float)
+        result_df[AMOUNT] = result_df[TRADE_PRICE] * result_df[QUANTITY]
+        
+        result_df = result_df.loc[:, ~result_df.columns.str.contains('^Unnamed')]
 
-        return src_df
+        return result_df
     
     def __get_interest_message_dict(self, src_df: pd.DataFrame) -> dict:
         current_date = get_current_us_datetime()
@@ -142,88 +145,113 @@ class FirstradePLReport(PLReport):
         # ticker_to_contract_dict = self.__ib_connector.get_ticker_to_contract_dict()
         # ticker_to_contract_dict = {}
         
-        ordered_src_df = stock_trade_history_df.sort_values(by=[SYMBOL, TRADE_DATE, ORDER_TYPE])
+        ordered_src_df = stock_trade_history_df.sort_values(by=[SYMBOL, TRADE_DATE, ORDER_TYPE]).groupby([SYMBOL, TRADE_DATE, ORDER_TYPE]).agg({QUANTITY:'sum', AMOUNT: 'sum'})
         
         date_to_ticker_transaction_dict = {}
         for ticker, trade_history_datetime_list in ticker_to_trade_history_datetime_list_dict.items():
             accumulated_buy_cost = 0
             accumulated_buy_share = 0
-            accumulated_sell_market_value = 0
-            accumulated_sell_share = 0
+            
+            previous_day_remaining_cost = 0
+            previous_day_remaining_position = 0
+            
+            earliest_fillied_buy_order_datetime = None
             
             for date in trade_history_datetime_list:
                 pl_message_list = []
-                trade_boolean_df = ((ordered_src_df[TRADE_DATE] == date) & (ordered_src_df[SYMBOL] == ticker))
-                trade_df = ordered_src_df[trade_boolean_df].reset_index(drop=True)
-                close_position = False
-                for row in range(len(trade_df)):
-                    order_type = trade_df.loc[row, ORDER_TYPE]
-                    share = trade_df.loc[row, QUANTITY]
-                    trade_datetime = trade_df.loc[row, TRADE_DATE]
-                    trade_price = trade_df.loc[row, TRADE_PRICE]
-
-                    if order_type == 'BUY':
-                        accumulated_buy_share += share
-                        accumulated_buy_cost += (trade_price * share)
-                        latest_fillied_buy_order_datetime = trade_datetime # minor bug fix, need to change to earilest load share datetime
-                    else:
-                        accumulated_sell_share += share
-                        accumulated_sell_market_value += (trade_price * share)
-                        latest_fillied_sell_order_datetime = trade_datetime
+                
+                buy_order_exist = (ticker, date, 'BUY') in ordered_src_df.index
+                sell_order_exist = (ticker, date, 'SELL') in ordered_src_df.index
+                
+                if buy_order_exist:
+                    buy_cost = ordered_src_df.loc[(ticker, date, 'BUY'), AMOUNT]
+                    buy_quantity = ordered_src_df.loc[(ticker, date, 'BUY'), QUANTITY]
+                    avg_entry_price = buy_cost / buy_quantity
+                    buy_date = date
+                    
+                    accumulated_buy_share += buy_quantity
+                    accumulated_buy_cost += buy_cost
                         
-                        if row + 1 < len(trade_df):
-                            if trade_df.loc[row + 1, ORDER_TYPE] == 'BUY':
-                                close_position = True
-                        else:
-                            close_position = True
-
-                    # Close partial/ all positions
-                    if close_position:
-                        if accumulated_buy_share > 0:
-                            avg_entry_price = accumulated_buy_cost / accumulated_buy_share
-                            avg_exit_price = accumulated_sell_market_value / accumulated_sell_share
-
-                            adjusted_cost = avg_entry_price * accumulated_sell_share
-                            realised_pl = accumulated_sell_market_value - adjusted_cost
-                            realised_pl_percent = round(((realised_pl/ adjusted_cost) * 100), 3)
-
+                    if not earliest_fillied_buy_order_datetime:
+                        earliest_fillied_buy_order_datetime = buy_date
+                    
+                if sell_order_exist:
+                    if accumulated_buy_share <= 0:
+                        logger.log_debug_msg(f'Exclude invalid data for {ticker} on {date}, {ticker} full date list: {trade_history_datetime_list}', with_std_out=True)
+                        continue
+                    
+                    sell_market_value = ordered_src_df.loc[(ticker, date, 'SELL'), AMOUNT]
+                    sell_quantity = ordered_src_df.loc[(ticker, date, 'SELL'), QUANTITY]
+                    avg_exit_price = sell_market_value / sell_quantity
+                    sell_date = date
+                    
+                    if previous_day_remaining_position > 0 and accumulated_buy_share > previous_day_remaining_position:
+                        avg_entry_price_for_previous_day_position = previous_day_remaining_cost / previous_day_remaining_position
+                        adjusted_cost_for_previous_day_position = avg_entry_price_for_previous_day_position * previous_day_remaining_position
+                        adjusted_sell_market_value = avg_exit_price * previous_day_remaining_position
+                        realised_pl_for_previous_day_position = adjusted_sell_market_value - adjusted_cost_for_previous_day_position
+                        realised_pl_percent_for_previous_day_position = round(((realised_pl_for_previous_day_position / adjusted_cost_for_previous_day_position) * 100), 3)
+                        
+                        if abs(round(realised_pl_for_previous_day_position)) > 0:
                             pl_message_param_dict = dict(ticker=ticker, 
-                                                         acquired_date=latest_fillied_buy_order_datetime, sold_date=latest_fillied_sell_order_datetime,
-                                                         realised_pl=round(realised_pl), realised_pl_percent=realised_pl_percent,
-                                                         accumulated_cost=accumulated_buy_cost, adjusted_cost=adjusted_cost, market_value=round(accumulated_sell_market_value),
-                                                         accumulated_shares=accumulated_buy_share, sell_quantity=accumulated_sell_share, remaining_positions=(accumulated_buy_share - accumulated_sell_share),
-                                                         avg_entry_price=round(avg_entry_price, 3), avg_exit_price=round(avg_exit_price, 3), 
+                                                         acquired_date=earliest_fillied_buy_order_datetime, sold_date=sell_date,
+                                                         realised_pl=round(realised_pl_for_previous_day_position), realised_pl_percent=realised_pl_percent_for_previous_day_position,
+                                                         accumulated_cost=accumulated_buy_cost, adjusted_cost=adjusted_cost_for_previous_day_position, market_value=round(adjusted_sell_market_value),
+                                                         accumulated_shares=accumulated_buy_share, sell_quantity=previous_day_remaining_position, remaining_positions=(accumulated_buy_share - previous_day_remaining_position),
+                                                         avg_entry_price=round(avg_entry_price_for_previous_day_position, 3), avg_exit_price=round(avg_exit_price, 3),
                                                          trading_platform=Broker.FIRSTRADE,
                                                          contract_info={})
                             pl_message = TradeProfitAndLoss(**pl_message_param_dict)
                             pl_message_list.append(pl_message)
-
-                            accumulated_buy_share = accumulated_buy_share - accumulated_sell_share
-
-                            if accumulated_buy_share > 0:
-                                accumulated_buy_cost = accumulated_buy_cost - adjusted_cost
-                            elif accumulated_buy_share == 0:
-                                accumulated_buy_cost = 0
-
-                            close_position = False
-                            accumulated_sell_share = 0
-                            accumulated_sell_market_value = 0
-                        else:
-                            logger.log_debug_msg(f'Invalid record of trade, ticker: {ticker}, trade date: {date}, order type: {order_type}, bought share: {accumulated_buy_share}', with_std_out=True)
-                
-                if date not in date_to_ticker_transaction_dict:
-                    date_to_ticker_transaction_dict[date] = {}
+                     
+                        accumulated_buy_cost = accumulated_buy_cost - adjusted_cost_for_previous_day_position
+                        accumulated_buy_share = accumulated_buy_share - previous_day_remaining_position
+                        sell_quantity = sell_quantity - previous_day_remaining_position
+                        sell_market_value = sell_market_value - adjusted_sell_market_value
+                        earliest_fillied_buy_order_datetime = date
+                        
+                    avg_entry_price = accumulated_buy_cost / accumulated_buy_share
+                    avg_exit_price = sell_market_value / sell_quantity
+                    adjusted_cost = avg_entry_price * sell_quantity
+                    realised_pl = sell_market_value - adjusted_cost
+                    realised_pl_percent = round(((realised_pl / adjusted_cost) * 100), 3)
+                    
+                    if abs(round(realised_pl)) > 0:
+                        pl_message_param_dict = dict(ticker=ticker, 
+                                                     acquired_date=earliest_fillied_buy_order_datetime, sold_date=sell_date,
+                                                     realised_pl=round(realised_pl), realised_pl_percent=realised_pl_percent,
+                                                     accumulated_cost=accumulated_buy_cost, adjusted_cost=adjusted_cost, market_value=round(sell_market_value),
+                                                     accumulated_shares=accumulated_buy_share, sell_quantity=sell_quantity, remaining_positions=(accumulated_buy_share - sell_quantity),
+                                                     avg_entry_price=round(avg_entry_price, 3), avg_exit_price=round(avg_exit_price, 3),
+                                                     trading_platform=Broker.FIRSTRADE,
+                                                     contract_info={})
+                        pl_message = TradeProfitAndLoss(**pl_message_param_dict)
+                        pl_message_list.append(pl_message)
+                    
+                    previous_day_remaining_position = accumulated_buy_share - sell_quantity
+                    previous_day_remaining_cost = accumulated_buy_cost - adjusted_cost
+                    
+                    accumulated_buy_share = accumulated_buy_share - sell_quantity
+                    accumulated_buy_cost = accumulated_buy_cost - adjusted_cost
+                    
+                    if previous_day_remaining_position == 0:
+                        previous_day_remaining_cost = 0
+                    
+                    if accumulated_buy_share == 0:
+                        accumulated_buy_cost = 0
+                        earliest_fillied_buy_order_datetime = None
                 
                 if pl_message_list:
+                    if date not in date_to_ticker_transaction_dict:
+                        date_to_ticker_transaction_dict[date] = {}
+                    
                     date_to_ticker_transaction_dict[date][ticker] = pl_message_list
+                else:
+                    logger.log_debug_msg(f'No sell order for {ticker} on {date} found in Firstrade', with_std_out=True)
+                  
+        close_position_date_to_trade_summary_list_dict = OrderedDict(sorted(date_to_ticker_transaction_dict.items(), key=lambda t: t[0]))
         
-        ordered_close_position_date_to_trade_summary_list_dict = OrderedDict(sorted(date_to_ticker_transaction_dict.items(), key=lambda t: t[0]))
-        close_position_date_to_trade_summary_list_dict = {}
-        
-        for date, ticker_to_trade_info_list in ordered_close_position_date_to_trade_summary_list_dict.items():
-            if ticker_to_trade_info_list:
-                close_position_date_to_trade_summary_list_dict[date] = ticker_to_trade_info_list
-        
+        # Daily Realised PL, Day Trade Summary, Swing Trade Summary
         daily_pl_dict = {}
         day_trade_summary_list = []
         swing_trade_summary_list = []
@@ -302,10 +330,9 @@ class FirstradePLReport(PLReport):
             
             week_dict['realised_pl'] = realised_pl
 
+        # Yearly and Monthly Realised PL
         monthly_pl_dict = {}
         yearly_pl_dict = {}
-        month_to_date_pl_dict = {}
-        year_to_date_pl_dict = {}
         for date, pl in daily_pl_dict.items():
             year = date.year
             year_month = (year, date.month)
@@ -319,6 +346,8 @@ class FirstradePLReport(PLReport):
             monthly_pl_dict[year_month] += pl
             yearly_pl_dict[year] += pl
         
+        # Month to Date Realised PL
+        month_to_date_pl_dict = {}
         for date, _ in daily_pl_dict.items():
             for check_date, pl in daily_pl_dict.items():
                 if check_date.year == date.year and check_date.month == date.month and check_date.day <= date.day:
@@ -329,6 +358,8 @@ class FirstradePLReport(PLReport):
                 elif check_date > date:
                     break
         
+        # Year to Date Realised PL
+        year_to_date_pl_dict = {}
         for date, _ in daily_pl_dict.items():
             for check_date, pl in daily_pl_dict.items():
                 if check_date.year == date.year and (check_date.month < date.month or (date.month == check_date.month and check_date.day <= date.day)):
@@ -338,22 +369,6 @@ class FirstradePLReport(PLReport):
                     year_to_date_pl_dict[date] += pl
                 elif check_date > date:
                     break
-        
-        # reversed_month_to_date_pl_dict = OrderedDict(reversed(sorted(month_to_date_pl_dict.items(), key=lambda t: t[0])))
-        # reversed_year_to_date_pl_dict = OrderedDict(reversed(sorted(year_to_date_pl_dict.items(), key=lambda t: t[0])))
-        
-        # filtered_month_to_date_pl_dict = {}
-        # filtered_year_to_date_pl_dict = {}
-        
-        # for date, pl in reversed_month_to_date_pl_dict.items():
-        #     if date.year == current_date.year and date.month == current_date.month:
-        #         filtered_month_to_date_pl_dict[date] = pl
-        #         break
-            
-        # for date, pl in reversed_year_to_date_pl_dict.items():
-        #     if date.year == current_date.year:
-        #         filtered_year_to_date_pl_dict[date] = pl
-        #         break
         
         current_date = get_current_us_datetime()
         last_us_business_day_in_end_of_year = get_last_us_business_day(current_date.year, 12)

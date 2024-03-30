@@ -7,14 +7,14 @@ from model.ib.contract_info import ContractInfo
 from constant.broker import Broker
 
 class TradeProfitAndLoss(DiscordMessage):
-    def __init__(self, ticker: str, 
-                       acquired_date: datetime.datetime, sold_date: datetime.datetime,
-                       accumulated_shares: int, sell_quantity: int, remaining_positions: int,
-                       avg_entry_price: float, avg_exit_price: float,
-                       accumulated_cost: float, adjusted_cost: float,
-                       market_value: float,
-                       realised_pl_percent: float, realised_pl: float, 
-                       trading_platform: Broker,
+    def __init__(self, ticker: str = None, 
+                       acquired_date: datetime.datetime = None, sold_date: datetime.datetime = None,
+                       accumulated_shares: int = None, sell_quantity: int = None, remaining_positions: int = None,
+                       avg_entry_price: float = None, avg_exit_price: float = None,
+                       accumulated_cost: float = None, adjusted_cost: float = None,
+                       market_value: float = None,
+                       realised_pl_percent: float = None, realised_pl: float = None, 
+                       trading_platform: Broker = None,
                        contract_info: ContractInfo = None):
         self.__ticker = ticker
         self.__acquired_date = acquired_date

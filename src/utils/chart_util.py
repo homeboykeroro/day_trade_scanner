@@ -81,6 +81,10 @@ def generate_chart(pattern: str, bar_size: BarSize, main_df: pd.DataFrame, scatt
     volume_max_range = ticker_level_dropped_df[Indicator.VOLUME.value].max()
 
     price_range_difference = price_max_range - price_min_range
+    
+    if price_range_difference <= 0:
+        return None
+    
     round_precision = get_max_round_decimal_places(price_min_range)
     price_y_axis_grid_tick = (price_range_difference / PRICE_GRID_DIVISION)
     first_non_zero_decimal_place = get_first_non_zero_decimal_place_position(price_y_axis_grid_tick)
@@ -103,9 +107,6 @@ def generate_chart(pattern: str, bar_size: BarSize, main_df: pd.DataFrame, scatt
     volume_y_axis_grid_tick = round_to_nth_digit((round_volume_max_range / VOLUME_GRID_DIVISION), 2)
     volume_tick_list = [0 + (i * volume_y_axis_grid_tick) for i in range(VOLUME_GRID_DIVISION + 1)]
 
-    ticker_level_dropped_scatter_symbol_df = scatter_symbol_df.copy()
-    ticker_level_dropped_scatter_symbol_df.columns = ticker_level_dropped_scatter_symbol_df.columns.droplevel(0)
-
     dt_str_list = []
     x_axis_unit = None
     description_dict_list = []
@@ -113,12 +114,14 @@ def generate_chart(pattern: str, bar_size: BarSize, main_df: pd.DataFrame, scatt
     if bar_size == BarSize.ONE_DAY:
         chart_setting.update(dict(datetime_format = DAILY_CANDLE_DISPLAY_FORMAT, 
                                   show_nontrading=False,
+                                  title=f'{ticker_name} Daily',
                                   scale_padding=dict(left=0.5, right=3, bottom=1.5, top=2)))
     elif bar_size == BarSize.ONE_MINUTE:
         dt_str_list = [dt.strftime((MINUTE_CANDLE_DISPLAY_FORMAT)) for dt in main_df.index.tolist()]
         x_axis_unit = dates.MinuteLocator(interval=1)
         chart_setting.update(dict(datetime_format = MINUTE_CANDLE_DISPLAY_FORMAT, 
                                   show_nontrading=True,
+                                  title=f'{ticker_name} Minutely',
                                   scale_padding=dict(left=0.5, right=3, bottom=1, top=2)))
 
     row_counter = 0
@@ -140,7 +143,7 @@ def generate_chart(pattern: str, bar_size: BarSize, main_df: pd.DataFrame, scatt
         indicator_plot = mpf.make_addplot(np.repeat(full_price_tick_list[1], len(main_df)),
                                            type='scatter', 
                                            markersize=800, 
-                                           marker=scatter_symbol_df.values.flatten(), 
+                                           marker=(scatter_symbol_df * 0.99).values.flatten(), 
                                            color=scatter_colour_df.values.flatten())
 
         indicator_chart_setting = dict(addplot=indicator_plot)
@@ -207,6 +210,11 @@ def get_candlestick_chart(candle_data_df: pd.DataFrame,
                                                                               positive_offset=positive_offset)
     
     logger.log_debug_msg(f'{ticker} candle start range: {candle_start_range}, candle end range: {candle_end_range}')
+    
+    with pd.option_context('display.max_rows', None,
+                           'display.max_columns', None,
+                           'display.precision', 3,):
+        logger.log_debug_msg(f'{ticker} candle chart data: {candle_data_df.loc[candle_start_range:candle_end_range, idx[[ticker], :]]}')
     
     chart_dir = generate_chart(pattern=pattern, 
                                bar_size=bar_size,

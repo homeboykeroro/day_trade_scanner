@@ -30,13 +30,18 @@ class ScannerResultMessage(DiscordMessage):
         embed.add_field(name = 'Volume:', value = f'{volume}', inline = True)
         embed.add_field(name = 'Total Volume:', value = f'{total_volume}', inline = True)
         embed.add_field(name = chr(173), value = chr(173), inline = True)
-        embed.set_image(url=f"attachment://{os.path.basename(minute_chart_dir)}")
-        embed.set_image(url=f"attachment://{os.path.basename(daily_chart_dir)}")
+        
+        candle_chart_list = []
+        
+        if minute_chart_dir:
+            embed.set_image(url=f"attachment://{os.path.basename(minute_chart_dir)}")
+            candle_chart_list.append(discord.File(minute_chart_dir, filename=os.path.basename(minute_chart_dir)))
+        if daily_chart_dir:
+            embed.set_image(url=f"attachment://{os.path.basename(daily_chart_dir)}")
+            candle_chart_list.append(discord.File(daily_chart_dir, filename=os.path.basename(daily_chart_dir)))
+        
         contract_info.add_contract_info_to_embed_msg(embed)
 
-        candle_chart_list = [discord.File(minute_chart_dir, filename=os.path.basename(minute_chart_dir)),
-                             discord.File(daily_chart_dir, filename=os.path.basename(daily_chart_dir))]
-        
         self.__ticker = contract_info.symbol
         self.embed = embed
         self.__readout_msg = readout_msg

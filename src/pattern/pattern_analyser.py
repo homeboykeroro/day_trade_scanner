@@ -6,7 +6,7 @@ import discord
 from model.discord.discord_message import DiscordMessage
 from model.discord.view.redirect_button import RedirectButton
 
-from utils.discord_message_record_util import check_if_message_sent, add_sent_message_record
+from utils.discord_message_record_util import check_if_pattern_analysis_message_sent, add_sent_pattern_analysis_message_record
 from utils.collection_util import get_chunk_list
 from utils.logger import Logger
 
@@ -25,8 +25,8 @@ class PatternAnalyser(ABC):
     def analyse(self) -> None:
         return NotImplemented
     
-    def check_if_message_sent(self, ticker: str, hit_scanner_datetime: datetime, pattern: str, bar_size: BarSize):
-        return check_if_message_sent(self.__sqlite_connector, ticker, hit_scanner_datetime.strftime('%Y-%m-%d %H:%M:%S'), pattern, bar_size.value)
+    def check_if_pattern_analysis_message_sent(self, ticker: str, hit_scanner_datetime: datetime, pattern: str, bar_size: BarSize):
+        return check_if_pattern_analysis_message_sent(self.__sqlite_connector, ticker, hit_scanner_datetime.strftime('%Y-%m-%d %H:%M:%S'), pattern, bar_size.value)
         
     def send_notification(self, scanner_result_list: list, discord_channel: DiscordChannel):
         if scanner_result_list:
@@ -56,4 +56,4 @@ class PatternAnalyser(ABC):
             self.__discord_client.send_message_by_list_with_response(message_list=notification_message_list, channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
             
             for save_notification in save_notification_db_record_tuple_list:
-                add_sent_message_record(self.__sqlite_connector, [save_notification])
+                add_sent_pattern_analysis_message_record(self.__sqlite_connector, [save_notification])

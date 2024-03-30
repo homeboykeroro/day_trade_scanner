@@ -36,15 +36,7 @@ class StockScreener():
         
         self.__ib_connector = IBConnector()
         self.__finviz_connector = FinvizConnector()
-        
-        try:
-            self.__ib_connector.check_auth_status()
-            self.__ib_connector.receive_brokerage_account()
-        except Exception as preflight_request_exception:
-            self.__discord_client.send_message(DiscordMessage(content='Client Portal API preflight requests failed, re-authenticating seesion'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
-            logger.log_error_msg(f'Client Portal API preflight requests error, {preflight_request_exception}', with_std_out=True)
-            self.__reauthenticate()
-            
+    
     def __scan(self):
         self.__sqllite_connector = SqliteConnector()
         self.__scanner = Scanner(self.__discord_client, self.__ib_connector, self.__finviz_connector, self.__sqllite_connector)
@@ -62,8 +54,8 @@ class StockScreener():
                     logger.log_debug_msg(f'Scan time taken: {time.time() - scan_start_time}') 
                 except (RequestException, ClientError) as connection_exception:
                     self.__discord_client.send_message(DiscordMessage(content='Client Portal API connection failed, re-authenticating seesion'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
-                    logger.log_error_msg(f'Client Portal API connection error, {connection_exception}', with_std_out=True)
-                    self.__reauthenticate()
+                    logger.log_error_msg(f'Client Portal API connection error in stock screener, {connection_exception}', with_std_out=True)
+                    raise connection_exception
                 except (SqliteConnectionError) as sqlite_connection_exception:
                     self.__discord_client.send_message(DiscordMessage(content='SQLite connection error'), channel_type=DiscordChannel.CHATBOT_LOG, with_text_to_speech=True)
                     logger.log_error_msg(f'SQLite connection error, {sqlite_connection_exception}', with_std_out=True)
@@ -82,24 +74,6 @@ class StockScreener():
                     #self.__clean_sent_discord_message_record()
                 
                 time.sleep(SCANNER_REFRESH_INTERVAL)
-    
-    def __reauthenticate(self):
-        retry_times = 0
-        
-        while True:
-            try:
-                self.__ib_connector.reauthenticate()
-            except Exception as reauthenticate_exception:
-                if retry_times < MAX_RETRY_CONNECTION_TIMES:
-                    self.__discord_client.send_message(DiscordMessage(content=f'Failed to re-authenticate session, Retry reauthentication after {CONNECTION_FAIL_RETRY_INTERVAL} seconds'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
-                    logger.log_error_msg(f'Session re-authentication error, {reauthenticate_exception}', with_std_out=True)
-                    retry_times += 1
-                    time.sleep(CONNECTION_FAIL_RETRY_INTERVAL)
-                    continue
-                else:
-                    self.__discord_client.send_message(DiscordMessage(content=f'Maximum re-authentication attemps exceed. Please restart application'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
-                    exit(1)
-            break
         
     def __clean_sent_discord_message_record(self):
         logger.log_debug_msg('Delete previously sent message record', with_std_out=True)

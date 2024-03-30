@@ -138,8 +138,8 @@ class PLReportGenerator():
         
         while not self.__stop_thread:
             try:
-                self.__scan_firstrade_trade_data_file_and_update()
-                #self.__scan_ib_trade_data_file_and_update()
+                #self.__scan_firstrade_trade_data_file_and_update()
+                self.__scan_ib_trade_data_file_and_update()
                 #PLReport.send_aggregated_messages(self.__sqlite_connector, self.__discord_client)
                 time.sleep(SCAN_INTERVAL)
             except Exception as exception: # Must be 2000 or fewer in length

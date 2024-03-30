@@ -124,7 +124,10 @@ class ContractInfo:
     def add_contract_info_to_embed_msg(self, embed):
         embed.add_field(name = 'Company:', value = f'{self.__company_name}', inline = True)
         embed.add_field(name = 'Sector:', value = f'{self.__sector}', inline = True)
+        embed.add_field(name = chr(173), value = chr(173), inline = True)
         embed.add_field(name = 'Market Cap:', value = f'{self.__market_cap}', inline = True)
+        embed.add_field(name = chr(173), value = chr(173), inline = True)
+        embed.add_field(name = chr(173), value = chr(173), inline = True)
         embed.add_field(name = 'Shortable:', value = f"{'Yes' if self.__shortable == 'shortable' else 'No'}", inline = True)
         embed.add_field(name = 'Shortable Shares:', value = f"{self.__shortable_shares if (self.__shortable_shares) else 'N/A'}", inline = True)
         embed.add_field(name = 'Rebate Rate:', value = f'{self.__rebate_rate}', inline = True)

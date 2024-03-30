@@ -83,10 +83,13 @@ class InitialPop(PatternAnalyser):
                         continue
                     
                     pop_up_time = occurrence_idx
-                    is_message_sent = self.check_if_message_sent(ticker=ticker, hit_scanner_datetime=pop_up_time, pattern=PATTERN_NAME, bar_size=self.__bar_size)
+                    is_message_sent = self.check_if_pattern_analysis_message_sent(ticker=ticker, hit_scanner_datetime=pop_up_time, pattern=PATTERN_NAME, bar_size=self.__bar_size)
 
                     if not is_message_sent:
-                        logger.log_debug_msg(f'{ticker} Dataframe: {self.__historical_data_df.loc[:, idx[[ticker], :]]}')
+                        with pd.option_context('display.max_rows', None,
+                                               'display.max_columns', None,
+                                            'display.precision', 3,):
+                            logger.log_debug_msg(f'{ticker} Dataframe: {self.__historical_data_df.loc[:, idx[[ticker], :]]}')
                         
                         contract_info = self.__ticker_to_contract_info_dict[ticker]
                         close = self.__historical_data_df.loc[pop_up_time, (ticker, Indicator.CLOSE.value)]
@@ -102,11 +105,11 @@ class InitialPop(PatternAnalyser):
                                                                  ticker=ticker, pattern=PATTERN_NAME, bar_size=self.__bar_size,
                                                                  hit_scanner_datetime=pop_up_time,
                                                                  positive_offset=3, negative_offset=2,
-                                                                 scatter_symbol=ScatterSymbol.POP, scatter_colour=ScatterColour.BLUE)
+                                                                 scatter_symbol=ScatterSymbol.POP, scatter_colour=ScatterColour.CYAN)
                         daily_chart_dir = get_candlestick_chart(candle_data_df=daily_df,
                                                                 ticker=ticker, pattern=PATTERN_NAME, bar_size=BarSize.ONE_DAY,
                                                                 hit_scanner_datetime=daily_df.index[-1],
-                                                                scatter_symbol=ScatterSymbol.POP, scatter_colour=ScatterColour.BLUE)
+                                                                scatter_symbol=ScatterSymbol.POP, scatter_colour=ScatterColour.CYAN)
                         
                         hit_scanner_datetime_display = convert_into_human_readable_time(pop_up_time)
                         read_out_pop_up_time = convert_into_read_out_time(pop_up_time)

@@ -80,11 +80,10 @@ def append_customised_indicator(src_df: pd.DataFrame) -> pd.DataFrame:
 
 def replace_daily_df_latest_day_with_minute(daily_df: DataFrame, minute_df: DataFrame):
     daily_df_column_list = list(daily_df.columns.get_level_values(1).unique())
-    concat_daily_df = daily_df.iloc[:-1]
     
     concat_minute_df = minute_df.loc[:, idx[:, daily_df_column_list]].copy()
-    yesterday_close_df = daily_df.loc[[daily_df.index[-2]], idx[:, Indicator.CLOSE.value]]
-    yesterday_candle_upper_body_df = daily_df.loc[[daily_df.index[-2]], idx[:, CustomisedIndicator.CANDLE_UPPER_BODY.value]]
+    yesterday_close_df = daily_df.loc[[daily_df.index[-1]], idx[:, Indicator.CLOSE.value]]
+    yesterday_candle_upper_body_df = daily_df.loc[[daily_df.index[-1]], idx[:, CustomisedIndicator.CANDLE_UPPER_BODY.value]]
     minute_close_df = minute_df.loc[:, idx[:, Indicator.CLOSE.value]]
     minute_candle_lower_body_df = minute_df.loc[:, idx[:, CustomisedIndicator.CANDLE_LOWER_BODY.value]]
     close_pct_df = (minute_close_df.sub(yesterday_close_df.values)
@@ -97,7 +96,7 @@ def replace_daily_df_latest_day_with_minute(daily_df: DataFrame, minute_df: Data
     concat_minute_df.loc[:, idx[:, CustomisedIndicator.GAP_PCT_CHANGE.value]] = gap_up_pct_df
     concat_minute_df.index = concat_minute_df.index.floor('D')
     
-    return pd.concat([concat_daily_df,
+    return pd.concat([daily_df,
                       concat_minute_df], axis=0)
 
 def get_scatter_symbol_and_colour_df(src_df: DataFrame, occurrence_idx_list: list, scatter_symbol: ScatterSymbol, scatter_colour: ScatterColour):
