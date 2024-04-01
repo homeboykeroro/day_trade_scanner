@@ -425,7 +425,7 @@ class IBConnector:
                     else:
                         logger.log_debug_msg(f'{ticker} does not exist in ticker to contract dict')
 
-    def get_historical_candle_df(self, contract_list: list, period: str, bar_size: BarSize, outside_rth: str = 'true', candle_retrieval_start_time: datetime = None) -> pd.DataFrame:
+    def get_historical_candle_df(self, contract_list: list, period: str, bar_size: BarSize, outside_rth: str = 'true', candle_retrieval_end_datetime: datetime = None) -> pd.DataFrame:
         con_id_list = [contract['con_id'] for contract in contract_list]
         ticker_list = [contract['symbol'] for contract in contract_list]
         
@@ -434,18 +434,25 @@ class IBConnector:
         if bar_size.value.endswith('d'):  
             subtract_day = int(period[:-1])
             
-            if not candle_retrieval_start_time:
-                datetime_idx_range_end_datetime = get_current_us_datetime().date()
-            else:
-                datetime_idx_range_end_datetime = get_us_business_day(-1, candle_retrieval_start_time).date() if candle_retrieval_start_time.date() == get_current_us_datetime().date() else candle_retrieval_start_time.date()
-            
-            datetime_idx_range_start_datetime = get_us_business_day(offset_day=-(subtract_day - 1)).date() 
+            if not candle_retrieval_end_datetime:
+                candle_retrieval_end_datetime = get_us_business_day(0)
+                
+            if outside_rth == 'true':
+                candle_retrieval_end_datetime = candle_retrieval_end_datetime.replace(hour=20, minute=0, second=0, microsecond=0)
+            else:  
+                candle_retrieval_end_datetime = candle_retrieval_end_datetime.replace(hour=16, minute=0, second=0, microsecond=0)
+
+            datetime_idx_range_end_datetime = candle_retrieval_end_datetime.date()
+            datetime_idx_range_start_datetime = get_us_business_day(offset_day=-subtract_day, us_date=candle_retrieval_end_datetime).date()
+            request_start_time = get_us_business_day(1, candle_retrieval_end_datetime)
+            period = f'{subtract_day + 1}d'
             interval = US_BUSINESS_DAY
         else:
-            if not candle_retrieval_start_time:
+            if not candle_retrieval_end_datetime:
                 datetime_idx_range_end_datetime = get_current_us_datetime().replace(second=0, microsecond=0, tzinfo=None)
             else:
-                datetime_idx_range_end_datetime = candle_retrieval_start_time.replace(second=0, microsecond=0, tzinfo=None)
+                datetime_idx_range_end_datetime = candle_retrieval_end_datetime.replace(second=0, microsecond=0, tzinfo=None)
+                request_start_time = datetime_idx_range_end_datetime
             
             if period.endswith('d'):
                 subtract_day = int(period[:-1])
@@ -464,9 +471,9 @@ class IBConnector:
                 'outsideRth': outside_rth,
             }
 
-            if candle_retrieval_start_time:
-                candle_payload['startTime'] = convert_us_to_hk_datetime(candle_retrieval_start_time).strftime('%Y%m%d-%H:%M:%S')
-
+            if request_start_time:
+                candle_payload['startTime'] = request_start_time.astimezone(pytz.utc).strftime('%Y%m%d-%H:%M:%S')
+            
             candle_payload_list.append(candle_payload)
 
         try:
@@ -530,6 +537,12 @@ class IBConnector:
             logger.log_debug_msg(f'Construct ohlcv dataframe time: {time.time() - construct_dataframe_start_time}')
 
             complete_df = pd.concat(ticker_candle_df_list, axis=1)
+            
+            if bar_size.value.endswith('d'):
+                dropped_indice = complete_df.isna().all(axis=1)[complete_df.isna().all(axis=1)].index.tolist()
+                complete_df = complete_df.dropna(axis=0, how='all')
+                logger.log_debug_msg(f'Nan Row Found in historical dataframe: {dropped_indice}')
+            
             complete_df_ticker_list = complete_df.columns.get_level_values(0).unique()
             
             incomplete_response_ticker_list = np.setdiff1d(ticker_list, complete_df_ticker_list)

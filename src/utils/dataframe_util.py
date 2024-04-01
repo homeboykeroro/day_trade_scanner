@@ -127,11 +127,11 @@ def get_candle_comments_df(src_df: DataFrame, indicator_list: list = [Customised
         src_indicator_df = src_df.loc[:, idx[[ticker_name], indicator.value]]
         
         if indicator == CustomisedIndicator.CLOSE_CHANGE or indicator == CustomisedIndicator.GAP_PCT_CHANGE:
-            src_df_value_np = np.around(src_indicator_df, 1).fillna('N/A').values.astype(str)
+            src_df_value_np = np.around(src_indicator_df.values.astype(float), 2)
         elif indicator == Indicator.VOLUME:
-            src_df_value_np = src_indicator_df.values.astype(int).astype(str)
-        else: 
-            src_df_value_np = src_indicator_df.fillna('N/A').values.astype(str)
+            src_df_value_np = np.around(src_indicator_df.values.astype(float))
+        
+        src_df_value_np = np.where(np.isnan(src_df_value_np), 'N/A', src_df_value_np).astype(str)
             
         indicator_description_np = np.char.add(indicator_description_np, f'{indicator.value + whitespace}: ') 
         indicator_description_np = np.char.add(indicator_description_np, src_df_value_np) 

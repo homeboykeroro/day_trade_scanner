@@ -7,7 +7,6 @@ from module.discord_chatbot_client import DiscordChatBotClient
 from scanner import Scanner
 
 from datasource.ib_connector import IBConnector
-from datasource.finviz_connector import FinvizConnector
 
 from sql.sqlite_connector import SqliteConnector
 
@@ -35,12 +34,11 @@ class StockScreener():
         self.__is_scanner_idle = False
         
         self.__ib_connector = IBConnector()
-        self.__finviz_connector = FinvizConnector()
-    
+
     def __scan(self):
         self.__sqllite_connector = SqliteConnector()
-        self.__scanner = Scanner(self.__discord_client, self.__ib_connector, self.__finviz_connector, self.__sqllite_connector)
-        self.__clean_sent_discord_message_record()
+        self.__scanner = Scanner(self.__discord_client, self.__ib_connector, self.__sqllite_connector)
+        #self.__clean_sent_discord_message_record()
         
         while True: 
             if is_within_trading_day_and_hours():
@@ -48,8 +46,8 @@ class StockScreener():
                 logger.log_debug_msg('Start scanning', with_std_out=True)
                 
                 try:
+                    self.__scanner.scan_yesterday_top_gainer()
                     self.__scanner.scan_top_gainer()
-                    #self.__scanner.scan_yesterday_top_gainer()
                     self.__scanner.scan_top_loser()
                     logger.log_debug_msg(f'Scan time taken: {time.time() - scan_start_time}') 
                 except (RequestException, ClientError) as connection_exception:
