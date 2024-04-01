@@ -48,7 +48,7 @@ def is_within_trading_day_and_hours() -> bool:
 def get_current_us_datetime() -> datetime:
     return datetime.datetime.now().astimezone(US_EASTERN_TIMEZONE)
 
-def get_us_business_day(offset_day: int, us_date: datetime.datetime = None) -> datetime.datetime:
+def get_us_business_day(offset_day: int = 0, us_date: datetime.datetime = None) -> datetime.datetime:
     if not us_date: 
         us_business_day = get_current_us_datetime()
     else:

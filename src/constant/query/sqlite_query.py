@@ -123,3 +123,4 @@ class SqliteQuery(str, Enum):
     DELETE_ALL_AGGREGATED_MONTHLY_REALISED_PL_QUERY = 'DELETE FROM aggregated_monthly_realised_pl'
     DELETE_ALL_AGGREGATED_YEARLY_REALISED_PL_QUERY = 'DELETE FROM aggregated_yearly_realised_pl'
     ADD_DAY_TRADE_SUMMARY_QUERY = "INSERT INTO aggregated_yearly_realised_pl VALUES(?, ?, ?)"
+    GET_PREVIOUS_DAY_TOP_GAINER_QUERY = 'SELECT * FROM top_gainer_history WHERE percentage >= ? AND scan_date >= ? AND scan_date <= ? ORDER BY scan_date, percentage DESC'

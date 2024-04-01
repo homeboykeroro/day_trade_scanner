@@ -88,8 +88,8 @@ class InitialPop(PatternAnalyser):
                     if not is_message_sent:
                         with pd.option_context('display.max_rows', None,
                                                'display.max_columns', None,
-                                            'display.precision', 3,):
-                            logger.log_debug_msg(f'{ticker} Dataframe: {self.__historical_data_df.loc[:, idx[[ticker], :]]}')
+                                            'display.precision', 3):
+                            logger.log_debug_msg(f'{ticker} Initial Pop Dataframe: {self.__historical_data_df.loc[:, idx[[ticker], :]]}')
                         
                         contract_info = self.__ticker_to_contract_info_dict[ticker]
                         close = self.__historical_data_df.loc[pop_up_time, (ticker, Indicator.CLOSE.value)]
