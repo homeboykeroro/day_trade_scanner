@@ -430,6 +430,7 @@ class IBConnector:
         ticker_list = [contract['symbol'] for contract in contract_list]
         
         candle_payload_list = []
+        request_start_time = None
         
         if bar_size.value.endswith('d'):  
             subtract_day = int(period[:-1])
@@ -472,6 +473,10 @@ class IBConnector:
             }
 
             if request_start_time:
+                if not request_start_time.tzinfo:
+                    us_timezone = pytz.timezone('US/Eastern')
+                    request_start_time = us_timezone.localize(request_start_time)
+                    
                 candle_payload['startTime'] = request_start_time.astimezone(pytz.utc).strftime('%Y%m%d-%H:%M:%S')
             
             candle_payload_list.append(candle_payload)

@@ -130,7 +130,9 @@ def get_candle_comments_df(src_df: DataFrame, indicator_list: list = [Customised
             src_df_value_np = np.around(src_indicator_df.values.astype(float), 2)
         elif indicator == Indicator.VOLUME:
             src_df_value_np = np.around(src_indicator_df.values.astype(float))
-        
+        elif indicator == Indicator.CLOSE:
+            src_df_value_np = np.around(src_indicator_df.values.astype(float), 3)
+
         src_df_value_np = np.where(np.isnan(src_df_value_np), 'N/A', src_df_value_np).astype(str)
             
         indicator_description_np = np.char.add(indicator_description_np, f'{indicator.value + whitespace}: ') 

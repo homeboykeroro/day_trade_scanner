@@ -93,8 +93,8 @@ class InitialPop(PatternAnalyser):
                         
                         contract_info = self.__ticker_to_contract_info_dict[ticker]
                         close = self.__historical_data_df.loc[pop_up_time, (ticker, Indicator.CLOSE.value)]
-                        volume = "{:,}".format(self.__historical_data_df.loc[pop_up_time, (ticker, Indicator.VOLUME.value)])
-                        total_volume = "{:,}".format(self.__historical_data_df.loc[pop_up_time, (ticker, CustomisedIndicator.TOTAL_VOLUME.value)])
+                        volume = self.__historical_data_df.loc[pop_up_time, (ticker, Indicator.VOLUME.value)]
+                        total_volume = self.__historical_data_df.loc[pop_up_time, (ticker, CustomisedIndicator.TOTAL_VOLUME.value)]
                         yesterday_close = yesterday_close_df.loc[yesterday_close_df.index[-1], (ticker, Indicator.CLOSE.value)]
                         yesterday_close_to_last_pct = yesterday_close_to_last_pct_df.loc[pop_up_time, (ticker, Indicator.CLOSE.value)]
                         

@@ -46,9 +46,9 @@ class StockScreener():
                 logger.log_debug_msg('Start scanning', with_std_out=True)
                 
                 try:
-                    self.__scanner.scan_yesterday_top_gainer()
                     self.__scanner.scan_top_gainer()
                     self.__scanner.scan_top_loser()
+                    self.__scanner.scan_yesterday_top_gainer()
                     logger.log_debug_msg(f'Scan time taken: {time.time() - scan_start_time}') 
                 except (RequestException, ClientError) as connection_exception:
                     self.__discord_client.send_message(DiscordMessage(content='Client Portal API connection failed, re-authenticating seesion'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)

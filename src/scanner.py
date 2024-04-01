@@ -100,7 +100,7 @@ class Scanner:
         one_minute_candle_df = self.__retrieve_intra_day_minute_candle(contract_list, BarSize.ONE_MINUTE)
         daily_df = self.__get_daily_candle(contract_list=contract_list, 
                                            offset_day=5, 
-                                           outside_rth=True)
+                                           outside_rth=False)
 
         logger.log_debug_msg(f'top gainer scanner result: {[contract["symbol"] for contract in contract_list]}')
         self.__discord_client.send_message(DiscordMessage(content=f'{[contract["symbol"] for contract in contract_list]}'), DiscordChannel.TOP_GAINER_SCANNER_LIST)
