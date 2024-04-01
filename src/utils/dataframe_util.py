@@ -96,7 +96,12 @@ def replace_daily_df_latest_day_with_minute(daily_df: DataFrame, minute_df: Data
     concat_minute_df.loc[:, idx[:, CustomisedIndicator.GAP_PCT_CHANGE.value]] = gap_up_pct_df
     concat_minute_df.index = concat_minute_df.index.floor('D')
     
-    return pd.concat([daily_df,
+    concat_daily_df = daily_df
+    
+    if daily_df.index.isin(concat_minute_df.index).any():
+        concat_daily_df = daily_df[~daily_df.index.isin(concat_minute_df.index)]
+        
+    return pd.concat([concat_daily_df,
                       concat_minute_df], axis=0)
 
 def get_scatter_symbol_and_colour_df(src_df: DataFrame, occurrence_idx_list: list, scatter_symbol: ScatterSymbol, scatter_colour: ScatterColour):

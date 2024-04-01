@@ -46,7 +46,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
 
         if len(yesterday_bullish_daily_candle_ticker_list) > 0:
             for ticker in yesterday_bullish_daily_candle_ticker_list:
-                is_message_sent = self.check_if_pattern_analysis_message_sent(ticker=ticker, hit_scanner_datetime=hit_scanner_date, pattern=PATTERN_NAME, bar_size=BarSize.ONE_DAY)
+                is_message_sent = self.check_if_pattern_analysis_message_sent(ticker=ticker, hit_scanner_datetime=hit_scanner_date.date(), pattern=PATTERN_NAME, bar_size=BarSize.ONE_DAY)
 
                 if not is_message_sent:
                     with pd.option_context('display.max_rows', None,
@@ -68,7 +68,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
                     hit_scanner_datetime_display = hit_scanner_date.strftime('%Y-%m-%d')
                                             
                     message = ScannerResultMessage(title=f'{ticker}\'s yesterday\'s bullish daily candle ({hit_scanner_datetime_display})',
-                                                   readout_msg=f'{" ".join(ticker)} yesterday\'s bullish daily candle, up {close_pct}%',
+                                                   readout_msg=f'{" ".join(ticker)} yesterday\'s bullish daily candle, up {round(close_pct, 2)}%',
                                                    close=close,
                                                    yesterday_close=close,
                                                    volume=volume, total_volume=volume,
