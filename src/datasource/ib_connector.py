@@ -87,17 +87,17 @@ class IBConnector:
             reauthenticate_response = session.post(f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.REAUTHENTICATE}', verify=False)
             logger.log_debug_msg(f'Session re-authentication response time: {time.time() - reauthenticate_time} seconds')
 
-            if not sso_validate_response.ok and not reauthenticate_response.ok:
+            if not reauthenticate_response.ok:
                raise requests.RequestException('Failed to reauthenticate and validate session')
 
-            sso_validate_result = sso_validate_response.json()
+            if sso_validate_response.ok:
+                sso_validate_result = sso_validate_response.json()
+                logger.log_debug_msg(f'SSO validation result: {sso_validate_result}', with_std_out=True)
+            else:
+                logger.log_debug_msg(f'SSO validation failed', with_std_out=True)
+                
             reauthenticate_result = reauthenticate_response.json()
-
             reauthenticate_message = reauthenticate_result.get('message')
-            sso_validate_result = sso_validate_result.get('RESULT')
-            
-            if not sso_validate_result:
-                raise requests.RequestException('Failed to validate session')
             
             if not reauthenticate_message:
                 raise requests.RequestException('Failed to reauthenticate session')
@@ -541,7 +541,10 @@ class IBConnector:
 
             logger.log_debug_msg(f'Construct ohlcv dataframe time: {time.time() - construct_dataframe_start_time}')
 
-            complete_df = pd.concat(ticker_candle_df_list, axis=1)
+            if ticker_candle_df_list:
+                complete_df = pd.concat(ticker_candle_df_list, axis=1)
+            else:
+                return None
             
             if bar_size.value.endswith('d'):
                 dropped_indice = complete_df.isna().all(axis=1)[complete_df.isna().all(axis=1)].index.tolist()

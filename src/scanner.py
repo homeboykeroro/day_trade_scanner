@@ -64,7 +64,7 @@ class Scanner:
         }
         
     def scan_yesterday_top_gainer(self):
-        yesterday_top_gainer_contract_list = self.__get_previous_day_top_gainers_contracts(offset=-3) #-1
+        yesterday_top_gainer_contract_list = self.__get_previous_day_top_gainers_contracts(offset=-1) 
         previous_day_top_gainers_df = self.__get_daily_candle(contract_list=yesterday_top_gainer_contract_list, 
                                                               offset_day=PREVIOUS_DAY_TOP_GAINER_MAX_OBSERVE_DAYS,
                                                               outside_rth=False)
@@ -205,13 +205,23 @@ class Scanner:
                                                                      bar_size=BarSize.ONE_DAY, 
                                                                      outside_rth=outside_rth_str, 
                                                                      candle_retrieval_end_datetime=candle_retrieval_end_datetime)
-            complete_df = append_customised_indicator(candle_df)
-           
-            self.__daily_canlde_df = pd.concat([self.__daily_canlde_df,
-                                                complete_df], axis=1)
-       
+            if candle_df is not None and not candle_df.empty:
+                complete_df = append_customised_indicator(candle_df)
+
+                self.__daily_canlde_df = pd.concat([self.__daily_canlde_df,
+                                                    complete_df], axis=1)
+
+        result_df_ticker_list = self.__daily_canlde_df.columns.get_level_values(0).unique()
+        select_contract_ticker_list = []
+        
+        for ticker in contract_ticker_list:
+            if ticker in result_df_ticker_list:
+                select_contract_ticker_list.append(ticker)
+            else:
+                logger.log_debug_msg(f'Exclude ticker {ticker} from daily_df, no historical data found')
+
         start_date_range = get_us_business_day(-offset_day, candle_retrieval_end_datetime).date() #should be -offset_day, -1 is just for test
-        return self.__daily_canlde_df.loc[start_date_range:, idx[contract_ticker_list, :]]
+        return self.__daily_canlde_df.loc[start_date_range:, idx[select_contract_ticker_list, :]]
 
     def __get_previous_day_top_gainers_contracts(self, offset: int = None, retrieval_end_datetime: datetime = None):
         retrieval_start_datetime = get_us_business_day(offset)

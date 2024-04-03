@@ -1,6 +1,7 @@
+import os
 import time
 from aiohttp import ClientError
-from requests import RequestException
+from requests import HTTPError, RequestException
 
 from module.discord_chatbot_client import DiscordChatBotClient
 from module.stock_screener import StockScreener
@@ -39,9 +40,10 @@ def reauthenticate():
     while True:
         try:
             if retry_times < MAX_RETRY_CONNECTION_TIMES:
+                logger.log_debug_msg('send reauthenticate requests', with_std_out=True)
                 ib_connector.reauthenticate()
             else:
-                raise Exception()
+                raise RequestException("Reauthentication failed")
         except Exception as reauthenticate_exception:
             if retry_times < MAX_RETRY_CONNECTION_TIMES:
                 discord_client.send_message(DiscordMessage(content=f'Failed to re-authenticate session, retry reauthentication after {CONNECTION_FAIL_RETRY_INTERVAL} seconds'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
@@ -51,12 +53,13 @@ def reauthenticate():
                 continue
             else:
                 discord_client.send_message(DiscordMessage(content=f'Maximum re-authentication attemps exceed. Please restart application'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
-                raise reauthenticate_exception
+                time.sleep(30)
+                os._exit(1)
         break    
 
 def main():  
     try:
-        bot_thread = discord_client.run_chatbot()
+        discord_client.run_chatbot()
 
         while True:
             if discord_client.is_chatbot_ready:
@@ -65,11 +68,19 @@ def main():
         
         send_ib_preflight_request()
         
-        stock_screener.run_screener()
-        pl_report_generator.run_pl_report()
-   
-        bot_thread.join()
-    except (RequestException, ClientError) as connection_exception:
+        #pl_report_generator.run_pl_report()
+        
+        #https://www.geeksforgeeks.org/handling-a-threads-exception-in-the-caller-thread-in-python/
+        while True:  # Add a loop to restart the thread if it fails
+            try:
+                stock_screener = StockScreener(discord_client)  # Recreate the thread
+                stock_screener.start()
+                stock_screener.join()
+            except Exception as e:
+                logger.log_error_msg(f'StockScreener thread error, {e}', with_std_out=True)
+                continue
+            break
+    except (RequestException, ClientError, HTTPError):
         reauthenticate()
  
 if __name__ == '__main__':
