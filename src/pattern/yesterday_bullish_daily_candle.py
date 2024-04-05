@@ -67,7 +67,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
                         
                     hit_scanner_datetime_display = hit_scanner_date.strftime('%Y-%m-%d')
                                             
-                    message = ScannerResultMessage(title=f'{ticker}\'s yesterday\'s bullish daily candle ({hit_scanner_datetime_display})',
+                    message = ScannerResultMessage(title=f'{ticker}\'s yesterday\'s bullish daily candle, up {round(close_pct, 2)}% ({hit_scanner_datetime_display})',
                                                    readout_msg=f'{" ".join(ticker)} yesterday\'s bullish daily candle, up {round(close_pct, 2)}%',
                                                    close=close,
                                                    yesterday_close=close,

@@ -162,7 +162,9 @@ class Scanner:
         for contract in contract_list:
             if contract['symbol'] not in yesterday_top_gainer_ticker_list:
                 candle_request_contract_list.append(contract)
-                
+        
+        select_contract_ticker_list = []
+
         if candle_request_contract_list:
             candle_retrieval_end_datetime = get_us_business_day(offset_day=-1)
             
@@ -178,12 +180,20 @@ class Scanner:
                                                                      bar_size=bar_size, 
                                                                      outside_rth=outside_rth_str, 
                                                                      candle_retrieval_end_datetime=candle_retrieval_end_datetime)
-            complete_df = append_customised_indicator(candle_df)
             
-            self.__yesterday_top_gainier_minute_candle_df_dict[bar_size] = pd.concat([self.__yesterday_top_gainier_minute_candle_df_dict[bar_size],
-                                                                                      complete_df], axis=1)
+            if candle_df is not None and not candle_df.empty:
+                complete_df = append_customised_indicator(candle_df)
+            
+                self.__yesterday_top_gainier_minute_candle_df_dict[bar_size] = pd.concat([self.__yesterday_top_gainier_minute_candle_df_dict[bar_size],
+                                                                                          complete_df], axis=1)
         
-        return self.__yesterday_top_gainier_minute_candle_df_dict[bar_size].loc[:, idx[contract_ticker_list, :]]
+        for ticker in contract_ticker_list:
+            if ticker in yesterday_top_gainer_ticker_list:
+                select_contract_ticker_list.append(ticker)
+        else:
+            logger.log_debug_msg(f'Exclude ticker {ticker} from daily_df, no historical data found', with_std_out=True)
+        
+        return self.__yesterday_top_gainier_minute_candle_df_dict[bar_size].loc[:, idx[select_contract_ticker_list, :]]
     
     def __get_daily_candle(self, contract_list: list, offset_day: int, outside_rth: bool = False, candle_retrieval_end_datetime: datetime.datetime = None) -> pd.DataFrame:
         candle_request_contract_list = []
@@ -218,7 +228,7 @@ class Scanner:
             if ticker in result_df_ticker_list:
                 select_contract_ticker_list.append(ticker)
             else:
-                logger.log_debug_msg(f'Exclude ticker {ticker} from daily_df, no historical data found')
+                logger.log_debug_msg(f'Exclude ticker {ticker} from daily_df, no historical data found', with_std_out=True)
 
         start_date_range = get_us_business_day(-offset_day, candle_retrieval_end_datetime).date() #should be -offset_day, -1 is just for test
         return self.__daily_canlde_df.loc[start_date_range:, idx[select_contract_ticker_list, :]]
