@@ -113,7 +113,7 @@ class DiscordChatBotClient(discord.Client):
         
         self.__initial_pop_channel = self.get_channel(INITIAL_POP_CHANNEL_ID)
         self.__initial_dip_channel = self.get_channel(INITIAL_DIP_CHANNEL_ID)
-        self.__yesterday_bullish_DAILY_candle_channel = self.get_channel(YESTERDAY_BULLISH_DAILY_CANDLE_CHANNEL_ID)
+        self.__yesterday_bullish_daily_candle_channel = self.get_channel(YESTERDAY_BULLISH_DAILY_CANDLE_CHANNEL_ID)
         
         self.__top_gainer_scanner_list_channel = self.get_channel(TOP_GAINER_SCANNER_LIST_CHANNEL_ID)
         self.__top_loser_scanner_list_channel = self.get_channel(TOP_LOSER_SCANNER_LIST_CHANNEL_ID)
@@ -250,7 +250,7 @@ class DiscordChatBotClient(discord.Client):
         elif channel_type == DiscordChannel.INITIAL_DIP:
             channel = self.__initial_dip_channel
         elif channel_type == DiscordChannel.YESTERDAY_BULLISH_DAILY_CANDLE:
-            channel = self.__yesterday_bullish_DAILY_candle_channel
+            channel = self.__yesterday_bullish_daily_candle_channel
         elif channel_type == DiscordChannel.TOP_GAINER_SCANNER_LIST:
             channel = self.__top_gainer_scanner_list_channel
         elif channel_type == DiscordChannel.TOP_LOSER_SCANNER_LIST:

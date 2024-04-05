@@ -73,7 +73,10 @@ class Scanner:
                    'display.max_columns', None,
                    'display.precision', 3):
             logger.log_debug_msg(f'previous day top gainer df: {previous_day_top_gainers_df}', with_log_file=True, with_std_out=False)
-          
+        
+        logger.log_debug_msg(f'yesterday top gainer scanner result: {[contract["symbol"] for contract in yesterday_top_gainer_contract_list]}')
+        self.__discord_client.send_message(DiscordMessage(content=f'{[contract["symbol"] for contract in yesterday_top_gainer_contract_list]}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+        
         yesterday_bullish_daily_candle_analyser = YesterdayBullishDailyCandle(daily_df=previous_day_top_gainers_df,
                                                                               ticker_to_contract_info_dict=self.__ib_connector.get_ticker_to_contract_dict(), 
                                                                               discord_client=self.__discord_client, 

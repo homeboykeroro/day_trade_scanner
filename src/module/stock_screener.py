@@ -91,6 +91,6 @@ class StockScreener(threading.Thread):
         threading.Thread.join(self)
         
         if self.exc:
-            logger.log_error_msg('connection error caught in stock screener thread', with_std_out=True)
+            logger.log_error_msg('stock screener connection error', with_std_out=True)
             raise self.exc
             

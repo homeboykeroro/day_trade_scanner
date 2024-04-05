@@ -30,9 +30,9 @@ def send_ib_preflight_request():
         ib_connector.check_auth_status()
         ib_connector.receive_brokerage_account()
     except Exception as preflight_request_exception:
-        discord_client.send_message(DiscordMessage(content='Client Portal API preflight requests failed, re-authenticating seesion'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+        discord_client.send_message_by_list_with_response([DiscordMessage(content='Client Portal API preflight requests failed, re-authenticating seesion')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
         logger.log_error_msg(f'Client Portal API preflight requests error, {preflight_request_exception}', with_std_out=True)
-        raise RequestException("IB preflight request failed")
+        reauthenticate()
 
 def reauthenticate():
     retry_times = 0
@@ -46,7 +46,7 @@ def reauthenticate():
                 raise RequestException("Reauthentication failed")
         except Exception as reauthenticate_exception:
             if retry_times < MAX_RETRY_CONNECTION_TIMES:
-                discord_client.send_message(DiscordMessage(content=f'Failed to re-authenticate session, retry reauthentication after {CONNECTION_FAIL_RETRY_INTERVAL} seconds'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+                discord_client.send_message_by_list_with_response([DiscordMessage(content=f'Failed to re-authenticate session, retry after {CONNECTION_FAIL_RETRY_INTERVAL} seconds')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
                 logger.log_error_msg(f'Session re-authentication error, {reauthenticate_exception}', with_std_out=True)
                 retry_times += 1
                 time.sleep(CONNECTION_FAIL_RETRY_INTERVAL)
@@ -55,6 +55,8 @@ def reauthenticate():
                 discord_client.send_message(DiscordMessage(content=f'Maximum re-authentication attemps exceed. Please restart application'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
                 time.sleep(30)
                 os._exit(1)
+        discord_client.send_message_by_list_with_response([DiscordMessage(content='Reauthentication succeed')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+        logger.log_debug_msg('Reauthentication succeed', with_std_out=True)
         break    
 
 def main():  
@@ -66,18 +68,22 @@ def main():
                 logger.log_debug_msg('Chatbot is ready', with_std_out=True)
                 break
         
-        send_ib_preflight_request()
+        #send_ib_preflight_request()
         
         #pl_report_generator.run_pl_report()
         
         #https://www.geeksforgeeks.org/handling-a-threads-exception-in-the-caller-thread-in-python/
         while True:  # Add a loop to restart the thread if it fails
             try:
+                logger.log_debug_msg('Create and start stock screener', with_std_out=True)
+                discord_client.send_message_by_list_with_response([DiscordMessage(content='Stock screener started')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
                 stock_screener = StockScreener(discord_client)  # Recreate the thread
                 stock_screener.start()
                 stock_screener.join()
             except Exception as e:
+                discord_client.send_message_by_list_with_response([DiscordMessage(content='Failed to start stock screener, reauthenticating')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
                 logger.log_error_msg(f'StockScreener thread error, {e}', with_std_out=True)
+                reauthenticate()
                 continue
             break
     except (RequestException, ClientError, HTTPError):
