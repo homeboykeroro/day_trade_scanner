@@ -68,7 +68,7 @@ def main():
                 logger.log_debug_msg('Chatbot is ready', with_std_out=True)
                 break
         
-        #send_ib_preflight_request()
+        send_ib_preflight_request()
         
         #pl_report_generator.run_pl_report()
         

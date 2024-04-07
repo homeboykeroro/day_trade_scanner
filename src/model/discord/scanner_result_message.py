@@ -3,7 +3,7 @@ import os
 import discord
 
 from model.ib.contract_info import ContractInfo
-
+from model.financial_data import FinancialData
 from model.discord.discord_message import DiscordMessage
 
 from constant.pattern import Pattern
@@ -14,8 +14,9 @@ class ScannerResultMessage(DiscordMessage):
                        readout_msg,
                        close, 
                        yesterday_close,
-                       volume: int, total_volume: int,
+                       volume: int = None, total_volume: int = None,
                        contract_info: ContractInfo = None,
+                       financial_data: FinancialData = None,
                        minute_chart_dir: str = None, 
                        daily_chart_dir: str = None, 
                        ticker: str = None,
@@ -27,9 +28,15 @@ class ScannerResultMessage(DiscordMessage):
         embed.add_field(name = 'Close:', value= f'${close}', inline = True)
         embed.add_field(name = 'Yesterday Close:', value = f'${yesterday_close}', inline = True)
         embed.add_field(name = chr(173), value = chr(173), inline = True)
-        embed.add_field(name = 'Volume:', value = f'{"{:,}".format(int(volume))}', inline = True)
-        embed.add_field(name = 'Total Volume:', value = f'{"{:,}".format(int(total_volume))}', inline = True)
-        embed.add_field(name = chr(173), value = chr(173), inline = True)
+        
+        if (not volume) and total_volume:
+            embed.add_field(name = 'Total Volume:', value = f'{"{:,}".format(int(total_volume))}', inline = True)
+            embed.add_field(name = chr(173), value = chr(173), inline = True)
+            embed.add_field(name = chr(173), value = chr(173), inline = True)
+        else:
+            embed.add_field(name = 'Volume:', value = f'{"{:,}".format(int(volume))}', inline = True)
+            embed.add_field(name = 'Total Volume:', value = f'{"{:,}".format(int(total_volume))}', inline = True)
+            embed.add_field(name = chr(173), value = chr(173), inline = True)
         
         candle_chart_list = []
         
@@ -43,6 +50,9 @@ class ScannerResultMessage(DiscordMessage):
         if contract_info:
             contract_info.add_contract_info_to_embed_msg(embed)
 
+        if financial_data:
+            financial_data.add_financials_to_embed_msg(embed)
+        
         self.__ticker = ticker
         self.embed = embed
         self.__readout_msg = readout_msg

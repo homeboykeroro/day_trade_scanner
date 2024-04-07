@@ -13,6 +13,7 @@ from pattern.yesterday_bullish_daily_candle import YesterdayBullishDailyCandle
 
 from model.discord.discord_message import DiscordMessage
 
+from utils.yfinance_util import get_financial_data
 from utils.previous_day_top_gainer_util import get_previous_day_top_gainer_list
 from utils.filter_util import get_ib_scanner_filter
 from utils.nasdaq_data_util import get_all_ticker_in_the_market
@@ -56,7 +57,7 @@ class Scanner:
         self.__ib_connector = ib_connector
         self.__sqllite_connector = sqlite_connector
         
-        self.__all_ticker_list = get_all_ticker_in_the_market()
+        #self.__all_ticker_list = get_all_ticker_in_the_market()
         self.__daily_canlde_df = pd.DataFrame()
         
         self.__yesterday_top_gainier_minute_candle_df_dict = {
@@ -69,6 +70,8 @@ class Scanner:
                                                               offset_day=PREVIOUS_DAY_TOP_GAINER_MAX_OBSERVE_DAYS,
                                                               outside_rth=False)
         
+        ticker_to_financial_data_dict = get_financial_data(yesterday_top_gainer_contract_list)
+        
         with pd.option_context('display.max_rows', None,
                    'display.max_columns', None,
                    'display.precision', 3):
@@ -79,6 +82,7 @@ class Scanner:
         
         yesterday_bullish_daily_candle_analyser = YesterdayBullishDailyCandle(daily_df=previous_day_top_gainers_df,
                                                                               ticker_to_contract_info_dict=self.__ib_connector.get_ticker_to_contract_dict(), 
+                                                                              ticker_to_financial_data_dict=ticker_to_financial_data_dict,
                                                                               discord_client=self.__discord_client, 
                                                                               sqlite_connector=self.__sqllite_connector)
         yesterday_bullish_daily_candle_analyser.analyse()
