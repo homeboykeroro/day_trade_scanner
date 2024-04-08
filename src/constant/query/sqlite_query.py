@@ -124,3 +124,5 @@ class SqliteQuery(str, Enum):
     DELETE_ALL_AGGREGATED_YEARLY_REALISED_PL_QUERY = 'DELETE FROM aggregated_yearly_realised_pl'
     ADD_DAY_TRADE_SUMMARY_QUERY = "INSERT INTO aggregated_yearly_realised_pl VALUES(?, ?, ?)"
     GET_PREVIOUS_DAY_TOP_GAINER_QUERY = 'SELECT * FROM top_gainer_history WHERE percentage >= ? AND scan_date >= ? AND scan_date <= ? ORDER BY scan_date, percentage DESC'
+    GET_OFFERING_HISTORY_QUERY = 'SELECT * FROM offering_history WHERE ticker = ?'
+    GET_LATEST_TICKER_SCRAPE_DATE_QUERY = 'SELECT scrape_date FROM offering_history WHERE ticker = ? ORDER BY scrape_date DESC LIMIT 1'

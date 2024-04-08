@@ -21,7 +21,7 @@ logger = Logger()
 # session.headers['User-agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:95.0) Gecko/20100101 Firefox/95.0'
 
 def get_financial_data(contract_list: list) -> dict:
-    ticker_list = [contract.get('symbol') for contract in contract_list]
+    ticker_list = [contract.symbol for contract in contract_list]
     request_ticker_str = ' '.join(ticker_list)
     result_dict = {}
     

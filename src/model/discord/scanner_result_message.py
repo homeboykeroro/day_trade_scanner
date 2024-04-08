@@ -4,6 +4,7 @@ import discord
 
 from model.ib.contract_info import ContractInfo
 from model.financial_data import FinancialData
+from model.offering_news import OfferingNews
 from model.discord.discord_message import DiscordMessage
 
 from constant.pattern import Pattern
@@ -17,6 +18,7 @@ class ScannerResultMessage(DiscordMessage):
                        volume: int = None, total_volume: int = None,
                        contract_info: ContractInfo = None,
                        financial_data: FinancialData = None,
+                       offering_news: OfferingNews = None,
                        minute_chart_dir: str = None, 
                        daily_chart_dir: str = None, 
                        ticker: str = None,
@@ -52,6 +54,9 @@ class ScannerResultMessage(DiscordMessage):
 
         if financial_data:
             financial_data.add_financials_to_embed_msg(embed)
+        
+        if offering_news:
+            offering_news.add_offering_news_to_embed_msg(embed)
         
         self.__ticker = ticker
         self.embed = embed

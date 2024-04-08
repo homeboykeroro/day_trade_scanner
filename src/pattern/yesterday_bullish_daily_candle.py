@@ -3,6 +3,7 @@ import pandas as pd
 
 from model.discord.scanner_result_message import ScannerResultMessage
 from model.financial_data import FinancialData
+from model.offering_news import OfferingNews
 
 from pattern.pattern_analyser import PatternAnalyser
 
@@ -25,10 +26,11 @@ PATTERN_NAME = 'YESTERDAY_BULLISH_DAILY_CANDLE'
 class YesterdayBullishDailyCandle(PatternAnalyser):
     MIN_YESTERDAY_CLOSE_CHANGE_PCT = 30
     
-    def __init__(self, daily_df: pd.DataFrame, ticker_to_contract_info_dict: dict, ticker_to_financial_data_dict: dict, discord_client, sqlite_connector):
+    def __init__(self, daily_df: pd.DataFrame, ticker_to_contract_info_dict: dict, ticker_to_offerings_news_dict: dict, ticker_to_financial_data_dict: dict, discord_client, sqlite_connector):
         super().__init__(discord_client, sqlite_connector)
         self.__historical_data_df = daily_df
         self.__ticker_to_contract_info_dict = ticker_to_contract_info_dict
+        self.__ticker_to_offering_news_dict = ticker_to_offerings_news_dict
         self.__ticker_to_financial_data_dict = ticker_to_financial_data_dict
 
     def analyse(self) -> None:
@@ -57,6 +59,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
                         logger.log_debug_msg(f'{ticker} Yesterday Bullish Daily Candle Dataframe: {self.__historical_data_df.loc[:, idx[[ticker], :]]}')
                        
                     contract_info = self.__ticker_to_contract_info_dict[ticker]
+                    date_to_news_dict = self.__ticker_to_offering_news_dict[ticker]
                     financial_data_dict = self.__ticker_to_financial_data_dict[ticker]
                     financial_data = FinancialData(symbol=ticker,
                                                 quarterly_cash_flow_df=financial_data_dict.get('quarterly_cash_flow_df'),
@@ -67,7 +70,8 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
                                                 annual_income_stmt_df=financial_data_dict.get('annual_income_stmt_df'),
                                                 major_holders_df=financial_data_dict.get('major_holders_df'),
                                                 institutional_holders_df=financial_data_dict.get('institutional_holders_df'))
-                    
+                    offering_news = OfferingNews(symbol=ticker,
+                                                 date_to_news_dict=date_to_news_dict)
                     close = self.__historical_data_df.loc[hit_scanner_date, (ticker, Indicator.CLOSE.value)]
                     close_pct = self.__historical_data_df.loc[hit_scanner_date, (ticker, CustomisedIndicator.CLOSE_CHANGE.value)]
                     volume = self.__historical_data_df.loc[hit_scanner_date, (ticker, Indicator.VOLUME.value)]
@@ -87,6 +91,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
                                                    total_volume=volume,
                                                    contract_info=contract_info,
                                                    financial_data=financial_data,
+                                                   offering_news=offering_news,
                                                    daily_chart_dir=daily_chart_dir, 
                                                    ticker=ticker,
                                                    hit_scanner_datetime=hit_scanner_datetime_display,
