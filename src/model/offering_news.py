@@ -18,6 +18,9 @@ class OfferingNews:
 
     def add_offering_news_to_embed_msg(self, embed):
         #https://stackoverflow.com/questions/54753005/is-there-any-way-to-embed-a-hyperlink-in-a-richembed
+        if not self.__date_to_news_dict:
+            return
+        
         concat_str = ''
         for publish_date, news in self.__date_to_news_dict.items():
             concat_str += f"[{news.get('title')} - ({publish_date.strftime('%Y-%m-%d')})]({news.get('link')})\n"

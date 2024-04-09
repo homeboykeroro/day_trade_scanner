@@ -1,3 +1,4 @@
+from datetime import timedelta
 import time
 import pandas as pd
 
@@ -58,9 +59,9 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
                                         'display.precision', 3):
                         logger.log_debug_msg(f'{ticker} Yesterday Bullish Daily Candle Dataframe: {self.__historical_data_df.loc[:, idx[[ticker], :]]}')
                        
-                    contract_info = self.__ticker_to_contract_info_dict[ticker]
-                    date_to_news_dict = self.__ticker_to_offering_news_dict[ticker]
-                    financial_data_dict = self.__ticker_to_financial_data_dict[ticker]
+                    contract_info = self.__ticker_to_contract_info_dict.get(ticker)
+                    date_to_news_dict = self.__ticker_to_offering_news_dict.get(ticker)
+                    financial_data_dict = self.__ticker_to_financial_data_dict.get(ticker)
                     financial_data = FinancialData(symbol=ticker,
                                                 quarterly_cash_flow_df=financial_data_dict.get('quarterly_cash_flow_df'),
                                                 quarterly_balance_sheet_df=financial_data_dict.get('quarterly_balance_sheet_df'),
@@ -82,7 +83,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
                                                             scatter_symbol=ScatterSymbol.POP, scatter_colour=ScatterColour.CYAN,
                                                             candle_comment_list=[CustomisedIndicator.CLOSE_CHANGE, CustomisedIndicator.GAP_PCT_CHANGE])
                         
-                    hit_scanner_datetime_display = hit_scanner_date.strftime('%Y-%m-%d')
+                    hit_scanner_datetime_display = (hit_scanner_date + timedelta(days=1)).strftime('%Y-%m-%d')
                                             
                     message = ScannerResultMessage(title=f'{ticker}\'s yesterday\'s bullish daily candle, up {round(close_pct, 2)}% ({hit_scanner_datetime_display})',
                                                    readout_msg=f'{" ".join(ticker)} yesterday\'s bullish daily candle, up {round(close_pct, 2)}%',
@@ -96,7 +97,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
                                                    ticker=ticker,
                                                    hit_scanner_datetime=hit_scanner_datetime_display,
                                                    pattern=PATTERN_NAME,
-                                                   bar_size=BarSize.ONE_DAY)
+                                                   bar_size=BarSize.ONE_DAY.value)
                     message_list.append(message)
         
         if message_list:

@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 
 class FinancialData:
     MAX_DISPLAY_RESULT = 3
@@ -32,14 +33,6 @@ class FinancialData:
     def __hash__(self) -> int:
         return hash(self.__members())
     
-    @property
-    def con_id(self):
-        return self.__con_id
-    
-    @con_id.setter
-    def con_id(self, con_id):
-        self.__con_id = con_id
-
     def __get_max_str_len(self, value_list: list):
         max_val_len = 0
         
@@ -94,7 +87,14 @@ class FinancialData:
         display_debt_df = self.__quarterly_balance_sheet_df.loc[['Total Debt']] if not self.__quarterly_balance_sheet_df.empty else self.__annual_balance_sheet_df.loc[['Total Debt']]
         debt_date_list = display_debt_df.columns.tolist()
         debt_date_str_list = self.__convert_date_list_to_str(debt_date_list)[:self.MAX_DISPLAY_RESULT]
-        debt_value_list = [f'${"{:,}".format(int(val))}' if val > 0 else f'-${"{:,}".format(int(abs(val)))}' for val in display_debt_df.values[0].tolist()][:self.MAX_DISPLAY_RESULT]
+        debt_value_list = []
+        for val in display_debt_df.values[0].tolist()[:self.MAX_DISPLAY_RESULT]:
+            if np.isnan(val):
+                debt_value_list.append('NaN')
+            elif val > 0:
+                debt_value_list.append(f'${"{:,}".format(int(val))}')
+            else:
+                debt_value_list.append(f'-${"{:,}".format(int(abs(val)))}')
         
         check_debt_len_list = debt_date_str_list + debt_value_list
         max_debts_word_len = self.__get_max_str_len(check_debt_len_list)
@@ -146,4 +146,3 @@ class FinancialData:
         expenses_value_display = self.__get_concat_str(max_expenses_word_len, expenses_value_list)
         embed.add_field(name = f'\nExpenses Data: \n{expenses_date_display}\n{expenses_value_display}', value='\u200b', inline = False)
         
-#embed.description = "This country is not supported, you can ask me to add it [here](your_link_goes_here)."

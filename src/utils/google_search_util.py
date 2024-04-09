@@ -4,6 +4,7 @@ import os
 import re
 import threading
 import time
+from queue import Queue
 from serpapi import GoogleSearch
 
 from utils.previous_day_top_gainer_util import get_latest_scrape_date
@@ -18,7 +19,8 @@ MAX_SEARCH_DURATION_IN_YEAR = 2
 #https://developers.google.com/custom-search/docs/xml_results#PhraseSearchqt
 FILTER_RESULT_TITLE_REGEX = r'\b(closing|completes)\b'
 OFFERING_NEWS_KEYWORDS = 'intitle:"offering"'
-TRUNCATE_COMPANY_NAME_SUFFIX_REGEX =  r'\b(ltd\.?|plc\.?|adr|inc\.?|corp\.?|llc\.?)\b'
+#TRUNCATE_COMPANY_NAME_SUFFIX_REGEX = r'\b(ltd\.?|plc\.?|adr|inc\.?|corp\.?|llc\.?)\b'
+TRUNCATE_COMPANY_NAME_SUFFIX_REGEX = r'\b(ltd\.?|plc\.?|adr|inc\.?|corp\.?|llc\.?|class \w|co\b|ab-)\b'
 
 SERP_API_KEY_LIST = os.environ['SERP_API_KEYS']
 API_KEY_LIST = []
@@ -66,6 +68,9 @@ class GoogleSearchUtil:
     
     #https://serpapi.com/integrations/python#pagination-using-iterator      
     def search_offering_news(self, contract_list: list, sqlite_connector) -> dict:
+        if not contract_list:
+            return {}
+        
         ticker_to_datetime_to_news_dict = {}
         self.update_account_info()
         
@@ -73,89 +78,101 @@ class GoogleSearchUtil:
         start_date = end_date.replace(year=end_date.year - MAX_SEARCH_DURATION_IN_YEAR)
         
         request_search_news_contract_list = []
+        get_news_from_db_contract_list = []
         for contract in contract_list:
-            ticker = contract.symbol
+            ticker = contract.get('symbol')
             scrape_date = get_latest_scrape_date(sqlite_connector, ticker)
             
             if (not scrape_date 
                 or (scrape_date.year < end_date.year 
                         or (scrape_date.year == end_date.year and scrape_date.month < end_date.month))):
                 request_search_news_contract_list.append(contract)
+            else:
+                get_news_from_db_contract_list.append(contract)
         
         if request_search_news_contract_list:
+            search_start_time = time.time()
             end_date_str = f'{end_date.month}/{end_date.day}/{end_date.year}' 
             start_date_str = f'{start_date.month}/{start_date.day}/{start_date.year}' 
 
             filter_date_range_str = f'cd_min:{start_date_str},cd_max:{end_date_str}'
-            filtered_result = {}
+            #save_news_list = {}
             
-            for contract in request_search_news_contract_list:
-                company_name = re.sub(TRUNCATE_COMPANY_NAME_SUFFIX_REGEX, '', contract.company_name, flags=re.IGNORECASE).strip()
-                ticker = contract.symbol
-                query = f'(intext:"{ticker}" AND intext:"{company_name}") AND (intitle:"{company_name}" AND {OFFERING_NEWS_KEYWORDS})'
-                
-                search = GoogleSearch({
-                    #https://ahrefs.com/blog/google-advanced-search-operators/
-                    'q': query, 
-                    'google_domain': 'google.com',
-                    'hl': 'en',
-                    'device': 'desktop',    
-                    'tbs': filter_date_range_str,
-                    'num': MAX_NO_OF_RESULTS_PER_PAGE,
-                    'api_key': API_KEY_LIST[0],
-                    'filter': 0
-                })
+            chunk_start_idx = 0
+            for api_key, limit in API_KEYS_TO_LIMIT_DICT.items():
+                if limit > 0:
+                    contract_chunk_list = request_search_news_contract_list[chunk_start_idx:chunk_start_idx + limit]
+                    for contract in contract_chunk_list:
+                        filtered_result = {}
+                        search_ticker_offering_news_start_time = time.time()
+                        company_name = re.sub(TRUNCATE_COMPANY_NAME_SUFFIX_REGEX, '', contract.get('company_name'), flags=re.IGNORECASE).strip()
+                        ticker = contract.get('symbol')
+                        query = f'(intext:"{ticker}" AND intext:"{company_name}") AND (intitle:"{company_name}" AND {OFFERING_NEWS_KEYWORDS})'
+                        logger.log_debug_msg(f'Google search query for {ticker}, {company_name}: {query}')
 
-                results = search.get_json()                
-                
-                organic_results = results.get('organic_results')
-                logger.log_debug_msg(msg=organic_results, with_log_file=True)
-                
-                if not organic_results:
-                    continue
-                
-                for idx, search_result in enumerate(organic_results):
-                    position = search_result.get('position')
-                    title = search_result.get('title')
-                    link = search_result.get('link')
-                    source = search_result.get('source')
-                    
-                    parsed_date = None
-                    
-                    if 'date' in search_result:
-                        date = search_result.get('date')
-                        
-                        try:
-                            parsed_date = datetime.strptime(date, "%b %d, %Y")
-                        except ValueError:
-                            print(f'error date: {date}')
+                        search = GoogleSearch({
+                            #https://ahrefs.com/blog/google-advanced-search-operators/
+                            'q': query, 
+                            'google_domain': 'google.com',
+                            'hl': 'en',
+                            'device': 'desktop',    
+                            'tbs': filter_date_range_str,
+                            'num': MAX_NO_OF_RESULTS_PER_PAGE,
+                            'api_key': api_key,
+                            'filter': 0
+                        })
+
+                        results = search.get_json()                
+
+                        organic_results = results.get('organic_results')
+                        logger.log_debug_msg(msg=organic_results, with_log_file=True)
+
+                        if not organic_results:
                             continue
                         
-                        filter_title_pattern = re.compile(FILTER_RESULT_TITLE_REGEX, re.IGNORECASE)
-                        is_title_included_filtered_words = filter_title_pattern.search(title)
-                        
-                        if (parsed_date not in filtered_result 
-                                and company_name in title and 'offering' in title.lower()
-                                and not is_title_included_filtered_words):
-                            result_obj = {
-                                'position': position,
-                                'title': title,
-                                'link': link,
-                                'date': parsed_date,
-                                'source': source
-                            }
-                            
-                            filtered_result[parsed_date] = result_obj
-                        else:
-                            print(f'result not added, idx: {idx}')
-                    else:
-                        print(f'invalid date on {position}')
+                        for _, search_result in enumerate(organic_results):
+                            position = search_result.get('position')
+                            title = search_result.get('title').lower()
+                            link = search_result.get('link')
+                            source = search_result.get('source')
 
-                ordered_filter_dict = OrderedDict(sorted(filtered_result.items(), key=lambda t: t[0]))
-                ticker_to_datetime_to_news_dict[ticker] = ordered_filter_dict
-        
+                            parsed_date = None
+
+                            if 'date' in search_result:
+                                date = search_result.get('date')
+
+                                try:
+                                    parsed_date = datetime.strptime(date, "%b %d, %Y")
+                                except ValueError:
+                                    continue
+                                
+                                filter_title_pattern = re.compile(FILTER_RESULT_TITLE_REGEX, re.IGNORECASE)
+                                is_title_included_filtered_words = filter_title_pattern.search(title)
+
+                                if (parsed_date not in filtered_result 
+                                        and company_name.lower() in title and 'offering' in title
+                                        and not is_title_included_filtered_words):
+                                    result_obj = {
+                                        'position': position,
+                                        'title': title,
+                                        'link': link,
+                                        'date': parsed_date,
+                                        'source': source
+                                    }
+
+                                    filtered_result[parsed_date] = result_obj
+
+                        ordered_filter_dict = OrderedDict(sorted(filtered_result.items(), key=lambda t: t[0]))
+                        ticker_to_datetime_to_news_dict[ticker] = ordered_filter_dict
+
+                        logger.log_debug_msg(f'Search time for {ticker}, {company_name}\'s offering news: {time.time() - search_ticker_offering_news_start_time}s')         
+
+                    logger.log_debug_msg(f'Total search time for {[contract.get("symbol") for contract in request_search_news_contract_list]}, {time.time() - search_start_time}s')
+                    chunk_start_idx = chunk_start_idx + limit
+                    
         return ticker_to_datetime_to_news_dict            
             
-
+    #def async_search():
+        
         
     
