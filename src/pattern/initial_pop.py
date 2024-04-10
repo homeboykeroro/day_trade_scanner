@@ -89,7 +89,8 @@ class InitialPop(PatternAnalyser):
                         with pd.option_context('display.max_rows', None,
                                                'display.max_columns', None,
                                             'display.precision', 3):
-                            logger.log_debug_msg(f'{ticker} Initial Pop Dataframe: {self.__historical_data_df.loc[:, idx[[ticker], :]]}')
+                            logger.log_debug_msg(f'{ticker} Pop Up Boolean Dataframe: {pop_up_boolean_df.loc[:, idx[[ticker], :]]}')
+                            logger.log_debug_msg(f'{ticker} Initial Pop Full Dataframe: {self.__historical_data_df.loc[:, idx[[ticker], :]]}')
                         
                         contract_info = self.__ticker_to_contract_info_dict[ticker]
                         close = self.__historical_data_df.loc[pop_up_time, (ticker, Indicator.CLOSE.value)]
@@ -131,5 +132,5 @@ class InitialPop(PatternAnalyser):
         if message_list:
             send_msg_start_time = time.time()
             self.send_notification(message_list, DiscordChannel.INITIAL_POP)
-            logger.log_debug_msg(f'Initial pop send message time: {time.time() - send_msg_start_time} seconds')
+            logger.log_debug_msg(f'{PATTERN_NAME} send message time: {time.time() - send_msg_start_time} seconds')
     

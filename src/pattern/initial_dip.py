@@ -87,7 +87,8 @@ class InitialDip(PatternAnalyser):
                     is_message_sent = self.check_if_pattern_analysis_message_sent(ticker=ticker, hit_scanner_datetime=dip_time, pattern=PATTERN_NAME, bar_size=self.__bar_size)
 
                     if not is_message_sent:
-                        logger.log_debug_msg(f'{ticker} Dataframe: {self.__historical_data_df.loc[:, idx[[ticker], :]]}')
+                        logger.log_debug_msg(f'{ticker} Dip Boolean Dataframe: {dip_boolean_df.loc[:, idx[[ticker], :]]}')
+                        logger.log_debug_msg(f'{ticker} Initial Dip Full Dataframe: {self.__historical_data_df.loc[:, idx[[ticker], :]]}')
                         
                         contract_info = self.__ticker_to_contract_info_dict[ticker]
                         close = self.__historical_data_df.loc[dip_time, (ticker, Indicator.CLOSE.value)]
@@ -129,5 +130,5 @@ class InitialDip(PatternAnalyser):
         if message_list:
             send_msg_start_time = time.time()
             self.send_notification(message_list, DiscordChannel.INITIAL_DIP)
-            logger.log_debug_msg(f'Initial dip send message time: {time.time() - send_msg_start_time} seconds')
+            logger.log_debug_msg(f'{PATTERN_NAME} send message time: {time.time() - send_msg_start_time} seconds')
     
