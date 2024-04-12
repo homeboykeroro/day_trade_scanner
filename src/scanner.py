@@ -68,6 +68,7 @@ class Scanner:
     def scan_yesterday_top_gainer(self):
         us_current_datetime = get_current_us_datetime()
         day_offset = 0 if us_current_datetime.time() > datetime.time(16, 0, 0) else -1
+        yesterday_top_gainer_retrieval_datetime = get_us_business_day(offset_day=day_offset, us_date=us_current_datetime)
         yesterday_top_gainer_contract_list = self.__get_previous_day_top_gainers_contracts(offset=day_offset) 
         
         if not yesterday_top_gainer_contract_list:
@@ -77,7 +78,7 @@ class Scanner:
         for contract in yesterday_top_gainer_contract_list:
             is_yesterday_bullish_candle_analysis_msg_sent = check_if_pattern_analysis_message_sent(connector=self.__sqlite_connector, 
                                                                                                    ticker=contract.symbol, 
-                                                                                                   hit_scanner_datetime=get_us_business_day(offset_day=1, us_date=us_current_datetime).date(), 
+                                                                                                   hit_scanner_datetime=yesterday_top_gainer_retrieval_datetime.date(), 
                                                                                                    scan_pattern=YESTERDAY_BULLISH_CANDLE_PATTERN, 
                                                                                                    bar_size=BarSize.ONE_DAY.value)
             if not is_yesterday_bullish_candle_analysis_msg_sent:
@@ -86,11 +87,11 @@ class Scanner:
         if yesterday_bullish_candle_analysis_contract_list:
             previous_day_top_gainers_df = self.__get_daily_candle(contract_list=yesterday_bullish_candle_analysis_contract_list, 
                                                                   offset_day=PREVIOUS_DAY_TOP_GAINER_MAX_OBSERVE_DAYS,
-                                                                  outside_rth=False)
-            #select by index slice
+                                                                  outside_rth=False,
+                                                                  candle_retrieval_end_datetime=yesterday_top_gainer_retrieval_datetime)
+            
             ticker_to_financial_data_dict = get_financial_data(yesterday_bullish_candle_analysis_contract_list)
-            ticker_to_offering_news_dict = google_search_util.search_offering_news(contract_list=yesterday_bullish_candle_analysis_contract_list,
-                                                                                   sqlite_connector=self.__sqlite_connector)
+            ticker_to_offering_news_dict = google_search_util.search_offering_news(yesterday_bullish_candle_analysis_contract_list)
 
             with pd.option_context('display.max_rows', None,
                        'display.max_columns', None,
@@ -100,10 +101,11 @@ class Scanner:
             logger.log_debug_msg(f'scan yesterday top gainer scanner result: {[contract["symbol"] for contract in yesterday_bullish_candle_analysis_contract_list]}')
             self.__discord_client.send_message(DiscordMessage(content=f'{[contract["symbol"] for contract in yesterday_bullish_candle_analysis_contract_list]}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
 
-            yesterday_bullish_daily_candle_analyser = YesterdayBullishDailyCandle(daily_df=previous_day_top_gainers_df,
+            yesterday_bullish_daily_candle_analyser = YesterdayBullishDailyCandle(hit_scanner_date=yesterday_top_gainer_retrieval_datetime.date().strftime('%Y-%m-%d'),
+                                                                                  daily_df=previous_day_top_gainers_df,
                                                                                   ticker_to_contract_info_dict=self.__ib_connector.get_ticker_to_contract_dict(), 
-                                                                                  ticker_to_offerings_news_dict=ticker_to_offering_news_dict,
                                                                                   ticker_to_financial_data_dict=ticker_to_financial_data_dict,
+                                                                                  ticker_to_offerings_news_dict=ticker_to_offering_news_dict,
                                                                                   discord_client=self.__discord_client, 
                                                                                   sqlite_connector=self.__sqlite_connector)
             yesterday_bullish_daily_candle_analyser.analyse()
@@ -114,7 +116,7 @@ class Scanner:
         yesterday_one_minute_candle_df = self.__retrieve_yesterday_minute_candle(req_minute_candle_contract_list, 
                                                                                  BarSize.ONE_MINUTE)
         concated_one_minute_candle_df = pd.concat([yesterday_one_minute_candle_df,
-                                                  intra_day_one_minute_candle_df], axis=0)
+                                                   intra_day_one_minute_candle_df], axis=0)
         
         with pd.option_context('display.max_rows', None,
                    'display.max_columns', None,
@@ -180,7 +182,11 @@ class Scanner:
                                                                      period=f'{math.floor(historical_data_interval_in_minute)}min', 
                                                                      bar_size=bar_size, 
                                                                      outside_rth='true')
-            return append_customised_indicator(candle_df)
+            
+            if candle_df is not None and not candle_df.empty:
+                return append_customised_indicator(candle_df)
+            else:
+                return pd.DataFrame()
     
     def __retrieve_yesterday_minute_candle(self, contract_list: list, bar_size: BarSize, outside_rth: bool = True):
         candle_request_contract_list = []
@@ -216,11 +222,13 @@ class Scanner:
                 self.__yesterday_top_gainier_minute_candle_df_dict[bar_size] = pd.concat([self.__yesterday_top_gainier_minute_candle_df_dict[bar_size],
                                                                                           complete_df], axis=1)
         
+        result_df_ticker_list = self.__yesterday_top_gainier_minute_candle_df_dict[bar_size].columns.get_level_values(0).unique()
+        
         for ticker in contract_ticker_list:
-            if ticker in yesterday_top_gainer_ticker_list:
+            if ticker in result_df_ticker_list:
                 select_contract_ticker_list.append(ticker)
-        else:
-            logger.log_debug_msg(f'Exclude ticker {ticker} from daily_df, no historical data found', with_std_out=True)
+            else:
+                logger.log_debug_msg(f'Exclude ticker {ticker} from yesterday_top_gainer_minute_candle_df[{bar_size}], no historical data found', with_std_out=True)
         
         return self.__yesterday_top_gainier_minute_candle_df_dict[bar_size].loc[:, idx[select_contract_ticker_list, :]]
     
@@ -259,7 +267,7 @@ class Scanner:
             else:
                 logger.log_debug_msg(f'Exclude ticker {ticker} from daily_df, no historical data found', with_std_out=True)
 
-        start_date_range = get_us_business_day(-offset_day, candle_retrieval_end_datetime).date() #should be -offset_day, -1 is just for test
+        start_date_range = get_us_business_day(-offset_day, candle_retrieval_end_datetime).date()
         return self.__daily_canlde_df.loc[start_date_range:, idx[select_contract_ticker_list, :]]
 
     def __get_previous_day_top_gainers_contracts(self, offset: int = None, retrieval_end_datetime: datetime = None):

@@ -436,7 +436,7 @@ class IBConnector:
             subtract_day = int(period[:-1])
             
             if not candle_retrieval_end_datetime:
-                candle_retrieval_end_datetime = get_us_business_day(0)
+                candle_retrieval_end_datetime = get_us_business_day(-1)
                 
             if outside_rth == 'true':
                 candle_retrieval_end_datetime = candle_retrieval_end_datetime.replace(hour=20, minute=0, second=0, microsecond=0)

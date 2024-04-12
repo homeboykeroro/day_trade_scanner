@@ -31,13 +31,26 @@ def get_financial_data(contract_list: list) -> dict:
     stocks = yf.Tickers(request_ticker_str)
     
     for ticker in ticker_list:        
-        quarterly_cashflow_df = stocks.tickers[ticker].quarterly_cashflow.loc[['Free Cash Flow']] if not stocks.tickers[ticker].quarterly_cashflow.empty else pd.DataFrame()
-        quarterly_balance_sheet_df = stocks.tickers[ticker].quarterly_balance_sheet.loc[['Total Debt', 'Total Assets']] if not stocks.tickers[ticker].quarterly_balance_sheet.empty else pd.DataFrame()
-        quarterly_income_stmt_df = stocks.tickers[ticker].quarterly_income_stmt.loc[['Total Revenue', 'Total Expenses']] if not stocks.tickers[ticker].quarterly_income_stmt.empty else pd.DataFrame()
+        quarterly_cashflow_df = stocks.tickers[ticker].quarterly_cashflow.loc[['Free Cash Flow']] if not stocks.tickers[ticker].quarterly_cashflow.empty and 'Free Cash Flow' in stocks.tickers[ticker].quarterly_cashflow.index else pd.DataFrame()
         
-        annual_cashflow_df = stocks.tickers[ticker].cashflow.loc[['Free Cash Flow']] if not stocks.tickers[ticker].cashflow.empty else pd.DataFrame()
-        annual_balance_sheet_df = stocks.tickers[ticker].balance_sheet.loc[['Total Debt', 'Total Assets']] if not stocks.tickers[ticker].balance_sheet.empty else pd.DataFrame()
-        annual_income_stmt_df = stocks.tickers[ticker].income_stmt.loc[['Total Revenue', 'Total Expenses']] if not stocks.tickers[ticker].income_stmt.empty else pd.DataFrame()
+        quarterly_total_debt_df = stocks.tickers[ticker].quarterly_balance_sheet.loc[['Total Debt']] if not stocks.tickers[ticker].quarterly_balance_sheet.empty and 'Total Debt' in stocks.tickers[ticker].quarterly_balance_sheet.index else pd.DataFrame()
+        quarterly_total_assest_df = stocks.tickers[ticker].quarterly_balance_sheet.loc[['Total Assets']] if not stocks.tickers[ticker].quarterly_balance_sheet.empty and 'Total Assets' in stocks.tickers[ticker].quarterly_balance_sheet.index else pd.DataFrame()
+        quarterly_balance_sheet_df = pd.concat([quarterly_total_debt_df, quarterly_total_assest_df], axis=0)
+        
+        quarterly_total_revenue_df = stocks.tickers[ticker].quarterly_income_stmt.loc[['Total Revenue']] if not stocks.tickers[ticker].quarterly_income_stmt.empty and 'Total Revenue' in stocks.tickers[ticker].quarterly_income_stmt.index else pd.DataFrame()
+        quarterly_total_expense_df = stocks.tickers[ticker].quarterly_income_stmt.loc[['Total Expenses']] if not stocks.tickers[ticker].quarterly_income_stmt.empty and 'Total Expenses' in stocks.tickers[ticker].quarterly_income_stmt.index else pd.DataFrame()
+        quarterly_income_stmt_df = pd.concat([quarterly_total_revenue_df, quarterly_total_expense_df], axis=0)
+        
+        annual_cashflow_df = stocks.tickers[ticker].cashflow.loc[['Free Cash Flow']] if not stocks.tickers[ticker].cashflow.empty and 'Free Cash Flow' in stocks.tickers[ticker].cashflow.index else pd.DataFrame()
+
+        annual_total_revenue_df = stocks.tickers[ticker].balance_sheet.loc[['Total Debt']] if not stocks.tickers[ticker].balance_sheet.empty and 'Total Debt' in stocks.tickers[ticker].balance_sheet.index else pd.DataFrame()
+        annual_total_expense_df = stocks.tickers[ticker].balance_sheet.loc[['Total Assets']] if not stocks.tickers[ticker].balance_sheet.empty and 'Total Assets' in stocks.tickers[ticker].balance_sheet.index else pd.DataFrame()
+        annual_balance_sheet_df = pd.concat([annual_total_revenue_df, annual_total_expense_df], axis=0)
+        
+        annual_total_revenue_df = stocks.tickers[ticker].income_stmt.loc[['Total Revenue']] if not stocks.tickers[ticker].income_stmt.empty and 'Total Revenue' in stocks.tickers[ticker].income_stmt.index else pd.DataFrame()
+        annual_total_expense_df = stocks.tickers[ticker].income_stmt.loc[['Total Expenses']] if not stocks.tickers[ticker].income_stmt.empty and 'Total Expenses' in stocks.tickers[ticker].income_stmt.index else pd.DataFrame()
+        annual_income_stmt_df = pd.concat([annual_total_revenue_df, annual_total_expense_df], axis=0)
+        
         stocks.tickers[ticker].get_income_stmt()
         try:
             major_holders_df = stocks.tickers[ticker].major_holders

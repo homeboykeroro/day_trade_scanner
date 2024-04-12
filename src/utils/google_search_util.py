@@ -163,7 +163,8 @@ class GoogleSearchUtil:
                             is_title_included_filtered_words = filter_title_pattern.search(title)
                             checking_title = title.lower().translate(str.maketrans('', '', string.punctuation))
                             
-                            if (parsed_date not in filtered_result 
+                            if (parsed_date 
+                                    and parsed_date not in filtered_result 
                                     and company_name.lower() in checking_title and 'offering' in checking_title
                                     and not is_title_included_filtered_words):
                                 result_obj = {
@@ -238,16 +239,17 @@ class GoogleSearchUtil:
                     if 'date' in search_result:
                         date = search_result.get('date')
 
-                    try:
-                        parsed_date = datetime.strptime(date, "%b %d, %Y")
-                    except ValueError:
-                        continue
+                        try:
+                            parsed_date = datetime.strptime(date, "%b %d, %Y")
+                        except ValueError:
+                            continue
                                 
                     filter_title_pattern = re.compile(FILTER_RESULT_TITLE_REGEX, re.IGNORECASE)
                     is_title_included_filtered_words = filter_title_pattern.search(title)
                     checking_title = title.lower().translate(str.maketrans('', '', string.punctuation))
                     
-                    if (parsed_date not in filtered_result 
+                    if (parsed_date 
+                            and parsed_date not in filtered_result 
                             and queue_company_name.lower() in checking_title and 'offering' in checking_title
                             and not is_title_included_filtered_words):
                         result_obj = {
