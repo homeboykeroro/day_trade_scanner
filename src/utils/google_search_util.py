@@ -18,7 +18,8 @@ MAX_SEARCH_DURATION_IN_YEAR = 2
 #https://developers.google.com/custom-search/docs/xml_results#PhraseSearchqt
 FILTER_RESULT_TITLE_REGEX = r'\b(closing|completes)\b'
 OFFERING_NEWS_KEYWORDS = 'intitle:"offering"'
-TRUNCATE_COMPANY_NAME_SUFFIX_REGEX = r'\b(ltd\.?|plc\.?|adr|inc\.?|corp\.?|llc\.?|class|co\b|ab)-?.?\b'
+TRUNCATE_COMPANY_NAME_SUFFIX_REGEX = r'\b(ltd\.?|plc\.?|adr|inc\.?|corp\.?|llc\.?|class|co\b|ab|soluti)-?.?\b'
+EXTRACT_DATE_STR_REGEX = r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, \d{4}\b"
 PUNCTUATION_REGEX = r"""!"#$%&'()*+,./:;<=>?@[\]^_`{|}~"""
 
 SERP_API_KEY_LIST = os.environ['SERP_API_KEYS']
@@ -140,7 +141,6 @@ class GoogleSearchUtil:
                     logger.log_debug_msg(msg=organic_results)
 
                     if not organic_results:
-                        ticker_to_datetime_to_news_dict[ticker] = {}
                         continue
                         
                     for _, search_result in enumerate(organic_results):
@@ -159,11 +159,21 @@ class GoogleSearchUtil:
                                 parsed_date = datetime.strptime(date, "%b %d, %Y")
                             except ValueError:
                                 continue
+                        else:
+                            match = re.search(EXTRACT_DATE_STR_REGEX, snippet)
+                            if match:
+                                snippet_date_str = match.group()
+
+                                try:
+                                    parsed_date = datetime.strptime(snippet_date_str, "%B %d, %Y")
+                                except ValueError:
+                                    continue
                                 
                             filter_title_pattern = re.compile(FILTER_RESULT_TITLE_REGEX, re.IGNORECASE)
                             is_title_included_filtered_words = filter_title_pattern.search(title)
                             checking_title = title.lower().translate(str.maketrans('', '', PUNCTUATION_REGEX))
-                            checking_snippet = snippet.lower()
+                            checking_snippet = snippet.lower().replace('.',' ')
+                            
                             if (parsed_date 
                                     and parsed_date not in filtered_result 
                                     and company_name.lower() in checking_title 
@@ -224,12 +234,13 @@ class GoogleSearchUtil:
             queue_ticker = result.get('symbol')
             queue_company_name = result.get('company_name')
             
-            if result.get('search_metadata'):
+            metadata = result.get('search_metadata')
+            status = result.get('search_metadata').get('status') == 'Cached' or result.get('search_metadata').get('status') == 'Success' if metadata else None
+            if status:
                 organic_results = result.get('organic_results')
                 logger.log_debug_msg(msg=organic_results)
 
                 if not organic_results:
-                    ticker_to_datetime_to_news_dict[queue_ticker] = {}
                     continue
                 
                 for search_result in organic_results:
@@ -248,12 +259,20 @@ class GoogleSearchUtil:
                             parsed_date = datetime.strptime(date, "%b %d, %Y")
                         except ValueError:
                             continue
+                    else:
+                        match = re.search(EXTRACT_DATE_STR_REGEX, snippet)
+                        if match:
+                            snippet_date_str = match.group()
+                            
+                            try:
+                                parsed_date = datetime.strptime(snippet_date_str, "%B %d, %Y")
+                            except ValueError:
+                                continue
                                 
                     filter_title_pattern = re.compile(FILTER_RESULT_TITLE_REGEX, re.IGNORECASE)
                     is_title_included_filtered_words = filter_title_pattern.search(title)
                     checking_title = title.lower().translate(str.maketrans('', '', PUNCTUATION_REGEX))
                     checking_snippet = snippet.lower().replace('.',' ')
-                    print()
                     
                     if (parsed_date 
                             and parsed_date not in filtered_result 

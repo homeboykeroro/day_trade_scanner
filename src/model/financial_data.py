@@ -146,7 +146,9 @@ class FinancialData:
         embed.add_field(name = f'Expenses Data: \n{expenses_date_display}\n{expenses_value_display}', value='\u200b', inline = False)
         
         #Institution Holders
-        if not self.__major_holders_df.empty:
+        if self.__major_holders_df is None or self.__major_holders_df.empty:
+            embed.add_field(name = f'Major Holder Data Not Avaliable', value='\u200b', inline = False)
+        else:
             marjor_holder_field_list = self.__major_holders_df.index().tolist()
             percentage_value_list = self.__major_holders_df.values.flatten().tolist()
             
@@ -157,6 +159,4 @@ class FinancialData:
             marjor_holder_field_display = self.__get_concat_str(max_marjor_holder_word_len, marjor_holder_field_list)
             percentage_value_display = self.__get_concat_str(max_marjor_holder_word_len, percentage_value_list)
             embed.add_field(name = f'Major Holder Data: \n{marjor_holder_field_display}\n{percentage_value_display}', value='\u200b', inline = False)
-        else:
-            embed.add_field(name = f'Major Holder Data Not Avaliable', value='\u200b', inline = False)
             
