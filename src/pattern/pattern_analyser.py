@@ -24,7 +24,7 @@ class PatternAnalyser(ABC):
     def check_if_pattern_analysis_message_sent(self, ticker: str, hit_scanner_datetime: datetime, pattern: str, bar_size: BarSize):
         return check_if_pattern_analysis_message_sent(self.__sqlite_connector, ticker, hit_scanner_datetime, pattern, bar_size.value)
         
-    def send_notification(self, scanner_result_list: list, discord_channel: DiscordChannel):
+    def send_notification(self, scanner_result_list: list, discord_channel: DiscordChannel, is_async: bool = True):
         if scanner_result_list:
             save_notification_db_record_tuple_list = []
             title_to_read_out_message_dict = {}
@@ -38,7 +38,13 @@ class PatternAnalyser(ABC):
                 notification_db_record_tuple = (scanner_result.ticker, scanner_result.hit_scanner_datetime, scanner_result.pattern, scanner_result.bar_size)
                 save_notification_db_record_tuple_list.append(notification_db_record_tuple)
             
-            response_list = self.__discord_client.send_message_by_list_with_response(message_list=scanner_result_list, channel_type=discord_channel)
+            if is_async:
+                response_list = self.__discord_client.send_message_by_list_with_response(message_list=scanner_result_list, channel_type=discord_channel)
+            else:
+                response_list = []
+                for scanner_result in scanner_result_list:
+                    individual_msg_response_list = self.__discord_client.send_message_by_list_with_response(message_list=[scanner_result], channel_type=discord_channel)
+                    response_list.append(individual_msg_response_list[0])
 
             notification_message_list = []
             for response in response_list:

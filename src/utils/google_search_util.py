@@ -1,6 +1,5 @@
 import os
 import re
-import string
 import threading
 import time
 from collections import OrderedDict
@@ -8,7 +7,6 @@ from datetime import datetime
 from queue import Queue
 from serpapi import GoogleSearch
 
-from utils.previous_day_top_gainer_util import get_latest_scrape_date
 from utils.datetime_util import get_current_us_datetime
 from utils.http_util import send_async_request
 from utils.logger import Logger
@@ -20,7 +18,8 @@ MAX_SEARCH_DURATION_IN_YEAR = 2
 #https://developers.google.com/custom-search/docs/xml_results#PhraseSearchqt
 FILTER_RESULT_TITLE_REGEX = r'\b(closing|completes)\b'
 OFFERING_NEWS_KEYWORDS = 'intitle:"offering"'
-TRUNCATE_COMPANY_NAME_SUFFIX_REGEX = r'\b(ltd\.?|plc\.?|adr|inc\.?|corp\.?|llc\.?|class \w|co\b|ab-)\b'
+TRUNCATE_COMPANY_NAME_SUFFIX_REGEX = r'\b(ltd\.?|plc\.?|adr|inc\.?|corp\.?|llc\.?|class|co\b|ab)-?.?\b'
+PUNCTUATION_REGEX = r"""!"#$%&'()*+,./:;<=>?@[\]^_`{|}~"""
 
 SERP_API_KEY_LIST = os.environ['SERP_API_KEYS']
 API_KEY_LIST = []
@@ -126,7 +125,7 @@ class GoogleSearchUtil:
                     company_name = (re.sub(TRUNCATE_COMPANY_NAME_SUFFIX_REGEX, '', 
                                            contract.get("company_name"), 
                                            flags=re.IGNORECASE)
-                                      .translate(str.maketrans('', '', string.punctuation))
+                                      .translate(str.maketrans('', '', PUNCTUATION_REGEX))
                                       .strip())
                     ticker = contract.get("symbol")
                     query = f'(intext:"{ticker}" AND intext:"{company_name}") AND (intitle:"{company_name}" AND {OFFERING_NEWS_KEYWORDS})'
@@ -141,11 +140,13 @@ class GoogleSearchUtil:
                     logger.log_debug_msg(msg=organic_results)
 
                     if not organic_results:
+                        ticker_to_datetime_to_news_dict[ticker] = {}
                         continue
                         
                     for _, search_result in enumerate(organic_results):
                         position = search_result.get('position')
                         title = search_result.get('title')
+                        snippet = search_result.get('snippet')
                         link = search_result.get('link')
                         source = search_result.get('source')
 
@@ -161,15 +162,17 @@ class GoogleSearchUtil:
                                 
                             filter_title_pattern = re.compile(FILTER_RESULT_TITLE_REGEX, re.IGNORECASE)
                             is_title_included_filtered_words = filter_title_pattern.search(title)
-                            checking_title = title.lower().translate(str.maketrans('', '', string.punctuation))
-                            
+                            checking_title = title.lower().translate(str.maketrans('', '', PUNCTUATION_REGEX))
+                            checking_snippet = snippet.lower()
                             if (parsed_date 
                                     and parsed_date not in filtered_result 
-                                    and company_name.lower() in checking_title and 'offering' in checking_title
+                                    and company_name.lower() in checking_title 
+                                    and ('offering' in checking_title or 'offering' in checking_snippet)
                                     and not is_title_included_filtered_words):
                                 result_obj = {
                                     'position': position,
                                     'title': title,
+                                    'snippet': snippet,
                                     'link': link,
                                     'date': parsed_date,
                                     'source': source
@@ -194,11 +197,11 @@ class GoogleSearchUtil:
             company_name = (re.sub(TRUNCATE_COMPANY_NAME_SUFFIX_REGEX, '', 
                                            contract.get("company_name"), 
                                            flags=re.IGNORECASE)
-                                .translate(str.maketrans('', '', string.punctuation))
+                                .translate(str.maketrans('', '', PUNCTUATION_REGEX))
                                 .strip())
             ticker = contract.get("symbol")
             query = f'(intext:"{ticker}" AND intext:"{company_name}") AND (intitle:"{company_name}" AND {OFFERING_NEWS_KEYWORDS})'
-            logger.log_debug_msg(f'Google search query for {ticker}, {company_name}: {query}')
+            logger.log_debug_msg(f'Google search query for {ticker}, original company name: {contract.get("company_name")}, adjusted company name: {company_name}: {query}')
 
             search.params_dict['q'] = query
             search.params_dict['api_key'] = api_key
@@ -226,11 +229,13 @@ class GoogleSearchUtil:
                 logger.log_debug_msg(msg=organic_results)
 
                 if not organic_results:
+                    ticker_to_datetime_to_news_dict[queue_ticker] = {}
                     continue
                 
                 for search_result in organic_results:
                     position = search_result.get('position')
                     title = search_result.get('title')
+                    snippet = search_result.get('snippet')
                     link = search_result.get('link')
                     source = search_result.get('source')  
                     
@@ -246,15 +251,19 @@ class GoogleSearchUtil:
                                 
                     filter_title_pattern = re.compile(FILTER_RESULT_TITLE_REGEX, re.IGNORECASE)
                     is_title_included_filtered_words = filter_title_pattern.search(title)
-                    checking_title = title.lower().translate(str.maketrans('', '', string.punctuation))
+                    checking_title = title.lower().translate(str.maketrans('', '', PUNCTUATION_REGEX))
+                    checking_snippet = snippet.lower().replace('.',' ')
+                    print()
                     
                     if (parsed_date 
                             and parsed_date not in filtered_result 
-                            and queue_company_name.lower() in checking_title and 'offering' in checking_title
+                            and queue_company_name.lower() in checking_title 
+                            and ('offering' in checking_title or 'offering' in checking_snippet)
                             and not is_title_included_filtered_words):
                         result_obj = {
                             'position': position,
                             'title': title,
+                            'snippet': snippet,
                             'link': link,
                             'date': parsed_date,
                             'source': source
