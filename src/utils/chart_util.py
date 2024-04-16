@@ -87,6 +87,10 @@ def generate_chart(pattern: str, bar_size: BarSize, main_df: pd.DataFrame, scatt
     first_non_zero_decimal_place = get_first_non_zero_decimal_place_position(price_y_axis_grid_tick)
     round_precision = max(first_non_zero_decimal_place, round_precision)
     price_y_axis_grid_tick = round(price_y_axis_grid_tick, round_precision)
+    
+    if price_y_axis_grid_tick <= 0:
+        return None
+    
     no_of_price_tick =  math.ceil(price_range_difference / price_y_axis_grid_tick)
         
     low_offset_idx = 0 

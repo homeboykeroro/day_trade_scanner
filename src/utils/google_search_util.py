@@ -18,7 +18,7 @@ MAX_SEARCH_DURATION_IN_YEAR = 2
 #https://developers.google.com/custom-search/docs/xml_results#PhraseSearchqt
 FILTER_RESULT_TITLE_REGEX = r'\b(closing|completes)\b'
 OFFERING_NEWS_KEYWORDS = 'intitle:"offering"'
-TRUNCATE_COMPANY_NAME_SUFFIX_REGEX = r'\b(ltd\.?|plc\.?|adr|inc\.?|corp\.?|llc\.?|class|co\b|ab|soluti)-?.?\b'
+TRUNCATE_COMPANY_NAME_SUFFIX_REGEX = r'\b(ltd\.?|plc\.?|adr|inc\.?|corp\.?|llc\.?|class|co\b|ab|gr|soluti)-?.?\b'
 EXTRACT_DATE_STR_REGEX = r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, \d{4}\b"
 PUNCTUATION_REGEX = r"""!"#$%&'()*+,./:;<=>?@[\]^_`{|}~"""
 
@@ -202,6 +202,8 @@ class GoogleSearchUtil:
         logger.log_debug_msg('Search google result asynchronously')
         search_start_time = time.time()
         search_queue = Queue()
+        ticker_list = []
+        company_name_list = []
         
         for contract in contract_list:
             company_name = (re.sub(TRUNCATE_COMPANY_NAME_SUFFIX_REGEX, '', 
@@ -218,6 +220,8 @@ class GoogleSearchUtil:
             search.params_dict["async"] = True
             
             result = search.get_dict()
+            ticker_list.append(ticker)
+            company_name_list.append(company_name)
             result['symbol'] = ticker
             result['company_name'] = company_name
             
@@ -226,7 +230,10 @@ class GoogleSearchUtil:
                 continue
             
             search_queue.put(result)
-            
+        
+        logger.log_debug_msg(f'Search result for {company_name_list}', with_std_out=True)
+        logger.log_debug_msg(f"Adjusted company name list {[re.sub(TRUNCATE_COMPANY_NAME_SUFFIX_REGEX, '', company_name, flags=re.IGNORECASE).translate(str.maketrans('', '', PUNCTUATION_REGEX)).strip() for company_name in company_name_list]}", with_std_out=True)
+        
         while not search_queue.empty():
             result = search_queue.get()
             filtered_result = {}
@@ -236,6 +243,7 @@ class GoogleSearchUtil:
             
             metadata = result.get('search_metadata')
             status = result.get('search_metadata').get('status') == 'Cached' or result.get('search_metadata').get('status') == 'Success' if metadata else None
+            logger.log_debug_msg(f'ticker queue status: {status}')
             if status:
                 organic_results = result.get('organic_results')
                 logger.log_debug_msg(msg=organic_results)
@@ -293,9 +301,15 @@ class GoogleSearchUtil:
                 ordered_filter_dict = OrderedDict(sorted(filtered_result.items(), key=lambda t: t[0]))
                 ticker_to_datetime_to_news_dict[queue_ticker] = ordered_filter_dict
             else:
+                if time.time() - search_start_time > 10:
+                    break
                 # requeue search_queue
                 logger.log_debug_msg(f"{queue_ticker} requeue search")
                 search_queue.put(result)
                 time.sleep(0.5)
+        
+        for ticker in ticker_to_datetime_to_news_dict:
+            if ticker not in ticker_list:
+                logger.log_debug_msg(f'No result found for {ticker}')
             
         logger.log_debug_msg(f'Total async search time for {[contract.get("symbol") for contract in contract_list]}, {time.time() - search_start_time}s', with_std_out=True)
