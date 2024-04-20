@@ -145,7 +145,7 @@ class PLReportGenerator():
                 time.sleep(SCAN_INTERVAL)
             except Exception as exception: # Must be 2000 or fewer in length
                 self.__discord_client.send_message(DiscordMessage(content=exception), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
-                self.__discord_client.send_message(DiscordMessage(content=traceback.format_exc()), channel_type=DiscordChannel.CHATBOT_LOG)
+                self.__discord_client.send_message(DiscordMessage(content=traceback.format_exc()), channel_type=DiscordChannel.CHATBOT_ERROR_LOG)
                 logger.log_error_msg(f'Profit and loss report generation error, {exception}', with_std_out=True)
                 time.sleep(10)
                 self.__stop_thread = True

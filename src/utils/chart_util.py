@@ -9,6 +9,7 @@ from constant.indicator.scatter_colour import ScatterColour
 from constant.indicator.scatter_symbol import ScatterSymbol
 from constant.indicator.customised_indicator import CustomisedIndicator
 
+from utils.config_util import get_config
 from utils.dataframe_util import get_candle_comments_df, get_scatter_symbol_and_colour_df
 from utils.datetime_util import get_offsetted_hit_scanner_datetime
 from utils.math_util import get_max_round_decimal_places, round_to_nth_digit, get_first_non_zero_decimal_place_position
@@ -20,16 +21,16 @@ from constant.indicator.indicator import Indicator
 idx = pd.IndexSlice
 logger = Logger()
 
-CHART_ROOT_DIR = 'C:/Users/John/Downloads/Trade History/Scanner/Charts'
+CHART_ROOT_DIR = get_config('CHART', 'PATH')
 
-CHART_WIDTH_PIXEL = 1920
-CHART_HEIGHT_PIXEL = 1080
+CHART_WIDTH_PIXEL = get_config('CHART', 'CHART_WIDTH_PIXEL')
+CHART_HEIGHT_PIXEL = get_config('CHART', 'CHART_HEIGHT_PIXEL')
+
+PRICE_GRID_DIVISION = get_config('CHART', 'PRICE_GRID_DIVISION')
+VOLUME_GRID_DIVISION = get_config('CHART', 'VOLUME_GRID_DIVISION')
 
 MINUTE_CANDLE_DISPLAY_FORMAT = '%H:%M'
 DAILY_CANDLE_DISPLAY_FORMAT = '%Y-%m-%d'
-
-PRICE_GRID_DIVISION = 5
-VOLUME_GRID_DIVISION = 3
 
 GRID_STYLE = '--'
 LABEL_LINE_COLOUR = "white"

@@ -7,6 +7,10 @@ from datetime import datetime
 from queue import Queue
 from serpapi import GoogleSearch
 
+from module.discord_chatbot_client import DiscordChatBotClient
+
+from stock_scanner.src.constant.discord.discord_channel import DiscordChannel
+from stock_scanner.src.model.discord.discord_message import DiscordMessage
 from utils.datetime_util import get_current_us_datetime
 from utils.http_util import send_async_request
 from utils.logger import Logger
@@ -26,6 +30,7 @@ SERP_API_KEY_LIST = os.environ['SERP_API_KEYS']
 API_KEY_LIST = []
 API_KEYS_TO_LIMIT_DICT = {}
 
+MAX_WAITING_TIME = 10
 
 logger = Logger()
 
@@ -71,7 +76,7 @@ class GoogleSearchUtil:
                 API_KEYS_TO_LIMIT_DICT[api_key] = result_dict[api_key]
     
     #https://serpapi.com/integrations/python#pagination-using-iterator      
-    def search_offering_news(self, contract_list: list) -> dict:
+    def search_offering_news(self, contract_list: list, discord_client: DiscordChatBotClient) -> dict:
         if not contract_list:
             return {}
         
@@ -84,7 +89,8 @@ class GoogleSearchUtil:
         end_date_str = f'{end_date.month}/{end_date.day}/{end_date.year}' 
         start_date_str = f'{start_date.month}/{start_date.day}/{start_date.year}' 
         advanced_search_query = f'cd_min:{start_date_str},cd_max:{end_date_str}'
-            
+        logger.log_debug_msg(f'Google search date range: {start_date_str} - {end_date_str}')    
+        
         search = GoogleSearch({
             'google_domain': 'google.com',
             'hl': 'en',
@@ -103,19 +109,21 @@ class GoogleSearchUtil:
                 break
             
         if async_api_key:
-           self.async_search(async_api_key, contract_list, ticker_to_datetime_to_news_dict, search)
+           self.async_search(async_api_key, contract_list, ticker_to_datetime_to_news_dict, search, discord_client)
         else:
            logger.log_debug_msg(f'Account with enough API limit is not avaliable for async search size of {fetch_size}')
-           self.sync_search(contract_list, ticker_to_datetime_to_news_dict, search)
+           self.sync_search(contract_list, ticker_to_datetime_to_news_dict, search, discord_client)
         
         logger.log_debug_msg('search completed')
         return ticker_to_datetime_to_news_dict            
     
-    def sync_search(self, contract_list: list, ticker_to_datetime_to_news_dict: dict, search: GoogleSearch):
+    def sync_search(self, contract_list: list, ticker_to_datetime_to_news_dict: dict, search: GoogleSearch, discord_client: DiscordChatBotClient):
         logger.log_debug_msg('Search google result synchronously')
         search_start_time = time.time()
+        ticker_list = []
+        company_name_list = []
+        search_query_list = []
         
-        no_of_completed_response = 0
         chunk_start_idx = 0
         for api_key, limit in API_KEYS_TO_LIMIT_DICT.items():
             if limit > 0:
@@ -137,6 +145,10 @@ class GoogleSearchUtil:
                     search.params_dict['api_key'] = api_key
                     results = search.get_json()                
 
+                    ticker_list.append(ticker)
+                    company_name_list.append(company_name)
+                    search_query_list.append(query)
+                    
                     organic_results = results.get('organic_results')
                     logger.log_debug_msg(msg=organic_results)
 
@@ -196,14 +208,23 @@ class GoogleSearchUtil:
 
                 chunk_start_idx = chunk_start_idx + limit
         
+        for contract in contract_list:
+            if contract.get('symbol') not in ticker_list:
+                logger.log_debug_msg(f"Not enough API limit to fetch {contract.get("symbol")}\' offering news")
+        
+        discord_client.send_message(DiscordMessage(content=f'Original company name list: {[contract.get('company_name') for contract in contract_list]}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+        discord_client.send_message(DiscordMessage(content=f'Adjusted company name list: {company_name_list}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+        discord_client.send_message(DiscordMessage(content=f'Search query list (sync): {search_query_list}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+        
         logger.log_debug_msg(f'Total sync search time for {[contract.get("symbol") for contract in contract_list]}, {time.time() - search_start_time}s', with_std_out=True)
                     
-    def async_search(self, api_key: str, contract_list: list, ticker_to_datetime_to_news_dict: dict, search: GoogleSearch):
+    def async_search(self, api_key: str, contract_list: list, ticker_to_datetime_to_news_dict: dict, search: GoogleSearch, discord_client: DiscordChatBotClient):
         logger.log_debug_msg('Search google result asynchronously')
         search_start_time = time.time()
         search_queue = Queue()
         ticker_list = []
         company_name_list = []
+        search_query_list = []
         
         for contract in contract_list:
             company_name = (re.sub(TRUNCATE_COMPANY_NAME_SUFFIX_REGEX, '', 
@@ -222,10 +243,16 @@ class GoogleSearchUtil:
             result = search.get_dict()
             ticker_list.append(ticker)
             company_name_list.append(company_name)
+            search_query_list.append(query)
             result['symbol'] = ticker
             result['company_name'] = company_name
             
+            discord_client.send_message(DiscordMessage(content=f'Original company name list: {[contract.get('company_name') for contract in contract_list]}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+            discord_client.send_message(DiscordMessage(content=f'Adjusted company name list: {company_name_list}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+            discord_client.send_message(DiscordMessage(content=f'Search query list (async): {search_query_list}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+            
             if "error" in result:
+                ticker_to_datetime_to_news_dict[ticker] = 'error'
                 logger.log_error_msg(f'Async search failed to fetch result for {ticker}, error: {result["error"]}')
                 continue
             
@@ -242,9 +269,10 @@ class GoogleSearchUtil:
             queue_company_name = result.get('company_name')
             
             metadata = result.get('search_metadata')
-            status = result.get('search_metadata').get('status') == 'Cached' or result.get('search_metadata').get('status') == 'Success' if metadata else None
+            status = result.get('search_metadata').get('status')
+            succeeded = status == 'Cached' or result.get('search_metadata').get('status') == 'Success' if metadata else None
             logger.log_debug_msg(f'ticker queue status: {status}')
-            if status:
+            if succeeded:
                 organic_results = result.get('organic_results')
                 logger.log_debug_msg(msg=organic_results)
 
@@ -301,7 +329,7 @@ class GoogleSearchUtil:
                 ordered_filter_dict = OrderedDict(sorted(filtered_result.items(), key=lambda t: t[0]))
                 ticker_to_datetime_to_news_dict[queue_ticker] = ordered_filter_dict
             else:
-                if time.time() - search_start_time > 10:
+                if time.time() - search_start_time > MAX_WAITING_TIME:
                     break
                 # requeue search_queue
                 logger.log_debug_msg(f"{queue_ticker} requeue search")

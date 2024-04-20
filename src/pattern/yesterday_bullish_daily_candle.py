@@ -10,6 +10,7 @@ from pattern.pattern_analyser import PatternAnalyser
 
 from utils.discord_message_record_util import check_if_pattern_analysis_message_sent
 from utils.chart_util import get_candlestick_chart
+from utils.config_util import get_config
 from utils.logger import Logger
 
 from constant.indicator.indicator import Indicator
@@ -23,10 +24,12 @@ from constant.discord.discord_channel import DiscordChannel
 
 idx = pd.IndexSlice
 logger = Logger()
+
 PATTERN_NAME = 'YESTERDAY_BULLISH_DAILY_CANDLE'
 
+MIN_YESTERDAY_CLOSE_CHANGE_PCT = get_config('YESTERDAY_BULLISH_DAILY_CANDLE_PARAM', 'MIN_YESTERDAY_CLOSE_CHANGE_PCT')
+
 class YesterdayBullishDailyCandle(PatternAnalyser):
-    MIN_YESTERDAY_CLOSE_CHANGE_PCT = 30
     
     def __init__(self, hit_scanner_date: datetime.date, daily_df: pd.DataFrame, ticker_to_contract_info_dict: dict, discord_client, sqlite_connector):
         super().__init__(discord_client, sqlite_connector)
@@ -76,7 +79,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
         close_pct_df = self.__historical_data_df.iloc[[-1]].loc[:, idx[:, CustomisedIndicator.CLOSE_CHANGE.value]].rename(columns={CustomisedIndicator.CLOSE_CHANGE.value: RuntimeIndicator.COMPARE.value})
         green_candle_df = self.__historical_data_df.iloc[[-1]].loc[:, idx[:, CustomisedIndicator.CANDLE_COLOUR.value]].rename(columns={CustomisedIndicator.CANDLE_COLOUR.value: RuntimeIndicator.COMPARE.value})
         
-        min_close_pct_boolean_df = (close_pct_df >= self.MIN_YESTERDAY_CLOSE_CHANGE_PCT)
+        min_close_pct_boolean_df = (close_pct_df >= MIN_YESTERDAY_CLOSE_CHANGE_PCT)
         green_candle_boolean_df = (green_candle_df == CandleColour.GREEN.value)
         yesterday_bullish_daily_candle_boolean_df = (min_close_pct_boolean_df) & (green_candle_boolean_df)
         

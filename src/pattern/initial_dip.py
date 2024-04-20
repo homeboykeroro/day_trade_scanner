@@ -1,7 +1,6 @@
-import os
+import math
 import time
 import pandas as pd
-import discord
 from pandas.core.frame import DataFrame
 
 from pattern.pattern_analyser import PatternAnalyser
@@ -19,17 +18,21 @@ from constant.discord.discord_channel import DiscordChannel
 
 from utils.chart_util import get_candlestick_chart
 from utils.dataframe_util import replace_daily_df_latest_day_with_minute, get_ticker_to_occurrence_idx_list
-from utils.datetime_util import convert_into_human_readable_time, convert_into_read_out_time
+from utils.datetime_util import convert_into_human_readable_time, convert_into_read_out_time, get_current_us_datetime
 from utils.logger import Logger
+from utils.config_util import get_config
 
 idx = pd.IndexSlice
 logger = Logger()
+
 PATTERN_NAME = 'INITIAL_DIP'
 
+MAX_DELAYED_HIT_SCANNER_PERIOD = get_config('INITIAL_DIP_PARAM', 'MAX_DELAYED_HIT_SCANNER_PERIOD')
+MAX_DIP_OCCURRENCE = get_config('INITIAL_DIP_PARAM', 'MAX_POP_OCCURRENCE')
+MAX_GAP_DOWN_PCT = get_config('INITIAL_DIP_PARAM', 'MAX_POP_OCCURRENCE')
+MAX_YESTERDAY_CLOSE_TO_LAST_PCT = get_config('INITIAL_DIP_PARAM', 'MAX_POP_OCCURRENCE')
+
 class InitialDip(PatternAnalyser):
-    MAX_DIP_OCCURRENCE = 3
-    MAX_GAP_DOWN_PCT = -5
-    MAX_YESTERDAY_CLOSE_TO_LAST_PCT = -10
         
     def __init__(self, bar_size: BarSize, historical_data_df: DataFrame, daily_df: DataFrame, ticker_to_contract_info_dict: dict, discord_client, sqlite_connector):
         ticker_list = list(historical_data_df.columns.get_level_values(0).unique())
@@ -62,8 +65,8 @@ class InitialDip(PatternAnalyser):
         self.__historical_data_df.loc[[self.__historical_data_df.index[0]], idx[:, CustomisedIndicator.CLOSE_CHANGE.value]] = yesterday_close_to_last_pct_df.iloc[[0]]
         self.__historical_data_df.loc[[self.__historical_data_df.index[0]], idx[:, CustomisedIndicator.GAP_PCT_CHANGE.value]] = gap_down_pct_df.iloc[[0]]
         
-        max_gap_down_pct_df = (gap_down_pct_df <= self.MAX_GAP_DOWN_PCT).rename(columns={CustomisedIndicator.CANDLE_UPPER_BODY.value: RuntimeIndicator.COMPARE.value})
-        max_yesterday_close_to_last_pct_boolean_df = (yesterday_close_to_last_pct_df <= self.MAX_YESTERDAY_CLOSE_TO_LAST_PCT).rename(columns={Indicator.CLOSE.value: RuntimeIndicator.COMPARE.value})
+        max_gap_down_pct_df = (gap_down_pct_df <= MAX_GAP_DOWN_PCT).rename(columns={CustomisedIndicator.CANDLE_UPPER_BODY.value: RuntimeIndicator.COMPARE.value})
+        max_yesterday_close_to_last_pct_boolean_df = (yesterday_close_to_last_pct_df <= MAX_YESTERDAY_CLOSE_TO_LAST_PCT).rename(columns={Indicator.CLOSE.value: RuntimeIndicator.COMPARE.value})
         red_candle_candle_df = (candle_colour_df == CandleColour.RED.value).rename(columns={CustomisedIndicator.CANDLE_COLOUR.value: RuntimeIndicator.COMPARE.value})
         
         dip_boolean_df = (max_gap_down_pct_df) & (max_yesterday_close_to_last_pct_boolean_df) & (red_candle_candle_df)
@@ -71,7 +74,7 @@ class InitialDip(PatternAnalyser):
         loser_result_series = dip_boolean_df.any()   
         loser_ticker_list = loser_result_series.index[loser_result_series].get_level_values(0).tolist()
         
-        ticker_to_occurrence_idx_list_dict = get_ticker_to_occurrence_idx_list(dip_boolean_df, self.MAX_DIP_OCCURRENCE)
+        ticker_to_occurrence_idx_list_dict = get_ticker_to_occurrence_idx_list(dip_boolean_df, MAX_DIP_OCCURRENCE)
         logger.log_debug_msg(f'Initial dip ticker to occurrence idx list: {ticker_to_occurrence_idx_list_dict}')
         logger.log_debug_msg(f'Initial dip analysis time: {time.time() - start_time} seconds')
     
@@ -82,6 +85,12 @@ class InitialDip(PatternAnalyser):
                 for occurrence_idx in occurrence_idx_list:   
                     if not occurrence_idx:
                         continue
+                    else:
+                        us_current_datetime = get_current_us_datetime()
+                        current_datetime_and_pop_up_time_diff = math.floor(((us_current_datetime - occurrence_idx).total_seconds()) / 60)
+                        
+                        if current_datetime_and_pop_up_time_diff > MAX_DELAYED_HIT_SCANNER_PERIOD:
+                            continue
                     
                     dip_time = occurrence_idx
                     is_message_sent = self.check_if_pattern_analysis_message_sent(ticker=ticker, hit_scanner_datetime=dip_time, pattern=PATTERN_NAME, bar_size=self.__bar_size)
