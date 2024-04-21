@@ -153,17 +153,18 @@ class IBConnector:
     
     def get_screener_results(self, max_no_of_scanner_result: int, scanner_filter_payload: dict) -> list:
         try:
+            scanner_type = scanner_filter_payload.get("type")
             scanner_request_start_time = time.time()
             scanner_response = session.post(f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.RUN_SCANNER}', json=scanner_filter_payload, verify=False)
-            logger.log_debug_msg(f'Scanner result response time: {time.time() - scanner_request_start_time} seconds')
+            logger.log_debug_msg(f'{scanner_type} scanner result response time: {time.time() - scanner_request_start_time} seconds')
             scanner_response.raise_for_status()
         except Exception as scanner_request_exception:
-            logger.log_error_msg(f'Error occurred while requesting scanner result: {scanner_request_exception}')
+            logger.log_error_msg(f'Error occurred while requesting {scanner_type} scanner result: {scanner_request_exception}')
             raise scanner_request_exception
         else:
-            logger.log_debug_msg(f'Scanner full result json: {[contract.get("symbol") for contract in scanner_response.json().get("contracts")]}')
-            logger.log_debug_msg(f'Scanner full result size: {len(scanner_response.json().get("contracts"))}') #bug fix Add 
-            logger.log_debug_msg(f'Maximum scanner result size: {max_no_of_scanner_result}')
+            logger.log_debug_msg(f'{scanner_type} scanner full result json: {[contract.get("symbol") for contract in scanner_response.json().get("contracts")]}')
+            logger.log_debug_msg(f'{scanner_type} scanner full result size: {len(scanner_response.json().get("contracts"))}') #bug fix Add 
+            logger.log_debug_msg(f'Maximum {scanner_type} scanner result size: {max_no_of_scanner_result}')
             scanner_result = scanner_response.json()['contracts']
             scanner_result_without_otc_stock = []
         
@@ -273,7 +274,7 @@ class IBConnector:
             
             while not snapshot_retrieval_success:
                 get_contract_snapshot_start_time = time.time()
-                snapshot_response_list = send_async_request('GET', f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.SNAPSHOT}', snapshot_payload_list, 10, 1)
+                snapshot_response_list = send_async_request('GET', f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.SNAPSHOT}', snapshot_payload_list)
                 logger.log_debug_msg(f'Get market cap, is shortable, shortable shares, and rebate rate data response time: {time.time() - get_contract_snapshot_start_time}')
                 
                 for snapshot_list in snapshot_response_list:
@@ -425,7 +426,7 @@ class IBConnector:
                     else:
                         logger.log_debug_msg(f'{ticker} does not exist in ticker to contract dict')
 
-    def get_historical_candle_df(self, contract_list: list, period: str, bar_size: BarSize, outside_rth: str = 'true', candle_retrieval_end_datetime: datetime = None) -> pd.DataFrame:
+    def get_historical_candle_df(self, contract_list: list, period: str, bar_size: BarSize, outside_rth: str = 'true', candle_retrieval_end_datetime: datetime = None, loop = None) -> pd.DataFrame:
         con_id_list = [contract['con_id'] for contract in contract_list]
         ticker_list = [contract['symbol'] for contract in contract_list]
         
@@ -484,7 +485,7 @@ class IBConnector:
         try:
             logger.log_debug_msg(f'Getting {bar_size.value} historical candle data, paylaod list: {candle_payload_list}')
             get_one_minute_candle_start_time = time.time()
-            candle_response_list = send_async_request('GET', f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.MARKET_DATA_HISTORY}', candle_payload_list, 5)
+            candle_response_list = send_async_request(method='GET', endpoint=f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.MARKET_DATA_HISTORY}', payload_list=candle_payload_list, loop=loop)
             logger.log_debug_msg(f'Get {bar_size.value} historical candle data time: {time.time() - get_one_minute_candle_start_time}')
         except Exception as historical_data_request_exception:
             logger.log_error_msg(f'An error occurred while requesting {bar_size.value} historical data, Cause: {historical_data_request_exception}')

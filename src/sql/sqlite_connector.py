@@ -10,7 +10,7 @@ logger = Logger()
 class SqliteConnector:
     def __init__(self):
         try:
-            self.__connection = sqlite3.connect(DISCORD_NOTIFICATION_DB_DIR)
+            self.__connection = sqlite3.connect(DISCORD_NOTIFICATION_DB_DIR, check_same_thread=False)
             self.__cursor = self.__connection.cursor()
         except Exception as e:
             logger.log_error_msg(f'SQLite connection creation error, cause: {e}')

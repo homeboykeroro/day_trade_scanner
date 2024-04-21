@@ -9,8 +9,8 @@ from serpapi import GoogleSearch
 
 from module.discord_chatbot_client import DiscordChatBotClient
 
-from stock_scanner.src.constant.discord.discord_channel import DiscordChannel
-from stock_scanner.src.model.discord.discord_message import DiscordMessage
+from constant.discord.discord_channel import DiscordChannel
+from model.discord.discord_message import DiscordMessage
 from utils.datetime_util import get_current_us_datetime
 from utils.http_util import send_async_request
 from utils.logger import Logger
@@ -210,9 +210,9 @@ class GoogleSearchUtil:
         
         for contract in contract_list:
             if contract.get('symbol') not in ticker_list:
-                logger.log_debug_msg(f"Not enough API limit to fetch {contract.get("symbol")}\' offering news")
+                logger.log_debug_msg(f'Not enough API limit to fetch {contract.get("symbol")} offering news')
         
-        discord_client.send_message(DiscordMessage(content=f'Original company name list: {[contract.get('company_name') for contract in contract_list]}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+        discord_client.send_message(DiscordMessage(content=f'Original company name list: {[contract.get("company_name") for contract in contract_list]}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
         discord_client.send_message(DiscordMessage(content=f'Adjusted company name list: {company_name_list}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
         discord_client.send_message(DiscordMessage(content=f'Search query list (sync): {search_query_list}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
         
@@ -247,7 +247,7 @@ class GoogleSearchUtil:
             result['symbol'] = ticker
             result['company_name'] = company_name
             
-            discord_client.send_message(DiscordMessage(content=f'Original company name list: {[contract.get('company_name') for contract in contract_list]}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+            discord_client.send_message(DiscordMessage(content=f'Original company name list: {[contract.get("company_name") for contract in contract_list]}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
             discord_client.send_message(DiscordMessage(content=f'Adjusted company name list: {company_name_list}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
             discord_client.send_message(DiscordMessage(content=f'Search query list (async): {search_query_list}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
             
