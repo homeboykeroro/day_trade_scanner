@@ -34,9 +34,9 @@ MAX_YESTERDAY_CLOSE_TO_LAST_PCT = get_config('INITIAL_DIP_PARAM', 'MAX_POP_OCCUR
 
 class InitialDip(PatternAnalyser):
         
-    def __init__(self, bar_size: BarSize, historical_data_df: DataFrame, daily_df: DataFrame, ticker_to_contract_info_dict: dict, discord_client, sqlite_connector):
+    def __init__(self, bar_size: BarSize, historical_data_df: DataFrame, daily_df: DataFrame, ticker_to_contract_info_dict: dict, discord_client, db_connector):
         ticker_list = list(historical_data_df.columns.get_level_values(0).unique())
-        super().__init__(discord_client, sqlite_connector)
+        super().__init__(discord_client, db_connector)
         self.__bar_size = bar_size
         self.__historical_data_df = historical_data_df
         self.__daily_df = daily_df.loc[:, idx[ticker_list, :]]

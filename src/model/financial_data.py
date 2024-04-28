@@ -1,6 +1,10 @@
 import pandas as pd
 import numpy as np
 
+from utils.logger import Logger
+
+logger = Logger()
+
 class FinancialData:
     MAX_DISPLAY_RESULT = 3
     NO_OF_WHITESPACE = 6
@@ -90,61 +94,102 @@ class FinancialData:
         
         if not (self.__quarterly_balance_sheet_df.empty and self.__annual_balance_sheet_df.empty):
             #Debts
-            display_debt_df = self.__quarterly_balance_sheet_df.loc[['Total Debt']] if not self.__quarterly_balance_sheet_df.empty and 'Total Debt' in self.__quarterly_balance_sheet_df.index else self.__annual_balance_sheet_df.loc[['Total Debt']]
-            debt_date_list = display_debt_df.columns.tolist()
-            debt_date_str_list = self.__convert_date_list_to_str(debt_date_list)[:self.MAX_DISPLAY_RESULT]
-            debt_value_list = self.__convert_value_list(display_debt_df.values[0].tolist()[:self.MAX_DISPLAY_RESULT])
+            quarterly_total_debt_exist = 'Total Debt' in self.__quarterly_balance_sheet_df.index 
+            annualy_total_debt_exist = 'Total Debt' in self.__annual_balance_sheet_df.index
+            display_debt_df = None
 
-            check_debt_len_list = debt_date_str_list + debt_value_list
-            max_debts_word_len = self.__get_max_str_len(check_debt_len_list)
-            max_debts_word_len += self.NO_OF_WHITESPACE
+            if quarterly_total_debt_exist:
+                display_debt_df = self.__quarterly_balance_sheet_df.loc[['Total Debt']]
+            elif annualy_total_debt_exist:
+                display_debt_df = self.__annual_balance_sheet_df.loc[['Total Debt']]
+            
+            if display_debt_df is not None:
+                debt_date_list = display_debt_df.columns.tolist()
+                debt_date_str_list = self.__convert_date_list_to_str(debt_date_list)[:self.MAX_DISPLAY_RESULT]
+                debt_value_list = self.__convert_value_list(display_debt_df.values[0].tolist()[:self.MAX_DISPLAY_RESULT])
 
-            debt_date_display = self.__get_concat_str(max_debts_word_len, debt_date_str_list)
-            debt_value_display = self.__get_concat_str(max_debts_word_len, debt_value_list)
-            embed.add_field(name = f'Debt Data: \n{debt_date_display}\n{debt_value_display}', value='\u200b', inline = False)
+                check_debt_len_list = debt_date_str_list + debt_value_list
+                max_debts_word_len = self.__get_max_str_len(check_debt_len_list)
+                max_debts_word_len += self.NO_OF_WHITESPACE
+
+                debt_date_display = self.__get_concat_str(max_debts_word_len, debt_date_str_list)
+                debt_value_display = self.__get_concat_str(max_debts_word_len, debt_value_list)
+                embed.add_field(name = f'Debt Data: \n{debt_date_display}\n{debt_value_display}', value='\u200b', inline = False)
 
             # Assests
-            display_assests_df = self.__quarterly_balance_sheet_df.loc[['Total Assets']] if not self.__quarterly_balance_sheet_df.empty and 'Total Assets' in self.__quarterly_balance_sheet_df.index else self.__annual_balance_sheet_df.loc[['Total Assets']]
-            assests_date_list = display_assests_df.columns.tolist()
-            assests_date_str_list = self.__convert_date_list_to_str(assests_date_list)[:self.MAX_DISPLAY_RESULT]
-            assests_value_list = self.__convert_value_list(display_assests_df.values[0].tolist())[:self.MAX_DISPLAY_RESULT]
+            quarterly_assests_exist = 'Total Assets' in self.__quarterly_balance_sheet_df.index 
+            annualy_assests_exist = 'Total Assets' in self.__annual_balance_sheet_df.index 
+            display_assests_df = None
+            
+            if quarterly_assests_exist:
+                display_assests_df = self.__quarterly_balance_sheet_df.loc[['Total Assets']]
+            elif annualy_assests_exist:
+                display_assests_df = self.__annual_balance_sheet_df.loc[['Total Assets']]
+            
+            if display_assests_df is not None:
+                display_assests_df = self.__quarterly_balance_sheet_df.loc[['Total Assets']] if not self.__quarterly_balance_sheet_df.empty and 'Total Assets' in self.__quarterly_balance_sheet_df.index else self.__annual_balance_sheet_df.loc[['Total Assets']]
+                assests_date_list = display_assests_df.columns.tolist()
+                assests_date_str_list = self.__convert_date_list_to_str(assests_date_list)[:self.MAX_DISPLAY_RESULT]
+                assests_value_list = self.__convert_value_list(display_assests_df.values[0].tolist())[:self.MAX_DISPLAY_RESULT]
 
-            check_assests_len_list = assests_date_str_list + assests_value_list
-            max_assests_word_len = self.__get_max_str_len(check_assests_len_list)
-            max_assests_word_len += self.NO_OF_WHITESPACE
-        
-            assests_date_display = self.__get_concat_str(max_assests_word_len, assests_date_str_list)
-            assests_value_display = self.__get_concat_str(max_assests_word_len, assests_value_list)
-            embed.add_field(name = f'Assests Data: \n{assests_date_display}\n{assests_value_display}', value='\u200b', inline = False)
+                check_assests_len_list = assests_date_str_list + assests_value_list
+                max_assests_word_len = self.__get_max_str_len(check_assests_len_list)
+                max_assests_word_len += self.NO_OF_WHITESPACE
+
+                assests_date_display = self.__get_concat_str(max_assests_word_len, assests_date_str_list)
+                assests_value_display = self.__get_concat_str(max_assests_word_len, assests_value_list)
+                embed.add_field(name = f'Assests Data: \n{assests_date_display}\n{assests_value_display}', value='\u200b', inline = False)
+        else:
+            logger.log_debug_msg(f'No balance sheet found for {self.__symbol}')
 
         if not (self.__quarterly_income_stmt_df.empty and self.__annual_income_stmt_df.empty):
             # Total Revenues
-            display_revenues_df = self.__quarterly_income_stmt_df.loc[['Total Revenue']] if not self.__quarterly_income_stmt_df.empty else self.__annual_income_stmt_df.loc[['Total Revenue']]
-            revenues_date_list = display_revenues_df.columns.tolist()
-            revenues_date_str_list = self.__convert_date_list_to_str(revenues_date_list)[:self.MAX_DISPLAY_RESULT]
-            revenues_value_list = self.__convert_value_list(display_assests_df.values[0].tolist())[:self.MAX_DISPLAY_RESULT]
+            quarterly_revenue_exist = 'Total Revenue' in self.__quarterly_income_stmt_df in self.__quarterly_income_stmt_df.index 
+            annualy_revenue_exist = 'Total Revenue' in self.__annual_income_stmt_df in self.__annual_income_stmt_df.index 
+            display_revenues_df = None
+            
+            if quarterly_revenue_exist:
+                display_revenues_df = self.__quarterly_income_stmt_df.loc[['Total Revenue']]
+            elif annualy_revenue_exist:
+                display_revenues_df = self.__annual_income_stmt_df.loc[['Total Revenue']]
+            
+            if display_assests_df is not None: 
+                revenues_date_list = display_revenues_df.columns.tolist()
+                revenues_date_str_list = self.__convert_date_list_to_str(revenues_date_list)[:self.MAX_DISPLAY_RESULT]
+                revenues_value_list = self.__convert_value_list(display_assests_df.values[0].tolist())[:self.MAX_DISPLAY_RESULT]
 
-            check_revenues_len_list = revenues_date_str_list + revenues_value_list
-            max_revenues_word_len = self.__get_max_str_len(check_revenues_len_list)
-            max_revenues_word_len += self.NO_OF_WHITESPACE
+                check_revenues_len_list = revenues_date_str_list + revenues_value_list
+                max_revenues_word_len = self.__get_max_str_len(check_revenues_len_list)
+                max_revenues_word_len += self.NO_OF_WHITESPACE
 
-            revenues_date_display = self.__get_concat_str(max_revenues_word_len, revenues_date_str_list)
-            revenues_value_display = self.__get_concat_str(max_revenues_word_len, revenues_value_list)
-            embed.add_field(name = f'Revenues Data: \n{revenues_date_display}\n{revenues_value_display}', value='\u200b', inline = False)
+                revenues_date_display = self.__get_concat_str(max_revenues_word_len, revenues_date_str_list)
+                revenues_value_display = self.__get_concat_str(max_revenues_word_len, revenues_value_list)
+                embed.add_field(name = f'Revenues Data: \n{revenues_date_display}\n{revenues_value_display}', value='\u200b', inline = False)
 
             # Total Expenses
-            display_expenses_df = self.__quarterly_income_stmt_df.loc[['Total Expenses']] if not self.__quarterly_income_stmt_df.empty else self.__annual_income_stmt_df.loc[['Total Expenses']]
-            expenses_date_list = display_expenses_df.columns.tolist()
-            expenses_date_str_list = self.__convert_date_list_to_str(expenses_date_list)[:self.MAX_DISPLAY_RESULT]
-            expenses_value_list = self.__convert_value_list(display_assests_df.values[0].tolist())[:self.MAX_DISPLAY_RESULT]
+            quarterly_total_expense_exist = 'Total Expenses' in self.__quarterly_balance_sheet_df.index 
+            annualy_total_expense_exist = 'Total Expenses' in self.__annual_balance_sheet_df.index
+            display_expenses_df = None
+            
+            if quarterly_total_expense_exist:
+                display_expenses_df = self.__quarterly_income_stmt_df.loc[['Total Expenses']]
+            elif annualy_total_expense_exist:
+                display_expenses_df = self.__annual_income_stmt_df.loc[['Total Expenses']]
+            
+            if display_expenses_df is not None:
+                expenses_date_list = display_expenses_df.columns.tolist()
+                expenses_date_str_list = self.__convert_date_list_to_str(expenses_date_list)[:self.MAX_DISPLAY_RESULT]
+                expenses_value_list = self.__convert_value_list(display_assests_df.values[0].tolist())[:self.MAX_DISPLAY_RESULT]
 
-            check_expenses_len_list = expenses_date_str_list + expenses_value_list
-            max_expenses_word_len = self.__get_max_str_len(check_expenses_len_list)
-            max_expenses_word_len += self.NO_OF_WHITESPACE
+                check_expenses_len_list = expenses_date_str_list + expenses_value_list
+                max_expenses_word_len = self.__get_max_str_len(check_expenses_len_list)
+                max_expenses_word_len += self.NO_OF_WHITESPACE
 
-            expenses_date_display = self.__get_concat_str(max_expenses_word_len, expenses_date_str_list)
-            expenses_value_display = self.__get_concat_str(max_expenses_word_len, expenses_value_list)
-            embed.add_field(name = f'Expenses Data: \n{expenses_date_display}\n{expenses_value_display}', value='\u200b', inline = False)
+                expenses_date_display = self.__get_concat_str(max_expenses_word_len, expenses_date_str_list)
+                expenses_value_display = self.__get_concat_str(max_expenses_word_len, expenses_value_list)
+                embed.add_field(name = f'Expenses Data: \n{expenses_date_display}\n{expenses_value_display}', value='\u200b', inline = False)
+        else:
+            logger.log_debug_msg(f'No income statement found for {self.__symbol}')
         
         #Institution Holders
         if self.__major_holders_df is None or self.__major_holders_df.empty:

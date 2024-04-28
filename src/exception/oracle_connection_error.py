@@ -1,0 +1,2 @@
+class OracleConnectionError(Exception):
+    pass
