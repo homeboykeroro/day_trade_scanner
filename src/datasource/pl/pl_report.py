@@ -4,8 +4,6 @@ from datetime import datetime
 
 from module.discord_chatbot_client import DiscordChatBotClient
 
-from sql.sqlite_connector import SqliteConnector
-
 from model.pl.daily_profit_and_loss import DailyProfitAndLoss
 from model.pl.weekly_profit_and_loss import WeeklyProfitAndLoss
 from model.pl.month_to_date_profit_and_loss import MonthToDateProfitAndLoss

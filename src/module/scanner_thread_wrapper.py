@@ -64,9 +64,6 @@ class ScannerThreadWrapper(threading.Thread):
             break    
             
     def run(self) -> None:
-        db_connector = OracleConnector()
-        ib_connector = IBConnector()
-        
         try:
             loop = asyncio.get_event_loop()
             logger.log_debug_msg(f'Get event loop for {self.__name}')
@@ -74,6 +71,9 @@ class ScannerThreadWrapper(threading.Thread):
             loop = asyncio.new_event_loop()
             logger.log_debug_msg(f'Create new event loop for {self.__name}')
             
+        db_connector = OracleConnector()
+        ib_connector = IBConnector(loop)
+        
         while True:
             try:
                 self.__scan(ib_connector, self.__discord_client, db_connector, loop)

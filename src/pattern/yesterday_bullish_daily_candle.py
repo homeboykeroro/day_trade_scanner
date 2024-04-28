@@ -31,9 +31,9 @@ MIN_YESTERDAY_CLOSE_CHANGE_PCT = get_config('YESTERDAY_BULLISH_DAILY_CANDLE_PARA
 
 class YesterdayBullishDailyCandle(PatternAnalyser):
     
-    def __init__(self, hit_scanner_date: datetime.date, daily_df: pd.DataFrame, ticker_to_contract_info_dict: dict, discord_client, sqlite_connector):
-        super().__init__(discord_client, sqlite_connector)
-        self.__sqlite_connector = sqlite_connector
+    def __init__(self, hit_scanner_date: datetime.date, daily_df: pd.DataFrame, ticker_to_contract_info_dict: dict, discord_client, db_connector):
+        super().__init__(discord_client, db_connector)
+        self.__db_connector = db_connector
         self.__hit_scanner_date = hit_scanner_date
         self.__historical_data_df = daily_df
         self.__ticker_to_contract_info_dict = ticker_to_contract_info_dict
@@ -103,11 +103,13 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
         
         analysis_ticker_list = []
         for ticker in filtered_ticker_list:
-            is_yesterday_bullish_candle_analysis_msg_sent = check_if_pattern_analysis_message_sent(connector=self.__sqlite_connector, 
+            check_start_time = time.time()
+            is_yesterday_bullish_candle_analysis_msg_sent = check_if_pattern_analysis_message_sent(connector=self.__db_connector, 
                                                                                                    ticker=ticker, 
                                                                                                    hit_scanner_datetime=self.__hit_scanner_date, 
                                                                                                    scan_pattern=PATTERN_NAME, 
                                                                                                    bar_size=BarSize.ONE_DAY.value)
+            logger.log_debug_msg(f'Check if {ticker} pattern analysis exists in db finish time: {time.time() - check_start_time} seconds')
             
             if not is_yesterday_bullish_candle_analysis_msg_sent:
                 analysis_ticker_list.append(ticker)
@@ -130,13 +132,15 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
             close = self.__historical_data_df.loc[self.__hit_scanner_date.strftime('%Y-%m-%d'), (ticker, Indicator.CLOSE.value)]
             close_pct = self.__historical_data_df.loc[self.__hit_scanner_date.strftime('%Y-%m-%d'), (ticker, CustomisedIndicator.CLOSE_CHANGE.value)]
             volume = self.__historical_data_df.loc[self.__hit_scanner_date.strftime('%Y-%m-%d'), (ticker, Indicator.VOLUME.value)]
-                    
+            
+            chart_start_time = time.time()
             daily_chart_dir = get_candlestick_chart(candle_data_df=self.__historical_data_df,
                                                     ticker=ticker, pattern=PATTERN_NAME, bar_size=BarSize.ONE_DAY,
                                                     hit_scanner_datetime=self.__hit_scanner_date,
                                                     scatter_symbol=ScatterSymbol.POP, scatter_colour=ScatterColour.CYAN,
                                                     candle_comment_list=[CustomisedIndicator.CLOSE_CHANGE, CustomisedIndicator.GAP_PCT_CHANGE])
-              
+            logger.log_debug_msg(f'Generate {ticker} chart time, {time.time() - chart_start_time} seconds')
+            
             message = ScannerResultMessage(title=f'{ticker}\'s yesterday\'s bullish daily candle, up {round(close_pct, 2)}% ({self.__hit_scanner_date})',
                                            readout_msg=f'{" ".join(ticker)} yesterday\'s bullish daily candle, up {round(close_pct, 2)}%',
                                            close=close,

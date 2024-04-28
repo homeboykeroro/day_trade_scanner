@@ -1,3 +1,4 @@
+from asyncio import AbstractEventLoop
 import re
 import time
 from datetime import datetime, timedelta
@@ -13,7 +14,7 @@ from model.ib.snapshot import Snapshot
 
 from utils.http_util import send_async_request
 from utils.collection_util import get_chunk_list
-from utils.datetime_util import PRE_MARKET_START_DATETIME, US_BUSINESS_DAY, get_us_business_day, get_current_us_datetime, convert_us_to_hk_datetime
+from utils.datetime_util import  US_BUSINESS_DAY, get_us_business_day, get_current_us_datetime
 from utils.logger import Logger
 
 from constant.endpoint.ib.client_portal_api_endpoint import ClientPortalApiEndpoint
@@ -59,8 +60,9 @@ SNAPSHOT_FIELD_LIST_STR = '55,7221,7051,7289,7644,7636,7637,6509,31,7741'
 CONCAT_TICKER_CHUNK_SIZE = 300
 
 class IBConnector:
-    def __init__(self) -> None:
+    def __init__(self, loop: AbstractEventLoop = None) -> None:
         self.__ticker_to_contract_info_dict = {}
+        self.__loop = loop
     
     def receive_brokerage_account(self):
         try:
@@ -199,7 +201,11 @@ class IBConnector:
 
         try:
             get_security_by_ticker_start_time = time.time()
-            security_response = send_async_request('GET', f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.SECURITY_STOCKS_BY_SYMBOL}', get_security_payload_list, 10)
+            security_response = send_async_request(method='GET', 
+                                                   endpoint=f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.SECURITY_STOCKS_BY_SYMBOL}', 
+                                                   payload_list=get_security_payload_list, 
+                                                   chunk_size=10,
+                                                   loop=self.__loop)
             logger.log_debug_msg(f'Get security by ticker response time: {time.time() - get_security_by_ticker_start_time}')
         except Exception as security_request_exception:
             logger.log_error_msg(f'Error occurred while requesting security by ticker, Cause: {security_request_exception}')
@@ -274,7 +280,10 @@ class IBConnector:
             
             while not snapshot_retrieval_success:
                 get_contract_snapshot_start_time = time.time()
-                snapshot_response_list = send_async_request('GET', f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.SNAPSHOT}', snapshot_payload_list)
+                snapshot_response_list = send_async_request(method='GET', 
+                                                            endpoint=f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.SNAPSHOT}', 
+                                                            payload_list=snapshot_payload_list, 
+                                                            loop=self.__loop)
                 logger.log_debug_msg(f'Get market cap, is shortable, shortable shares, and rebate rate data response time: {time.time() - get_contract_snapshot_start_time}')
                 
                 for snapshot_list in snapshot_response_list:
@@ -394,7 +403,11 @@ class IBConnector:
 
         try:
             get_security_definitions_start_time = time.time()
-            sec_def_response_list = send_async_request('GET', f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.SECURITY_DEFINITIONS}', sec_def_payload_list, 100)
+            sec_def_response_list = send_async_request(method='GET', 
+                                                       endpoint=f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.SECURITY_DEFINITIONS}', 
+                                                       payload_list=sec_def_payload_list, 
+                                                       chunk_size=100,
+                                                       loop=self.__loop)
             logger.log_debug_msg(f'Get sector data response time: {time.time() - get_security_definitions_start_time}')
         except Exception as snapshot_request_exception:
             logger.log_error_msg(f'Error occurred while requesting sector data, Cause: {snapshot_request_exception}')
@@ -426,7 +439,11 @@ class IBConnector:
                     else:
                         logger.log_debug_msg(f'{ticker} does not exist in ticker to contract dict')
 
-    def get_historical_candle_df(self, contract_list: list, period: str, bar_size: BarSize, outside_rth: str = 'true', candle_retrieval_end_datetime: datetime = None, loop = None) -> pd.DataFrame:
+    def get_historical_candle_df(self, contract_list: list, 
+                                       period: str, 
+                                       bar_size: BarSize, 
+                                       outside_rth: str = 'true', 
+                                       candle_retrieval_end_datetime: datetime = None) -> pd.DataFrame:
         con_id_list = [contract['con_id'] for contract in contract_list]
         ticker_list = [contract['symbol'] for contract in contract_list]
         
@@ -485,7 +502,10 @@ class IBConnector:
         try:
             logger.log_debug_msg(f'Getting {bar_size.value} historical candle data, paylaod list: {candle_payload_list}')
             get_one_minute_candle_start_time = time.time()
-            candle_response_list = send_async_request(method='GET', endpoint=f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.MARKET_DATA_HISTORY}', payload_list=candle_payload_list, loop=loop)
+            candle_response_list = send_async_request(method='GET', 
+                                                      endpoint=f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.MARKET_DATA_HISTORY}', 
+                                                      payload_list=candle_payload_list, 
+                                                      loop=self.__loop)
             logger.log_debug_msg(f'Get {bar_size.value} historical candle data time: {time.time() - get_one_minute_candle_start_time}')
         except Exception as historical_data_request_exception:
             logger.log_error_msg(f'An error occurred while requesting {bar_size.value} historical data, Cause: {historical_data_request_exception}')

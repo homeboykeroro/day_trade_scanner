@@ -1,5 +1,6 @@
 import asyncio
 import queue
+import threading
 import aiohttp
 import time
 import json
@@ -129,10 +130,12 @@ def send_async_request(method: str, endpoint: str, payload_list: list, chunk_siz
         for payload in payload_list:
             payload_list_queue.put(payload)
     
-    if loop is not None:
+    if loop is None:
         logger.log_debug_msg(f'No event loop is set for {endpoint}')
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
+    else:
+        logger.log_debug_msg(f'Use event loop passed from {threading.current_thread().name}')
     
     response_result = loop.run_until_complete(process_async_request(method, endpoint, payload_list, chunk_size, no_of_request_per_sec))
 
