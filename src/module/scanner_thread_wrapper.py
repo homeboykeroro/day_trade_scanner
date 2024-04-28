@@ -30,21 +30,23 @@ SCANNER_FATAL_ERROR_REFRESH_INTERVAL = 5
 class ScannerThreadWrapper(threading.Thread):
     def __init__(self, scan: Callable, 
                  name: str,
+                 ib_connector: IBConnector,
                  discord_client: DiscordChatBotClient):
         self.exc = None
         self.__scan = scan
         self.__name = name
+        self.__ib_connector = ib_connector
         self.__discord_client = discord_client
         super().__init__(name=name)
         
-    def __reauthenticate(self, ib_connector: IBConnector):
+    def __reauthenticate(self):
         retry_times = 0
     
         while True:
             try:
                 if retry_times < MAX_RETRY_CONNECTION_TIMES:
                     logger.log_debug_msg('send reauthenticate requests', with_std_out=True)
-                    ib_connector.reauthenticate()
+                    self.__ib_connector.reauthenticate()
                 else:
                     raise RequestException("Reauthentication failed")
             except Exception as reauthenticate_exception:
@@ -63,24 +65,16 @@ class ScannerThreadWrapper(threading.Thread):
             logger.log_debug_msg('Reauthentication succeed', with_std_out=True)
             break    
             
-    def run(self) -> None:
-        try:
-            loop = asyncio.get_event_loop()
-            logger.log_debug_msg(f'Get event loop for {self.__name}')
-        except RuntimeError:
-            loop = asyncio.new_event_loop()
-            logger.log_debug_msg(f'Create new event loop for {self.__name}')
-            
+    def run(self) -> None:  
         db_connector = OracleConnector()
-        ib_connector = IBConnector(loop)
         
         while True:
             try:
-                self.__scan(ib_connector, self.__discord_client, db_connector, loop)
+                self.__scan(self.__ib_connector, self.__discord_client, db_connector)
             except (RequestException, ClientError, HTTPError) as connection_exception:
                 self.__discord_client.send_message(DiscordMessage(content='Client Portal API connection failed, re-authenticating session'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
                 logger.log_error_msg(f'Client Portal API connection error in stock screener, {connection_exception}', with_std_out=True)
-                self.__reauthenticate(ib_connector)
+                self.__reauthenticate()
             except (OracleConnectionError) as oracle_connection_exception:
                 self.__discord_client.send_message(DiscordMessage(content='Database connection error'), channel_type=DiscordChannel.CHATBOT_ERROR_LOG, with_text_to_speech=True)
                 logger.log_error_msg(f'Oracle connection error, {oracle_connection_exception}', with_std_out=True)
@@ -88,6 +82,7 @@ class ScannerThreadWrapper(threading.Thread):
                 self.__discord_client.send_message(DiscordMessage(content='Fatal error'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)   
                 self.__discord_client.send_message(DiscordMessage(content=traceback.format_exc()), channel_type=DiscordChannel.CHATBOT_ERROR_LOG)
                 logger.log_error_msg(f'Scanner fatal error, {exception}', with_std_out=True)
+                logger.log_error_msg(f'{traceback.format_exc()}')
                 logger.log_debug_msg(f'Retry scanning due to fatal error after: {SCANNER_FATAL_ERROR_REFRESH_INTERVAL} seconds', with_std_out=True)
                 time.sleep(SCANNER_FATAL_ERROR_REFRESH_INTERVAL)
                 

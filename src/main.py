@@ -1,4 +1,3 @@
-import os
 from module.discord_chatbot_client import DiscordChatBotClient
 from module.stock_screener import StockScreener
 #from module.pl_report_generator import PLReportGenerator

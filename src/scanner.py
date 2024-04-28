@@ -2,6 +2,7 @@ from asyncio import AbstractEventLoop
 import datetime
 import math
 import os
+import threading
 import time
 import pandas as pd
 from requests import RequestException
@@ -111,18 +112,21 @@ class Scanner:
     def scan_yesterday_top_gainer(self):
         thread = ScannerThreadWrapper(scan=self.__analyse_yesterday_top_gainer, 
                                       name='yesterday_top_gainer_scan',
+                                      ib_connector=self.__ib_connector,
                                       discord_client=self.__discord_client)
         thread.start()
     
     def scan_intra_day_top_gainer(self):
         thread = ScannerThreadWrapper(scan=self.__analyse_intra_day_top_gainer, 
                                       name='intra_day_top_gainer_scan',
+                                      ib_connector=self.__ib_connector,
                                       discord_client=self.__discord_client)
         thread.start()
     
     def scan_intra_day_top_loser(self):
         thread = ScannerThreadWrapper(scan=self.__analyse_intra_day_top_loser, 
                                       name='intra_day_top_loser_scan',
+                                      ib_connector=self.__ib_connector,
                                       discord_client=self.__discord_client)
         thread.start()
     
@@ -149,8 +153,7 @@ class Scanner:
                                                               contract_list=request_candle_contract_list, 
                                                               offset_day=PREVIOUS_DAY_TOP_GAINER_MAX_OBSERVE_DAYS,
                                                               outside_rth=False,
-                                                              candle_retrieval_end_datetime=yesterday_top_gainer_retrieval_datetime,
-                                                              loop=loop)
+                                                              candle_retrieval_end_datetime=yesterday_top_gainer_retrieval_datetime)
         
         with pd.option_context('display.max_rows', None,
                        'display.max_columns', None,
@@ -208,77 +211,88 @@ class Scanner:
             logger.log_debug_msg(f'yesterday top gainer\'s yesterday_one_minute_candle_df: {yesterday_one_minute_candle_df}', with_log_file=True, with_std_out=False)
             logger.log_debug_msg(f'yesterday top gainer\'s concated_one_minute_candle_df: {concated_one_minute_candle_df}', with_log_file=True, with_std_out=False)
     
-    def __analyse_intra_day_top_gainer(self, ib_connector: IBConnector, 
+    def __analyse_intra_day_top_gainer(self, ib_connector: IBConnector,
                                              discord_client: DiscordChatBotClient, 
-                                             db_connector: OracleConnector, 
-                                             loop: AbstractEventLoop) -> None:
-            logger.log_debug_msg('intra day top gainer scan starts')
+                                             db_connector: OracleConnector) -> None:
+        logger.log_debug_msg('intra day top gainer scan starts')
 
-            contract_list = ib_connector.get_screener_results(MAX_NO_OF_DAY_TRADE_SCANNER_RESULT, IB_TOP_GAINER_FILTER)
-            ib_connector.update_contract_info(contract_list)
-            one_minute_candle_df = self.__retrieve_intra_day_minute_candle(ib_connector=ib_connector,
-                                                                           contract_list=contract_list, 
-                                                                           bar_size=BarSize.ONE_MINUTE, 
-                                                                           loop=loop)
-            daily_df = self.__get_daily_candle(ib_connector=ib_connector,
-                                               contract_list=contract_list, 
-                                               offset_day=5, 
-                                               outside_rth=False,
-                                               loop=loop)
-
-            with pd.option_context('display.max_rows', None,
-                           'display.max_columns', None,
-                           'display.precision', 3):
-                logger.log_debug_msg(f'__analyse_intra_day_top_gainer daily df: {daily_df}', with_log_file=True, with_std_out=False)
-
-            send_msg_start_time = time.time()
-            logger.log_debug_msg(f'top gainer scanner result: {[contract["symbol"] for contract in contract_list]}')
-            discord_client.send_message(DiscordMessage(content=f'{[contract["symbol"] for contract in contract_list]}'), DiscordChannel.TOP_GAINER_SCANNER_LIST)
-            logger.log_debug_msg(f'send top gainer scanner result time: {time.time() - send_msg_start_time}')
-
-            with pd.option_context('display.max_rows', None,
-                           'display.max_columns', None,
-                           'display.precision', 3):
-                logger.log_debug_msg(f'intra day top gainer scan daily df: {daily_df}', with_log_file=True, with_std_out=False)
-
-            initial_pop_analyser = InitialPop(bar_size=BarSize.ONE_MINUTE,
-                                              historical_data_df=one_minute_candle_df, 
-                                              daily_df=daily_df, 
-                                              ticker_to_contract_info_dict=ib_connector.get_ticker_to_contract_dict(), 
-                                              discord_client=discord_client,
-                                              db_connector=db_connector)
-            initial_pop_analyser.analyse()
-    
-    def __analyse_intra_day_top_loser(self, ib_connector: IBConnector, 
-                                      discord_client: DiscordChatBotClient, 
-                                      db_connector: OracleConnector, 
-                                      loop: AbstractEventLoop) -> None:
-        logger.log_debug_msg('intra day top loser scan starts')
-        contract_list = ib_connector.get_screener_results(MAX_NO_OF_DAY_TRADE_SCANNER_RESULT, IB_TOP_LOSER_FILTER)
+        contract_list = self.__ib_connector.get_screener_results(MAX_NO_OF_DAY_TRADE_SCANNER_RESULT, IB_TOP_GAINER_FILTER)
+        logger.log_debug_msg(f'Initial pop scanner result: {contract_list}')
+        
+        logger.log_debug_msg(f'Fetch top gainer snapshot')
         ib_connector.update_contract_info(contract_list)
+        ticker_to_contract_dict = ib_connector.get_ticker_to_contract_dict()
+        snapshot_list = [dict(symbol=contract.symbol, company_name=contract.company_name) for _, contract in ticker_to_contract_dict.items()]
+        logger.log_debug_msg(f'Top gainer snapshot list: {snapshot_list}, size: {len(snapshot_list)}')
+        logger.log_debug_msg(f'Initial pop scanner contract retrieval completed')
+        
+        logger.log_debug_msg('retrieve top gainer one minute candle')
         one_minute_candle_df = self.__retrieve_intra_day_minute_candle(ib_connector=ib_connector,
                                                                        contract_list=contract_list, 
-                                                                       bar_size=BarSize.ONE_MINUTE, 
-                                                                       loop=loop)
+                                                                       bar_size=BarSize.ONE_MINUTE)
+        logger.log_debug_msg(f'top gainer one minute candle ticker: {one_minute_candle_df.columns.get_level_values(0).unique().tolist()}')
+        logger.log_debug_msg('retrieve top gainer daily candle')
         daily_df = self.__get_daily_candle(ib_connector=ib_connector,
                                            contract_list=contract_list, 
                                            offset_day=5, 
-                                           outside_rth=False,
-                                           loop=loop)
+                                           outside_rth=False)
+        logger.log_debug_msg(f'top gainer daily_df candle ticker: {daily_df.columns.get_level_values(0).unique().tolist()}')
+
+        with pd.option_context('display.max_rows', None,
+                       'display.max_columns', None,
+                       'display.precision', 3):
+            logger.log_debug_msg(f'__analyse_intra_day_top_gainer daily df: {daily_df}', with_log_file=True, with_std_out=False)
+
+        send_msg_start_time = time.time()
+        logger.log_debug_msg(f'top gainer scanner result: {[contract["symbol"] for contract in contract_list]}')
+        discord_client.send_message(DiscordMessage(content=f'{[contract["symbol"] for contract in contract_list]}'), DiscordChannel.TOP_GAINER_SCANNER_LIST)
+        logger.log_debug_msg(f'send top gainer scanner result time: {time.time() - send_msg_start_time}')
+
+        initial_pop_analyser = InitialPop(bar_size=BarSize.ONE_MINUTE,
+                                          historical_data_df=one_minute_candle_df, 
+                                          daily_df=daily_df, 
+                                          ticker_to_contract_info_dict=ib_connector.get_ticker_to_contract_dict(), 
+                                          discord_client=discord_client,
+                                          db_connector=db_connector)
+        initial_pop_analyser.analyse()
+    
+    def __analyse_intra_day_top_loser(self, ib_connector: IBConnector,
+                                            discord_client: DiscordChatBotClient, 
+                                            db_connector: OracleConnector) -> None:
+        logger.log_debug_msg('intra day top loser scan starts')
+        
+        contract_list = ib_connector.get_screener_results(MAX_NO_OF_DAY_TRADE_SCANNER_RESULT, IB_TOP_LOSER_FILTER)
+        logger.log_debug_msg(f'Initial dip scanner result: {contract_list}')
+        
+        logger.log_debug_msg(f'Fetch top loser snapshot')
+        ib_connector.update_contract_info(contract_list)
+        ticker_to_contract_dict = ib_connector.get_ticker_to_contract_dict()
+        snapshot_list = [dict(symbol=contract.symbol, company_name=contract.company_name) for _, contract in ticker_to_contract_dict.items()]
+        logger.log_debug_msg(f'Top loser snapshot list: {snapshot_list}, size: {len(snapshot_list)}')
+        logger.log_debug_msg(f'Initial dip scanner completed')
+        
+        logger.log_debug_msg('retrieve top loser one minute candle')
+        one_minute_candle_df = self.__retrieve_intra_day_minute_candle(ib_connector=ib_connector,
+                                                                       contract_list=contract_list, 
+                                                                       bar_size=BarSize.ONE_MINUTE)
+        logger.log_debug_msg(f'top loser one minute candle ticker: {one_minute_candle_df.columns.get_level_values(0).unique().tolist()}')
+        logger.log_debug_msg('retrieve top loser daily candle')
+        daily_df = self.__get_daily_candle(ib_connector=ib_connector,
+                                           contract_list=contract_list, 
+                                           offset_day=5, 
+                                           outside_rth=False)
+        logger.log_debug_msg(f'top loser daily candle ticker: {daily_df.columns.get_level_values(0).unique().tolist()}')
 
         with pd.option_context('display.max_rows', None,
                        'display.max_columns', None,
                        'display.precision', 3):
             logger.log_debug_msg(f'__analyse_intra_day_top_loser daily df: {daily_df}', with_log_file=True, with_std_out=False)
 
+        send_msg_start_time = time.time()
         logger.log_debug_msg(f'top loser scanner result: {[contract["symbol"] for contract in contract_list]}')
         discord_client.send_message(DiscordMessage(content=f'{[contract["symbol"] for contract in contract_list]}'), DiscordChannel.TOP_LOSER_SCANNER_LIST)
-
-        with pd.option_context('display.max_rows', None,
-                       'display.max_columns', None,
-                       'display.precision', 3):
-            logger.log_debug_msg(f'intra day top loser scan daily df: {daily_df}', with_log_file=True, with_std_out=False)
-
+        logger.log_debug_msg(f'send top loser scanner result time: {time.time() - send_msg_start_time}')
+        
         initial_dip_analyser = InitialDip(bar_size=BarSize.ONE_MINUTE,
                                           historical_data_df=one_minute_candle_df, 
                                           daily_df=daily_df, 
@@ -295,20 +309,23 @@ class Scanner:
 
     def __retrieve_intra_day_minute_candle(self, ib_connector: IBConnector,
                                                  contract_list: list, 
-                                                 bar_size: BarSize, 
-                                                 loop: AbstractEventLoop) -> pd.DataFrame:
+                                                 bar_size: BarSize) -> pd.DataFrame:
         us_current_datetime = get_current_us_datetime().replace(microsecond=0, second=0)
         historical_data_interval_in_minute = (us_current_datetime - PRE_MARKET_START_DATETIME).total_seconds() / 60
         logger.log_debug_msg(f'Historical candle data retrieval period: {historical_data_interval_in_minute} minutes')
     
+        # if False:
+        #     logger.log_debug_msg('Historical candle data retrieval retrieval period is less than 1 minute', with_std_out=True)
+        #     return None
         if historical_data_interval_in_minute < 1:
             logger.log_debug_msg('Historical candle data retrieval retrieval period is less than 1 minute', with_std_out=True)
             return None
         else:
             candle_df = ib_connector.get_historical_candle_df(contract_list=contract_list, 
-                                                                     period=f'{math.floor(historical_data_interval_in_minute)}min', 
-                                                                     bar_size=bar_size, 
-                                                                     outside_rth='true')
+                                                             #period=f'960min', 
+                                                              period=f'{math.floor(historical_data_interval_in_minute)}min', 
+                                                              bar_size=bar_size, 
+                                                              outside_rth='true')
             
             if candle_df is not None and not candle_df.empty:
                 return append_customised_indicator(candle_df)
@@ -367,8 +384,7 @@ class Scanner:
                                  contract_list: list, 
                                  offset_day: int, 
                                  outside_rth: bool = False, 
-                                 candle_retrieval_end_datetime: datetime.datetime = None, 
-                                 loop: AbstractEventLoop = None) -> pd.DataFrame:
+                                 candle_retrieval_end_datetime: datetime.datetime = None) -> pd.DataFrame:
         candle_request_contract_list = []
         contract_ticker_list = [contract['symbol'] for contract in contract_list]
         daily_candle_df_ticker_list = list(self.__daily_canlde_df.columns.get_level_values(0).unique())

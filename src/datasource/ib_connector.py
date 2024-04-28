@@ -1,5 +1,6 @@
 from asyncio import AbstractEventLoop
 import re
+import threading
 import time
 from datetime import datetime, timedelta
 import html
@@ -59,10 +60,17 @@ idx = pd.IndexSlice
 SNAPSHOT_FIELD_LIST_STR = '55,7221,7051,7289,7644,7636,7637,6509,31,7741'
 CONCAT_TICKER_CHUNK_SIZE = 300
 
+SCANNER_RATE_LIMIT_WAIT_PERIOD = 1
+SNAPSHOT_RATE_LIMIT_WAIT_PERIOD = 10
+
 class IBConnector:
     def __init__(self, loop: AbstractEventLoop = None) -> None:
         self.__ticker_to_contract_info_dict = {}
         self.__loop = loop
+        
+        self.__scanner_lock = threading.Lock()
+        self.__snapshot_info_lock = threading.Lock()
+        self.__historical_data_lock = threading.Lock()
     
     def receive_brokerage_account(self):
         try:
@@ -154,34 +162,38 @@ class IBConnector:
         return self.__ticker_to_contract_info_dict
     
     def get_screener_results(self, max_no_of_scanner_result: int, scanner_filter_payload: dict) -> list:
-        try:
-            scanner_type = scanner_filter_payload.get("type")
-            scanner_request_start_time = time.time()
-            scanner_response = session.post(f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.RUN_SCANNER}', json=scanner_filter_payload, verify=False)
-            logger.log_debug_msg(f'{scanner_type} scanner result response time: {time.time() - scanner_request_start_time} seconds')
-            scanner_response.raise_for_status()
-        except Exception as scanner_request_exception:
-            logger.log_error_msg(f'Error occurred while requesting {scanner_type} scanner result: {scanner_request_exception}')
-            raise scanner_request_exception
-        else:
-            logger.log_debug_msg(f'{scanner_type} scanner full result json: {[contract.get("symbol") for contract in scanner_response.json().get("contracts")]}')
-            logger.log_debug_msg(f'{scanner_type} scanner full result size: {len(scanner_response.json().get("contracts"))}') #bug fix Add 
-            logger.log_debug_msg(f'Maximum {scanner_type} scanner result size: {max_no_of_scanner_result}')
-            scanner_result = scanner_response.json()['contracts']
-            scanner_result_without_otc_stock = []
-        
-            for result in scanner_result:
-                if 'symbol' in result:
-                    symbol = result['symbol']
-
-                    if re.match('^[A-Z]{1,4}$', symbol): 
-                        scanner_result_without_otc_stock.append(result)
-                    else:
-                        logger.log_debug_msg(f'Exclude {symbol} from scanner result')
-                else:
-                    logger.log_debug_msg(f'Exclude unknown contract from scanner result, {result}', with_std_out=True)
+        with self.__scanner_lock:
+            try:
+                scanner_type = scanner_filter_payload.get("type")
+                scanner_request_start_time = time.time()
+                scanner_response = session.post(f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.RUN_SCANNER}', json=scanner_filter_payload, verify=False)
+                logger.log_debug_msg(f'{scanner_type} scanner result response time: {time.time() - scanner_request_start_time} seconds')
+                scanner_response.raise_for_status()
+            except Exception as scanner_request_exception:
+                logger.log_error_msg(f'Error occurred while requesting {scanner_type} scanner result: {scanner_request_exception}')
+                raise scanner_request_exception
+            else:
+                logger.log_debug_msg(f'{scanner_type} scanner full result json: {[contract.get("symbol") for contract in scanner_response.json().get("contracts")]}')
+                logger.log_debug_msg(f'{scanner_type} scanner full result size: {len(scanner_response.json().get("contracts"))}') #bug fix Add 
+                logger.log_debug_msg(f'Maximum {scanner_type} scanner result size: {max_no_of_scanner_result}')
+                scanner_result = scanner_response.json()['contracts']
+                scanner_result_without_otc_stock = []
+            
+                for result in scanner_result:
+                    if 'symbol' in result:
+                        symbol = result['symbol']
     
-            return scanner_result_without_otc_stock[:max_no_of_scanner_result]
+                        if re.match('^[A-Z]{1,4}$', symbol): 
+                            scanner_result_without_otc_stock.append(result)
+                        else:
+                            logger.log_debug_msg(f'Exclude {symbol} from scanner result')
+                    else:
+                        logger.log_debug_msg(f'Exclude unknown contract from scanner result, {result}', with_std_out=True)
+                
+                time.sleep(SCANNER_RATE_LIMIT_WAIT_PERIOD)
+                logger.log_debug_msg('Release scanner result retrieval lock')
+                
+                return scanner_result_without_otc_stock[:max_no_of_scanner_result]
     
     def get_security_by_tickers(self, ticker_list: list) -> list:
         result_list = []
@@ -244,6 +256,7 @@ class IBConnector:
             return result_list
     
     def update_contract_info(self, contract_list: list) -> None:
+        update_contract_info_start_time = time.time()
         snapshot_data_con_id_list = []
         
         for contract in contract_list:
@@ -254,10 +267,15 @@ class IBConnector:
                 snapshot_data_con_id_list.append(con_id)
         
         if snapshot_data_con_id_list:
-            self.update_snapshot(snapshot_data_con_id_list)
-            self.update_sec_def(snapshot_data_con_id_list)
+            with self.__snapshot_info_lock:
+                self.update_snapshot(snapshot_data_con_id_list)
+                self.update_sec_def(snapshot_data_con_id_list)
+                time.sleep(SNAPSHOT_RATE_LIMIT_WAIT_PERIOD)
+                logger.log_debug_msg('Release snapshot retrieval lock')
         else:
             logger.log_debug_msg(f'No snapshot data is required to update for the contracts: {contract_list}')
+        
+        logger.log_debug_msg(f'update contract info completed time: {time.time() - update_contract_info_start_time} seconds')
     
     def update_snapshot(self, con_id_list: list) -> None:
         if not con_id_list:
@@ -283,6 +301,8 @@ class IBConnector:
                 snapshot_response_list = send_async_request(method='GET', 
                                                             endpoint=f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.SNAPSHOT}', 
                                                             payload_list=snapshot_payload_list, 
+                                                            chunk_size=10,
+                                                            no_of_request_per_sec=SNAPSHOT_RATE_LIMIT_WAIT_PERIOD,
                                                             loop=self.__loop)
                 logger.log_debug_msg(f'Get market cap, is shortable, shortable shares, and rebate rate data response time: {time.time() - get_contract_snapshot_start_time}')
                 
@@ -300,7 +320,7 @@ class IBConnector:
                         break
                         
                 if incomplete_response_found:
-                    logger.log_debug_msg('Re-fetch snapshot after 1 second', with_std_out=True)
+                    logger.log_debug_msg('Re-fetch snapshot after 0.5 second', with_std_out=True)
                     time.sleep(0.5)
                 else:
                     snapshot_retrieval_success = True
@@ -500,13 +520,16 @@ class IBConnector:
             candle_payload_list.append(candle_payload)
 
         try:
-            logger.log_debug_msg(f'Getting {bar_size.value} historical candle data, paylaod list: {candle_payload_list}')
-            get_one_minute_candle_start_time = time.time()
-            candle_response_list = send_async_request(method='GET', 
-                                                      endpoint=f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.MARKET_DATA_HISTORY}', 
-                                                      payload_list=candle_payload_list, 
-                                                      loop=self.__loop)
-            logger.log_debug_msg(f'Get {bar_size.value} historical candle data time: {time.time() - get_one_minute_candle_start_time}')
+            with self.__historical_data_lock:
+                logger.log_debug_msg(f'Getting {bar_size.value} historical candle data, paylaod list: {candle_payload_list}')
+                get_one_minute_candle_start_time = time.time()
+                candle_response_list = send_async_request(method='GET', 
+                                                          endpoint=f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.MARKET_DATA_HISTORY}', 
+                                                          payload_list=candle_payload_list, 
+                                                          chunk_size=5,
+                                                          loop=self.__loop)
+                logger.log_debug_msg(f'Get {bar_size.value} historical candle data time: {time.time() - get_one_minute_candle_start_time}')
+                logger.log_debug_msg('Release historical data retrieval lock')
         except Exception as historical_data_request_exception:
             logger.log_error_msg(f'An error occurred while requesting {bar_size.value} historical data, Cause: {historical_data_request_exception}')
             raise historical_data_request_exception
