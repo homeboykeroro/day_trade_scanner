@@ -27,7 +27,7 @@ class Logger:
     def __get_logger(self, name: str = 'root',
                    log_parent_directory: str = LOGGER_DIR,
                    level: int = logging.DEBUG,
-                   display_format: str = '\r%(asctime)s - %(message)s (%(levelname)s)',
+                   display_format: str = '\r(%(threadName)s) %(asctime)s - %(message)s (%(levelname)s)',
                    date_format: str = '%m/%d/%Y %I:%M:%S %p'):
         log_date = datetime.now().strftime('%Y%m%d')
         log_filename = 'client_portal_scanner_log_' + log_date + '.txt'

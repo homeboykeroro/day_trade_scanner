@@ -153,10 +153,10 @@ class FinancialData:
             elif annualy_revenue_exist:
                 display_revenues_df = self.__annual_income_stmt_df.loc[['Total Revenue']]
             
-            if display_assests_df is not None: 
+            if display_revenues_df is not None: 
                 revenues_date_list = display_revenues_df.columns.tolist()
                 revenues_date_str_list = self.__convert_date_list_to_str(revenues_date_list)[:self.MAX_DISPLAY_RESULT]
-                revenues_value_list = self.__convert_value_list(display_assests_df.values[0].tolist())[:self.MAX_DISPLAY_RESULT]
+                revenues_value_list = self.__convert_value_list(display_revenues_df.values[0].tolist())[:self.MAX_DISPLAY_RESULT]
 
                 check_revenues_len_list = revenues_date_str_list + revenues_value_list
                 max_revenues_word_len = self.__get_max_str_len(check_revenues_len_list)
@@ -179,7 +179,7 @@ class FinancialData:
             if display_expenses_df is not None:
                 expenses_date_list = display_expenses_df.columns.tolist()
                 expenses_date_str_list = self.__convert_date_list_to_str(expenses_date_list)[:self.MAX_DISPLAY_RESULT]
-                expenses_value_list = self.__convert_value_list(display_assests_df.values[0].tolist())[:self.MAX_DISPLAY_RESULT]
+                expenses_value_list = self.__convert_value_list(display_expenses_df.values[0].tolist())[:self.MAX_DISPLAY_RESULT]
 
                 check_expenses_len_list = expenses_date_str_list + expenses_value_list
                 max_expenses_word_len = self.__get_max_str_len(check_expenses_len_list)
