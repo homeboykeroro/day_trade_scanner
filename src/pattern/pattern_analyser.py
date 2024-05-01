@@ -58,6 +58,6 @@ class PatternAnalyser(ABC):
                 self.__discord_client.send_message_by_list_with_response(message_list=notification_message_list, channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
             else:
                 for notification_message in notification_message_list:
-                    self.__discord_client.send_message_by_list_with_response(message_list=[notification_message], hannel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+                    self.__discord_client.send_message_by_list_with_response(message_list=[notification_message], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
             
             add_sent_pattern_analysis_message_record(save_notification_db_record_param_list)
