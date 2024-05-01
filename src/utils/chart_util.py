@@ -1,7 +1,7 @@
 import datetime
 import math
+import threading
 import pandas as pd
-import numpy as np
 import mplfinance as mpf
 from matplotlib import dates, ticker
 
@@ -20,6 +20,8 @@ from constant.indicator.indicator import Indicator
 
 idx = pd.IndexSlice
 logger = Logger()
+
+candle_stick_chart_generation_lock = threading.Lock()
 
 CHART_ROOT_DIR = get_config('CHART_SETTING', 'PATH')
 
@@ -206,30 +208,31 @@ def get_candlestick_chart(candle_data_df: pd.DataFrame,
                           scatter_symbol: ScatterSymbol, scatter_colour: ScatterColour,
                           positive_offset: int = None, negative_offset: int = None,
                           candle_comment_list: list = [CustomisedIndicator.CLOSE_CHANGE, CustomisedIndicator.GAP_PCT_CHANGE, Indicator.CLOSE, Indicator.VOLUME]) -> str:
-    symbol_df, colour_df = get_scatter_symbol_and_colour_df(src_df=candle_data_df.loc[:, idx[[ticker], Indicator.LOW.value]], 
-                                                            occurrence_idx_list=[hit_scanner_datetime], 
-                                                            scatter_symbol=scatter_symbol, 
-                                                            scatter_colour=scatter_colour)
-    description_df = get_candle_comments_df(candle_data_df.loc[:, idx[[ticker], :]], 
-                                            indicator_list=candle_comment_list)
-    candle_start_range, candle_end_range = get_offsetted_hit_scanner_datetime(hit_scanner_datetime=hit_scanner_datetime, 
-                                                                              indice=candle_data_df.index,
-                                                                              negative_offset=negative_offset, 
-                                                                              positive_offset=positive_offset)
-    
-    logger.log_debug_msg(f'{ticker} candle start range: {candle_start_range}, candle end range: {candle_end_range}')
-    
-    with pd.option_context('display.max_rows', None,
-                           'display.max_columns', None,
-                           'display.precision', 3,):
-        logger.log_debug_msg(f'{ticker} candle chart data: {candle_data_df.loc[candle_start_range:candle_end_range, idx[[ticker], :]]}')
-    
-    chart_dir = generate_chart(pattern=pattern, 
-                               bar_size=bar_size,
-                               main_df=candle_data_df.loc[candle_start_range:candle_end_range, idx[[ticker], :]],
-                               scatter_symbol_df=symbol_df.loc[candle_start_range:candle_end_range, :],
-                               scatter_colour_df=colour_df.loc[candle_start_range:candle_end_range, :],
-                               description_df=description_df.loc[candle_start_range:candle_end_range, :])
-    
-    return chart_dir
+    with candle_stick_chart_generation_lock:
+        symbol_df, colour_df = get_scatter_symbol_and_colour_df(src_df=candle_data_df.loc[:, idx[[ticker], Indicator.LOW.value]], 
+                                                                occurrence_idx_list=[hit_scanner_datetime], 
+                                                                scatter_symbol=scatter_symbol, 
+                                                                scatter_colour=scatter_colour)
+        description_df = get_candle_comments_df(candle_data_df.loc[:, idx[[ticker], :]], 
+                                                indicator_list=candle_comment_list)
+        candle_start_range, candle_end_range = get_offsetted_hit_scanner_datetime(hit_scanner_datetime=hit_scanner_datetime, 
+                                                                                  indice=candle_data_df.index,
+                                                                                  negative_offset=negative_offset, 
+                                                                                  positive_offset=positive_offset)
+
+        logger.log_debug_msg(f'{ticker} candle start range: {candle_start_range}, candle end range: {candle_end_range}')
+
+        with pd.option_context('display.max_rows', None,
+                               'display.max_columns', None,
+                               'display.precision', 3,):
+            logger.log_debug_msg(f'{ticker} candle chart data: {candle_data_df.loc[candle_start_range:candle_end_range, idx[[ticker], :]]}')
+
+        chart_dir = generate_chart(pattern=pattern, 
+                                   bar_size=bar_size,
+                                   main_df=candle_data_df.loc[candle_start_range:candle_end_range, idx[[ticker], :]],
+                                   scatter_symbol_df=symbol_df.loc[candle_start_range:candle_end_range, :],
+                                   scatter_colour_df=colour_df.loc[candle_start_range:candle_end_range, :],
+                                   description_df=description_df.loc[candle_start_range:candle_end_range, :])
+
+        return chart_dir
    

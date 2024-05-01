@@ -1,11 +1,6 @@
 from abc import ABC
 import discord
 
-from model.ib.contract_info import ContractInfo
-
-from constant.pattern import Pattern
-from constant.candle.bar_size import BarSize
-
 class DiscordMessage(ABC):
     def __init__(self, ticker: str = None, embed: discord.Embed = None, content: str = None, view: discord.ui.View = None, files: list = None, jump_url: str = None):
         self.__ticker = ticker

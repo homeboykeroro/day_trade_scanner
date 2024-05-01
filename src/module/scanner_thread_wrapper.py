@@ -1,15 +1,13 @@
-import asyncio
 import os
 import threading
 import time
 import traceback
 from typing import Callable
 from aiohttp import ClientError
+import oracledb
 from requests import HTTPError, RequestException
 
 from datasource.ib_connector import IBConnector
-
-from sql.oracle_connector import OracleConnector
 
 from module.discord_chatbot_client import DiscordChatBotClient
 
@@ -18,8 +16,6 @@ from model.discord.discord_message import DiscordMessage
 from utils.logger import Logger
 
 from constant.discord.discord_channel import DiscordChannel
-
-from exception.oracle_connection_error import OracleConnectionError
 
 logger = Logger()
 
@@ -34,7 +30,6 @@ class ScannerThreadWrapper(threading.Thread):
                  discord_client: DiscordChatBotClient):
         self.exc = None
         self.__scan = scan
-        self.__name = name
         self.__ib_connector = ib_connector
         self.__discord_client = discord_client
         super().__init__(name=name)
@@ -66,16 +61,14 @@ class ScannerThreadWrapper(threading.Thread):
             break    
             
     def run(self) -> None:  
-        db_connector = OracleConnector()
-        
         while True:
             try:
-                self.__scan(self.__ib_connector, self.__discord_client, db_connector)
+                self.__scan(self.__ib_connector, self.__discord_client)
             except (RequestException, ClientError, HTTPError) as connection_exception:
                 self.__discord_client.send_message(DiscordMessage(content='Client Portal API connection failed, re-authenticating session'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
                 logger.log_error_msg(f'Client Portal API connection error in stock screener, {connection_exception}', with_std_out=True)
                 self.__reauthenticate()
-            except (OracleConnectionError) as oracle_connection_exception:
+            except oracledb.Error as oracle_connection_exception:
                 self.__discord_client.send_message(DiscordMessage(content='Database connection error'), channel_type=DiscordChannel.CHATBOT_ERROR_LOG, with_text_to_speech=True)
                 logger.log_error_msg(f'Oracle connection error, {oracle_connection_exception}', with_std_out=True)
             except Exception as exception:

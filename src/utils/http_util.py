@@ -64,7 +64,7 @@ async def process_async_request(method: str, endpoint: str, payload_list: list, 
         
 def send_async_request(method: str, endpoint: str, payload_list: list, chunk_size: int, no_of_request_per_sec: float = None, loop = None):
     if loop is None:
-        logger.log_debug_msg(f'No event loop is set for {endpoint}')
+        logger.log_debug_msg(f'No event loop is set for {endpoint}, caller thread: {threading.current_thread().name}')
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
     else:

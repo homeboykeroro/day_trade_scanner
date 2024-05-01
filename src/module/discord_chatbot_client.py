@@ -27,8 +27,8 @@ TOP_LOSER_SCANNER_LIST_CHANNEL_ID = int(os.environ['DISCORD_TOP_LOSER_SCANNER_LI
 YESTERDAY_TOP_GAINER_SCANNER_LIST_CHANNEL_ID = int(os.environ['DISCORD_YESTERDAY_TOP_GAINER_SCANNER_LIST_CHANNEL_ID'])
 
 # Error Log
-CHATBOT_LOG_CHANNEL_ID = int(os.environ['DISCORD_CHATBOT_LOG_CHANNEL_ID'])
 CHATBOT_ERROR_LOG_CHANNEL_ID = int(os.environ['DISCORD_CHATBOT_ERROR_LOG_CHANNEL_ID'])
+CHATBOT_LOG_CHANNEL_ID = int(os.environ['DISCORD_CHATBOT_LOG_CHANNEL_ID'])
 
 # NAV
 NAV_CHANNEL_ID = int(os.environ['DISCORD_NAV_CHANNEL_ID'])
@@ -335,4 +335,10 @@ class DiscordChatBotClient(discord.Client):
     def run_chatbot(self) -> threading.Thread:
         bot_thread = threading.Thread(target=self.run, name="discord_chatbot_thread", args=(CHATBOT_TOKEN,))
         bot_thread.start()
+        
+        while True:
+            if self.__is_chatbot_ready:
+                logger.log_debug_msg('Chatbot is ready', with_std_out=True)
+                break
+        
         return bot_thread

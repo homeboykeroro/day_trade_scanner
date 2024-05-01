@@ -12,13 +12,6 @@ stock_screener = StockScreener(discord_client)
 
 def main():  
     discord_client.run_chatbot()
-
-    while True:
-        if discord_client.is_chatbot_ready:
-            logger.log_debug_msg('Chatbot is ready', with_std_out=True)
-            break
-    
-    stock_screener = StockScreener(discord_client) 
     stock_screener.scan()
 
 if __name__ == '__main__':

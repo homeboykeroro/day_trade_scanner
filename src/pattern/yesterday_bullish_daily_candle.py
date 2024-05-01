@@ -31,9 +31,8 @@ MIN_YESTERDAY_CLOSE_CHANGE_PCT = get_config('YESTERDAY_BULLISH_DAILY_CANDLE_PARA
 
 class YesterdayBullishDailyCandle(PatternAnalyser):
     
-    def __init__(self, hit_scanner_date: datetime.date, daily_df: pd.DataFrame, ticker_to_contract_info_dict: dict, discord_client, db_connector):
-        super().__init__(discord_client, db_connector)
-        self.__db_connector = db_connector
+    def __init__(self, hit_scanner_date: datetime.date, daily_df: pd.DataFrame, ticker_to_contract_info_dict: dict, discord_client):
+        super().__init__(discord_client)
         self.__hit_scanner_date = hit_scanner_date
         self.__historical_data_df = daily_df
         self.__ticker_to_contract_info_dict = ticker_to_contract_info_dict
@@ -104,8 +103,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
         analysis_ticker_list = []
         for ticker in filtered_ticker_list:
             check_start_time = time.time()
-            is_yesterday_bullish_candle_analysis_msg_sent = check_if_pattern_analysis_message_sent(connector=self.__db_connector, 
-                                                                                                   ticker=ticker, 
+            is_yesterday_bullish_candle_analysis_msg_sent = check_if_pattern_analysis_message_sent(ticker=ticker, 
                                                                                                    hit_scanner_datetime=self.__hit_scanner_date, 
                                                                                                    scan_pattern=PATTERN_NAME, 
                                                                                                    bar_size=BarSize.ONE_DAY.value)

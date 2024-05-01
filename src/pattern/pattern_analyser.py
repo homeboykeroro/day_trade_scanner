@@ -14,15 +14,14 @@ MAX_READ_OUT_MESSAGE_CHUNK_SIZE = 3
 logger = Logger()
 
 class PatternAnalyser(ABC):
-    def __init__(self, discord_client, db_connector) -> None:
+    def __init__(self, discord_client) -> None:
         self.__discord_client = discord_client
-        self.__db_connector = db_connector
     
     def analyse(self) -> None:
         return NotImplemented
     
     def check_if_pattern_analysis_message_sent(self, ticker: str, hit_scanner_datetime: datetime, pattern: str, bar_size: BarSize):
-        return check_if_pattern_analysis_message_sent(self.__db_connector, ticker, hit_scanner_datetime, pattern, bar_size.value)
+        return check_if_pattern_analysis_message_sent(ticker, hit_scanner_datetime, pattern, bar_size.value)
         
     def send_notification(self, scanner_result_list: list, discord_channel: DiscordChannel, is_async: bool = True):
         if scanner_result_list:
@@ -55,7 +54,10 @@ class PatternAnalyser(ABC):
                 message = DiscordMessage(ticker=ticker, jump_url=jump_url, content=readout_msg)
                 notification_message_list.append(message)
             
-            self.__discord_client.send_message_by_list_with_response(message_list=notification_message_list, channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+            if is_async:
+                self.__discord_client.send_message_by_list_with_response(message_list=notification_message_list, channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+            else:
+                for notification_message in notification_message_list:
+                    self.__discord_client.send_message_by_list_with_response(message_list=[notification_message], hannel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
             
-            for save_notification in save_notification_db_record_param_list:
-                add_sent_pattern_analysis_message_record(self.__db_connector, [save_notification])
+            add_sent_pattern_analysis_message_record(save_notification_db_record_param_list)

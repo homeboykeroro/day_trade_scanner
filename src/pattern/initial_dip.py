@@ -27,16 +27,16 @@ logger = Logger()
 
 PATTERN_NAME = 'INITIAL_DIP'
 
-MAX_DELAYED_HIT_SCANNER_PERIOD = get_config('INITIAL_DIP_PARAM', 'MAX_DELAYED_HIT_SCANNER_PERIOD')
+MAX_TOLERANCE_PERIOD_IN_MINUTE = get_config('INITIAL_DIP_PARAM', 'MAX_TOLERANCE_PERIOD_IN_MINUTE')
 MAX_DIP_OCCURRENCE = get_config('INITIAL_DIP_PARAM', 'MAX_POP_OCCURRENCE')
 MAX_GAP_DOWN_PCT = get_config('INITIAL_DIP_PARAM', 'MAX_POP_OCCURRENCE')
 MAX_YESTERDAY_CLOSE_TO_LAST_PCT = get_config('INITIAL_DIP_PARAM', 'MAX_POP_OCCURRENCE')
 
 class InitialDip(PatternAnalyser):
         
-    def __init__(self, bar_size: BarSize, historical_data_df: DataFrame, daily_df: DataFrame, ticker_to_contract_info_dict: dict, discord_client, db_connector):
+    def __init__(self, bar_size: BarSize, historical_data_df: DataFrame, daily_df: DataFrame, ticker_to_contract_info_dict: dict, discord_client):
         ticker_list = list(historical_data_df.columns.get_level_values(0).unique())
-        super().__init__(discord_client, db_connector)
+        super().__init__(discord_client)
         self.__bar_size = bar_size
         self.__historical_data_df = historical_data_df
         self.__daily_df = daily_df.loc[:, idx[ticker_list, :]]
@@ -87,13 +87,16 @@ class InitialDip(PatternAnalyser):
                         continue
                     else:
                         us_current_datetime = get_current_us_datetime()
-                        current_datetime_and_pop_up_time_diff = math.floor(((us_current_datetime - occurrence_idx).total_seconds()) / 60)
+                        current_datetime_and_pop_up_time_diff = math.floor(((us_current_datetime.replace(tzinfo=None) - occurrence_idx).total_seconds()) / 60)
                         
-                        if current_datetime_and_pop_up_time_diff > MAX_DELAYED_HIT_SCANNER_PERIOD:
+                        if current_datetime_and_pop_up_time_diff > MAX_TOLERANCE_PERIOD_IN_MINUTE:
+                            logger.log_debug_msg(f'Exclude {ticker} initial dip at {occurrence_idx}, analysis datetime: {us_current_datetime}, out of tolerance period')
                             continue
                     
                     dip_time = occurrence_idx
+                    check_message_sent_start_time = time.time()
                     is_message_sent = self.check_if_pattern_analysis_message_sent(ticker=ticker, hit_scanner_datetime=dip_time, pattern=PATTERN_NAME, bar_size=self.__bar_size)
+                    logger.log_debug_msg(f'Check {ticker} dip pattern message send time: {time.time() - check_message_sent_start_time} seconds')
 
                     if not is_message_sent:
                         logger.log_debug_msg(f'{ticker} Dip Boolean Dataframe: {dip_boolean_df.loc[:, idx[[ticker], :]]}')
@@ -109,15 +112,22 @@ class InitialDip(PatternAnalyser):
                         daily_df = replace_daily_df_latest_day_with_minute(daily_df=self.__daily_df.loc[:, idx[[ticker], :]], 
                                                                            minute_df=self.__historical_data_df.loc[[dip_time], idx[[ticker], :]])
                         
+                        one_minute_chart_start_time = time.time()
+                        logger.log_debug_msg(f'Generate {ticker} initial dip one minute chart')
                         minute_chart_dir = get_candlestick_chart(candle_data_df=self.__historical_data_df,
                                                                  ticker=ticker, pattern=PATTERN_NAME, bar_size=self.__bar_size,
                                                                  hit_scanner_datetime=dip_time,
                                                                  positive_offset=3, negative_offset=2,
                                                                  scatter_symbol=ScatterSymbol.DIP, scatter_colour=ScatterColour.PURPLE)
+                        logger.log_debug_msg(f'Generate {ticker} initial dip one minute chart finished time: {time.time() - one_minute_chart_start_time} seconds')
+                        
+                        daily_chart_start_time = time.time()
+                        logger.log_debug_msg(f'Generate {ticker} initial pop daily chart')
                         daily_chart_dir = get_candlestick_chart(candle_data_df=daily_df,
                                                                 ticker=ticker, pattern=PATTERN_NAME, bar_size=BarSize.ONE_DAY,
                                                                 hit_scanner_datetime=daily_df.index[-1],
                                                                 scatter_symbol=ScatterSymbol.DIP, scatter_colour=ScatterColour.PURPLE)
+                        logger.log_debug_msg(f'Generate {ticker} initial pop daily chart finished time: {time.time() - daily_chart_start_time} seconds')
                         
                         hit_scanner_datetime_display = convert_into_human_readable_time(dip_time)
                         read_out_dip_time = convert_into_read_out_time(dip_time)
