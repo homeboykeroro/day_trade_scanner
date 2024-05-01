@@ -20,7 +20,7 @@ class PatternAnalyser(ABC):
     def analyse(self) -> None:
         return NotImplemented
     
-    def check_if_pattern_analysis_message_sent(self, ticker: str, hit_scanner_datetime: datetime, pattern: str, bar_size: BarSize):
+    def check_if_pattern_analysis_message_sent(self, ticker: str, hit_scanner_datetime: datetime.datetime, pattern: str, bar_size: BarSize):
         return check_if_pattern_analysis_message_sent(ticker, hit_scanner_datetime, pattern, bar_size.value)
         
     def send_notification(self, scanner_result_list: list, discord_channel: DiscordChannel, is_async: bool = True):
