@@ -9,22 +9,22 @@ from utils.logger import Logger
 logger = Logger()
 loop = asyncio.new_event_loop()
 
-async def fetch(session: aiohttp.ClientSession(), method: str, endpoint: str, payload: dict, semaphore):
+async def fetch(session: aiohttp.ClientSession(), method: str, endpoint: str, payload: dict, semaphore, headers: dict = None):
     async with semaphore:
         try:
             if method == 'GET':
                 logger.log_debug_msg(f"GET request with payload: {payload} send")
-                async with session.get(endpoint, params=payload, ssl=False) as response:
+                async with session.get(endpoint, params=payload, ssl=False, headers=headers) as response:
                     json_response = await response.json()
                     logger.log_debug_msg(f"GET request with payload: {payload} response: {json_response}")
                     return json_response
             elif method == 'POST':
-                async with session.post(endpoint, json=payload, ssl=False) as response:
+                async with session.post(endpoint, json=payload, ssl=False, headers=headers) as response:
                     json_response = await response.json()
                     logger.log_debug_msg(f"POST request with payload: {payload} response: {json_response}")
                     return await response.json()
             elif method == 'DELETE':
-                async with session.delete(endpoint, json=payload, ssl=False) as response:
+                async with session.delete(endpoint, json=payload, ssl=False, headers=headers) as response:
                     json_response = await response.json()
                     logger.log_debug_msg(f"POST request with payload: {payload} response: {json_response}")
                     return await response.json()
@@ -32,7 +32,7 @@ async def fetch(session: aiohttp.ClientSession(), method: str, endpoint: str, pa
             logger.log_error_msg(f'Error during {method} request to {endpoint}, payload: {payload}, Cause: {e}, Status code: {response.status}')
             return {'status': 'FAILED', 'errorMsg': str(e), 'payload': payload}
 
-async def process_async_request(method: str, endpoint: str, payload_list: list, chunk_size: int, no_of_request_per_sec: int) -> dict:
+async def process_async_request(method: str, endpoint: str, payload_list: list, chunk_size: int, no_of_request_per_sec: int, headers: dict = None) -> dict:
     semaphore = asyncio.Semaphore(chunk_size)  # Limit to chunk_size concurrent requests
     result_dict = {'response_list': [], 'error_response_list': []}
     
@@ -42,7 +42,7 @@ async def process_async_request(method: str, endpoint: str, payload_list: list, 
         all_chunk_start_time = time.time()
         
         for i, payload in enumerate(payload_list):
-            task = asyncio.create_task(fetch(session, method, endpoint, payload, semaphore))
+            task = asyncio.create_task(fetch(session, method, endpoint, payload, semaphore, headers))
             tasks.append(task)
             
             # If we've hit the rate limit, sleep for a second
@@ -62,7 +62,7 @@ async def process_async_request(method: str, endpoint: str, payload_list: list, 
         
     return result_dict
         
-def send_async_request(method: str, endpoint: str, payload_list: list, chunk_size: int, no_of_request_per_sec: float = None, loop = None):
+def send_async_request(method: str, endpoint: str, payload_list: list, chunk_size: int, no_of_request_per_sec: float = None, headers: dict = None, loop = None):
     if loop is None:
         logger.log_debug_msg(f'No event loop is set for {endpoint}, caller thread: {threading.current_thread().name}')
         loop = asyncio.new_event_loop()
@@ -70,7 +70,7 @@ def send_async_request(method: str, endpoint: str, payload_list: list, chunk_siz
     else:
         logger.log_debug_msg(f'Use event loop passed from {threading.current_thread().name}')
     
-    response_result = loop.run_until_complete(process_async_request(method, endpoint, payload_list, chunk_size, no_of_request_per_sec))
+    response_result = loop.run_until_complete(process_async_request(method, endpoint, payload_list, chunk_size, no_of_request_per_sec, headers))
 
     response_list = response_result['response_list']
     error_response_list = response_result['error_response_list']

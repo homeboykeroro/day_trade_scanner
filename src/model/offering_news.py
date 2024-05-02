@@ -28,7 +28,7 @@ class OfferingNews:
         
         concat_str = ''
         for publish_date, news in self.__date_to_news_dict.items():
-            concat_str += f"[{news.get('title')} - ({publish_date.strftime('%Y-%m-%d')})]({news.get('link')})\n"
+            concat_str += f"[{news.get('title')} - ({publish_date.strftime('%Y-%m-%d')})]({news.get('shortened_url')})\n"
             
         embed.add_field(name = f'\nOffering History:', value=concat_str, inline = False)
         

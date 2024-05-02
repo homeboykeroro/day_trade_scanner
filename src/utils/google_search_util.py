@@ -9,11 +9,14 @@ from serpapi import GoogleSearch
 
 from module.discord_chatbot_client import DiscordChatBotClient
 
-from constant.discord.discord_channel import DiscordChannel
 from model.discord.discord_message import DiscordMessage
+
+from utils.shorten_url_util import shorten_url
 from utils.datetime_util import get_current_us_datetime
 from utils.http_util import send_async_request
 from utils.logger import Logger
+
+from constant.discord.discord_channel import DiscordChannel
 
 ACCOUNT_QUERY_ENDPOINT = 'https://serpapi.com/account.json'
 MAX_NO_OF_RESULTS_PER_PAGE = 200
@@ -120,6 +123,8 @@ class GoogleSearchUtil:
     def sync_search(self, contract_list: list, ticker_to_datetime_to_news_dict: dict, search: GoogleSearch, discord_client: DiscordChatBotClient):
         logger.log_debug_msg('Search google result synchronously')
         search_start_time = time.time()
+        shorten_url_list = []
+        
         ticker_list = []
         company_name_list = []
         search_query_list = []
@@ -199,7 +204,8 @@ class GoogleSearchUtil:
                                     'date': parsed_date,
                                     'source': source
                                 }
-
+                                
+                                shorten_url_list.append('link')
                                 filtered_result[parsed_date] = result_obj
 
                     ordered_filter_dict = OrderedDict(sorted(filtered_result.items(), key=lambda t: t[0]))
@@ -208,13 +214,21 @@ class GoogleSearchUtil:
 
                 chunk_start_idx = chunk_start_idx + limit
         
+        original_url_to_shortened_url_dict = shorten_url(shorten_url_list)
+        for ticker, datetime_to_news_dict in ticker_to_datetime_to_news_dict.items():
+            for _, news_dict in datetime_to_news_dict.items():
+                original_url = news_dict.get('link')
+                shortened_url = original_url_to_shortened_url_dict.get(original_url) if original_url_to_shortened_url_dict.get(original_url) else original_url
+                
+                news_dict['shortened_url'] = shortened_url
+        
         for contract in contract_list:
             if contract.get('symbol') not in ticker_list:
                 logger.log_debug_msg(f'Not enough API limit to fetch {contract.get("symbol")} offering news')
         
-        discord_client.send_message(DiscordMessage(content=f'Original company name list: {[contract.get("company_name") for contract in contract_list]}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
-        discord_client.send_message(DiscordMessage(content=f'Adjusted company name list: {company_name_list}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
-        discord_client.send_message(DiscordMessage(content=f'Search query list (sync): {search_query_list}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+        discord_client.send_message_by_list_with_response([DiscordMessage(content=f'Original company name list: {[contract.get("company_name") for contract in contract_list]}')], DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+        discord_client.send_message_by_list_with_response([DiscordMessage(content=f'Adjusted company name list: {company_name_list}')], DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+        discord_client.send_message_by_list_with_response([DiscordMessage(content=f'Search query list (sync): {search_query_list}')], DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
         
         logger.log_debug_msg(f'Total sync search time for {[contract.get("symbol") for contract in contract_list]}, {time.time() - search_start_time}s', with_std_out=True)
                     
@@ -222,6 +236,8 @@ class GoogleSearchUtil:
         logger.log_debug_msg('Search google result asynchronously')
         search_start_time = time.time()
         search_queue = Queue()
+        shorten_url_list = []
+        
         ticker_list = []
         company_name_list = []
         search_query_list = []
@@ -247,9 +263,9 @@ class GoogleSearchUtil:
             result['symbol'] = ticker
             result['company_name'] = company_name
             
-            discord_client.send_message(DiscordMessage(content=f'Original company name list: {[contract.get("company_name") for contract in contract_list]}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
-            discord_client.send_message(DiscordMessage(content=f'Adjusted company name list: {company_name_list}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
-            discord_client.send_message(DiscordMessage(content=f'Search query list (async): {search_query_list}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+            discord_client.send_message_by_list_with_response([DiscordMessage(content=f'Original company name list: {[contract.get("company_name") for contract in contract_list]}')], DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+            discord_client.send_message_by_list_with_response([DiscordMessage(content=f'Adjusted company name list: {company_name_list}')], DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+            discord_client.send_message_by_list_with_response([DiscordMessage(content=f'Search query list (async): {search_query_list}')], DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
             
             if "error" in result:
                 ticker_to_datetime_to_news_dict[ticker] = 'error'
@@ -324,6 +340,7 @@ class GoogleSearchUtil:
                             'source': source
                         }
 
+                        shorten_url_list.append(link)
                         filtered_result[parsed_date] = result_obj
                 
                 ordered_filter_dict = OrderedDict(sorted(filtered_result.items(), key=lambda t: t[0]))
@@ -335,6 +352,14 @@ class GoogleSearchUtil:
                 logger.log_debug_msg(f"{queue_ticker} requeue search")
                 search_queue.put(result)
                 time.sleep(0.5)
+        
+        original_url_to_shortened_url_dict = shorten_url(shorten_url_list)
+        for ticker, datetime_to_news_dict in ticker_to_datetime_to_news_dict.items():
+            for _, news_dict in datetime_to_news_dict.items():
+                original_url = news_dict.get('link')
+                shortened_url = original_url_to_shortened_url_dict.get(original_url) if original_url_to_shortened_url_dict.get(original_url) else original_url
+                
+                news_dict['shortened_url'] = shortened_url
         
         for ticker in ticker_to_datetime_to_news_dict:
             if ticker not in ticker_list:
