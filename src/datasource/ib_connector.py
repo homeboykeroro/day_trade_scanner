@@ -3,6 +3,7 @@ import re
 import threading
 import time
 from datetime import datetime, timedelta
+from datetime import time as dt_time
 import html
 import pytz
 import requests
@@ -474,7 +475,7 @@ class IBConnector:
             subtract_day = int(period[:-1])
             
             if not candle_retrieval_end_datetime:
-                candle_retrieval_end_datetime = get_us_business_day(-1)
+                candle_retrieval_end_datetime = get_us_business_day(0) if get_us_business_day(0).time() > dt_time(16, 0, 0) else get_us_business_day(-1)
                 
             if outside_rth == 'true':
                 candle_retrieval_end_datetime = candle_retrieval_end_datetime.replace(hour=20, minute=0, second=0, microsecond=0)

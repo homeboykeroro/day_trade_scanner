@@ -71,7 +71,8 @@ def send_async_request(method: str, endpoint: str, payload_list: list, chunk_siz
         logger.log_debug_msg(f'Use event loop passed from {threading.current_thread().name}')
     
     response_result = loop.run_until_complete(process_async_request(method, endpoint, payload_list, chunk_size, no_of_request_per_sec, headers))
-
+    loop.close()
+    
     response_list = response_result['response_list']
     error_response_list = response_result['error_response_list']
     

@@ -201,7 +201,9 @@ class Scanner:
             logger.log_debug_msg(f'yesterday top gainer\'s intra_day_one_minute_candle_df: {intra_day_one_minute_candle_df}', with_log_file=True, with_std_out=False)
             logger.log_debug_msg(f'yesterday top gainer\'s yesterday_one_minute_candle_df: {yesterday_one_minute_candle_df}', with_log_file=True, with_std_out=False)
             logger.log_debug_msg(f'yesterday top gainer\'s concated_one_minute_candle_df: {concated_one_minute_candle_df}', with_log_file=True, with_std_out=False)
-    
+
+        logger.log_debug_msg('Yesterday top gainer scan completed')
+        
     def __analyse_intra_day_top_gainer(self, ib_connector: IBConnector,
                                              discord_client: DiscordChatBotClient) -> None:
         logger.log_debug_msg('Intra day top gainer scan starts')
@@ -244,6 +246,8 @@ class Scanner:
                                           ticker_to_contract_info_dict=ib_connector.get_ticker_to_contract_dict(), 
                                           discord_client=discord_client)
         initial_pop_analyser.analyse()
+        
+        logger.log_debug_msg('Intra-day top gainer scan completed')
     
     def __analyse_intra_day_top_loser(self, ib_connector: IBConnector,
                                             discord_client: DiscordChatBotClient) -> None:
@@ -287,6 +291,8 @@ class Scanner:
                                           ticker_to_contract_info_dict=ib_connector.get_ticker_to_contract_dict(), 
                                           discord_client=discord_client)
         initial_dip_analyser.analyse()
+        
+        logger.log_debug_msg('Intra-day top loser scan completed')
     
     def scan_closest_to_halt(self):
         pass
