@@ -43,6 +43,7 @@ class StockScreener(threading.Thread):
                 
         self.__scanner.scan_intra_day_top_gainer()
         self.__scanner.scan_intra_day_top_loser()
+        self.__scanner.scan_multi_days_top_gainer()
         self.__scanner.scan_yesterday_top_gainer()
  
     
