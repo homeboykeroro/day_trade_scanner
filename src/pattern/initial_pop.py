@@ -31,6 +31,8 @@ MAX_TOLERANCE_PERIOD_IN_MINUTE = get_config('INITIAL_POP_PARAM', 'MAX_TOLERANCE_
 MAX_POP_OCCURRENCE = get_config('INITIAL_POP_PARAM', 'MAX_POP_OCCURRENCE')
 MIN_GAP_UP_PCT = get_config('INITIAL_POP_PARAM', 'MIN_GAP_UP_PCT')
 MIN_YESTERDAY_CLOSE_TO_LAST_PCT = get_config('INITIAL_POP_PARAM', 'MIN_YESTERDAY_CLOSE_TO_LAST_PCT')
+MINUTE_CANDLE_POSITIVE_OFFSET = get_config('INITIAL_POP_PARAM', 'MINUTE_CANDLE_POSITIVE_OFFSET')
+MINUTE_CANDLE_NEGATIVE_OFFSET = get_config('INITIAL_POP_PARAM', 'MINUTE_CANDLE_NEGATIVE_OFFSET')
 
 class InitialPop(PatternAnalyser):
         
@@ -120,7 +122,7 @@ class InitialPop(PatternAnalyser):
                         minute_chart_dir = get_candlestick_chart(candle_data_df=self.__historical_data_df,
                                                                  ticker=ticker, pattern=PATTERN_NAME, bar_size=self.__bar_size,
                                                                  hit_scanner_datetime=pop_up_time,
-                                                                 positive_offset=3, negative_offset=2,
+                                                                 positive_offset=MINUTE_CANDLE_POSITIVE_OFFSET, negative_offset=MINUTE_CANDLE_NEGATIVE_OFFSET,
                                                                  scatter_symbol=ScatterSymbol.POP, scatter_colour=ScatterColour.CYAN)
                         logger.log_debug_msg(f'Generate {ticker} initial pop one minute chart finished time: {time.time() - one_minute_chart_start_time} seconds')
                         

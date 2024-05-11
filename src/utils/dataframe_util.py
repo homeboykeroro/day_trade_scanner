@@ -154,16 +154,20 @@ def get_candle_comments_df(src_df: DataFrame, indicator_list: list = [Customised
     
     return indicator_description_df
 
-def get_ticker_to_occurrence_idx_list(occurrence_df: DataFrame, occurrence_limit: int) -> dict:
+def get_ticker_to_occurrence_idx_list(occurrence_df: DataFrame, occurrence_limit: int = None) -> dict:
     result_dict = {}
     ticker_list = occurrence_df.columns.get_level_values(0).unique().tolist()
     idx_df = derive_idx_df(occurrence_df)
 
     occurrence_cumsum_df = occurrence_df.cumsum().where(occurrence_df.values) 
-    truncated_occurrence_cumsum_df = occurrence_cumsum_df.where((occurrence_cumsum_df <= occurrence_limit).values)
-    normalised_idx_df = idx_df.where(truncated_occurrence_cumsum_df.notnull().values)
     
-    normalised_cumsum_idx_np = np.sort(normalised_idx_df.values.T)[:, :occurrence_limit] 
+    if occurrence_limit:
+        truncated_occurrence_cumsum_df = occurrence_cumsum_df.where((occurrence_cumsum_df <= occurrence_limit).values)
+        normalised_idx_df = idx_df.where(truncated_occurrence_cumsum_df.notnull().values)
+        normalised_cumsum_idx_np = np.sort(normalised_idx_df.values.T)[:, :occurrence_limit] 
+    else:
+        normalised_idx_df = idx_df.where(occurrence_cumsum_df.notnull().values)
+        normalised_cumsum_idx_np = np.sort(normalised_idx_df.values.T)
     
     for index, ticker in enumerate(ticker_list):
         cumsum_idx_list = normalised_cumsum_idx_np[index] if not np.isnan(normalised_cumsum_idx_np[index]).all() else []

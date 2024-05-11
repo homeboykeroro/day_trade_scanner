@@ -28,9 +28,11 @@ logger = Logger()
 PATTERN_NAME = 'INITIAL_DIP'
 
 MAX_TOLERANCE_PERIOD_IN_MINUTE = get_config('INITIAL_DIP_PARAM', 'MAX_TOLERANCE_PERIOD_IN_MINUTE')
-MAX_DIP_OCCURRENCE = get_config('INITIAL_DIP_PARAM', 'MAX_POP_OCCURRENCE')
-MAX_GAP_DOWN_PCT = get_config('INITIAL_DIP_PARAM', 'MAX_POP_OCCURRENCE')
-MAX_YESTERDAY_CLOSE_TO_LAST_PCT = get_config('INITIAL_DIP_PARAM', 'MAX_POP_OCCURRENCE')
+MAX_DIP_OCCURRENCE = get_config('INITIAL_DIP_PARAM', 'MAX_DIP_OCCURRENCE')
+MAX_GAP_DOWN_PCT = get_config('INITIAL_DIP_PARAM', 'MAX_GAP_DOWN_PCT')
+MAX_YESTERDAY_CLOSE_TO_LAST_PCT = get_config('INITIAL_DIP_PARAM', 'MAX_YESTERDAY_CLOSE_TO_LAST_PCT')
+MINUTE_CANDLE_POSITIVE_OFFSET = get_config('INITIAL_DIP_PARAM', 'MINUTE_CANDLE_POSITIVE_OFFSET')
+MINUTE_CANDLE_NEGATIVE_OFFSET = get_config('INITIAL_DIP_PARAM', 'MINUTE_CANDLE_NEGATIVE_OFFSET')
 
 class InitialDip(PatternAnalyser):
         
@@ -117,7 +119,7 @@ class InitialDip(PatternAnalyser):
                         minute_chart_dir = get_candlestick_chart(candle_data_df=self.__historical_data_df,
                                                                  ticker=ticker, pattern=PATTERN_NAME, bar_size=self.__bar_size,
                                                                  hit_scanner_datetime=dip_time,
-                                                                 positive_offset=3, negative_offset=2,
+                                                                 positive_offset=MINUTE_CANDLE_POSITIVE_OFFSET, negative_offset=MINUTE_CANDLE_NEGATIVE_OFFSET,
                                                                  scatter_symbol=ScatterSymbol.DIP, scatter_colour=ScatterColour.PURPLE)
                         logger.log_debug_msg(f'Generate {ticker} initial dip one minute chart finished time: {time.time() - one_minute_chart_start_time} seconds')
                         

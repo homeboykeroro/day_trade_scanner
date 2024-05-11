@@ -226,9 +226,11 @@ class GoogleSearchUtil:
             if contract.get('symbol') not in ticker_list:
                 logger.log_debug_msg(f'Not enough API limit to fetch {contract.get("symbol")} offering news')
         
-        discord_client.send_message_by_list_with_response([DiscordMessage(content=f'Original company name list: {[contract.get("company_name") for contract in contract_list]}')], DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
-        discord_client.send_message_by_list_with_response([DiscordMessage(content=f'Adjusted company name list: {company_name_list}')], DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
-        discord_client.send_message_by_list_with_response([DiscordMessage(content=f'Search query list (sync): {search_query_list}')], DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+        log_msg = f'Original company name list: {[contract.get("company_name") for contract in contract_list]}\n'
+        log_msg += f'Adjusted company name list: {company_name_list}\n'
+        log_msg += f'Search query list (async): {search_query_list}\n'
+            
+        discord_client.send_message(DiscordMessage(content=log_msg), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
         
         logger.log_debug_msg(f'Total sync search time for {[contract.get("symbol") for contract in contract_list]}, {time.time() - search_start_time}s', with_std_out=True)
                     
@@ -263,9 +265,11 @@ class GoogleSearchUtil:
             result['symbol'] = ticker
             result['company_name'] = company_name
             
-            discord_client.send_message_by_list_with_response([DiscordMessage(content=f'Original company name list: {[contract.get("company_name") for contract in contract_list]}')], DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
-            discord_client.send_message_by_list_with_response([DiscordMessage(content=f'Adjusted company name list: {company_name_list}')], DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
-            discord_client.send_message_by_list_with_response([DiscordMessage(content=f'Search query list (async): {search_query_list}')], DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+            log_msg = f'Original company name list: {[contract.get("company_name") for contract in contract_list]}\n'
+            log_msg += f'Adjusted company name list: {company_name_list}\n'
+            log_msg += f'Search query list (async): {search_query_list}\n'
+            
+            discord_client.send_message(DiscordMessage(content=log_msg), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
             
             if "error" in result:
                 ticker_to_datetime_to_news_dict[ticker] = 'error'

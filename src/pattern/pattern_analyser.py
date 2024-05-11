@@ -15,7 +15,7 @@ logger = Logger()
 
 class PatternAnalyser(ABC):
     def __init__(self, discord_client) -> None:
-        self.__discord_client = discord_client
+        self._discord_client = discord_client
     
     def analyse(self) -> None:
         return NotImplemented
@@ -38,11 +38,11 @@ class PatternAnalyser(ABC):
                 save_notification_db_record_param_list.append(notification_db_record_parms)
             
             if is_async:
-                response_list = self.__discord_client.send_message_by_list_with_response(message_list=scanner_result_list, channel_type=discord_channel)
+                response_list = self._discord_client.send_message_by_list_with_response(message_list=scanner_result_list, channel_type=discord_channel)
             else:
                 response_list = []
                 for scanner_result in scanner_result_list:
-                    individual_msg_response_list = self.__discord_client.send_message_by_list_with_response(message_list=[scanner_result], channel_type=discord_channel)
+                    individual_msg_response_list = self._discord_client.send_message_by_list_with_response(message_list=[scanner_result], channel_type=discord_channel)
                     response_list.append(individual_msg_response_list[0])
 
             notification_message_list = []
@@ -55,9 +55,9 @@ class PatternAnalyser(ABC):
                 notification_message_list.append(message)
             
             if is_async:
-                self.__discord_client.send_message_by_list_with_response(message_list=notification_message_list, channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+                self._discord_client.send_message_by_list_with_response(message_list=notification_message_list, channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
             else:
                 for notification_message in notification_message_list:
-                    self.__discord_client.send_message_by_list_with_response(message_list=[notification_message], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+                    self._discord_client.send_message_by_list_with_response(message_list=[notification_message], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
             
             add_sent_pattern_analysis_message_record(save_notification_db_record_param_list)

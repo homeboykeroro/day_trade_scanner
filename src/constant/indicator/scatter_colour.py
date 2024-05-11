@@ -5,4 +5,5 @@ class ScatterColour(str, Enum):
     PURPLE = 'm'
     BLUE = 'b'
     RED = 'r'
+    GREEN = 'g'
     
