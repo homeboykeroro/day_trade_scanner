@@ -1,3 +1,4 @@
+import math
 import time
 import pandas as pd
 
@@ -5,7 +6,7 @@ from model.discord.scanner_result_message import ScannerResultMessage
 
 from pattern.pattern_analyser import PatternAnalyser
 
-from utils.datetime_util import convert_into_human_readable_time, convert_into_read_out_time
+from utils.datetime_util import convert_into_human_readable_time, convert_into_read_out_time, get_current_us_datetime
 from utils.dataframe_util import get_ticker_to_occurrence_idx_list, replace_daily_df_latest_day_with_minute
 from utils.chart_util import get_candlestick_chart
 from utils.config_util import get_config
@@ -26,6 +27,7 @@ logger = Logger()
 PATTERN_NAME = 'PREVIOUS_DAY_TOP_GAINER_CONTINUATION'
 
 MIN_MULTI_DAYS_CLOSE_CHANGE_PCT = get_config('MULTI_DAYS_TOP_GAINER_SCAN_PARAM', 'MIN_MULTI_DAYS_CLOSE_CHANGE_PCT')
+MAX_TOLERANCE_PERIOD_IN_MINUTE = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'MAX_TOLERANCE_PERIOD_IN_MINUTE')
 TEST_NEW_HIGH_TOLERANCE = get_config('PREVIOUS_DAY_TOP_GAINER_CONTINUATION_PARAM', 'TEST_NEW_HIGH_TOLERANCE')
 GAP_UP_PCT = get_config('PREVIOUS_DAY_TOP_GAINER_CONTINUATION_PARAM', 'GAP_UP_PCT')
 GAP_UP_FIRST_OCCURRENCE_TIMES = get_config('PREVIOUS_DAY_TOP_GAINER_CONTINUATION_PARAM', 'GAP_UP_FIRST_OCCURRENCE_TIMES')
@@ -58,6 +60,7 @@ class PreviousDayTopGainerContinuation(PatternAnalyser):
         for ticker in previous_day_top_gainer_ticker_list:
             ramp_up_candle_date = max_daily_volume_dt_index_series[(ticker, RuntimeIndicator.COMPARE.value)]
             candle_colour = daily_candle_colour_df.loc[ramp_up_candle_date, (ticker, CustomisedIndicator.CANDLE_COLOUR.value)]
+            yesterday_close = self.__daily_df.loc[latest_daily_candle_date, (ticker, Indicator.CLOSE.value)]
             
             is_green = candle_colour == CandleColour.GREEN.value
             ticker_minute_candle_df = self.__minute_df.loc[:, idx[ticker, :]]
@@ -78,7 +81,7 @@ class PreviousDayTopGainerContinuation(PatternAnalyser):
                 new_high_test_upper_limit = (1 + (TEST_NEW_HIGH_TOLERANCE / 100)) * ramp_up_high
                 
                 minute_close_new_high_test_boolean_df = (minute_close_df >= new_high_test_lower_limit) & (minute_close_df <= new_high_test_upper_limit)
-                minute_high_new_high_test_boolean_df = (minute_high_df >= new_high_test_lower_limit) & (minute_close_df <= new_high_test_upper_limit)
+                minute_high_new_high_test_boolean_df = (minute_high_df >= new_high_test_lower_limit) & (minute_high_df <= new_high_test_upper_limit)
                 
                 hit_support_boolean_df = (gap_up_boolean_df) | (minute_close_new_high_test_boolean_df | minute_high_new_high_test_boolean_df)
                 
@@ -88,6 +91,13 @@ class PreviousDayTopGainerContinuation(PatternAnalyser):
                 for occurrence_idx in occurrence_idx_list:   
                     if not occurrence_idx:
                         continue
+                    else:
+                        us_current_datetime = get_current_us_datetime()
+                        current_datetime_and_pop_up_time_diff = math.floor(((us_current_datetime.replace(tzinfo=None) - occurrence_idx).total_seconds()) / 60)
+                        
+                        if current_datetime_and_pop_up_time_diff > MAX_TOLERANCE_PERIOD_IN_MINUTE:
+                            logger.log_debug_msg(f'Exclude {ticker} previous day continuation at {occurrence_idx}, analysis datetime: {us_current_datetime}, out of tolerance period')
+                            continue
                     
                     new_high_test_time = occurrence_idx
                     check_message_sent_start_time = time.time()
@@ -119,7 +129,6 @@ class PreviousDayTopGainerContinuation(PatternAnalyser):
                     hit_scanner_datetime_display = convert_into_human_readable_time(new_high_test_time)
                     read_out_new_high_test_time = convert_into_read_out_time(new_high_test_time)
                     
-                    yesterday_close = self.__daily_df.loc[latest_daily_candle_date, (ticker, Indicator.CLOSE.value)]
                     open = ticker_minute_candle_df.loc[new_high_test_time, (ticker, Indicator.OPEN.value)]
                     close = ticker_minute_candle_df.loc[new_high_test_time, (ticker, Indicator.CLOSE.value)]
                     high = ticker_minute_candle_df.loc[new_high_test_time, (ticker, Indicator.HIGH.value)]
@@ -129,19 +138,19 @@ class PreviousDayTopGainerContinuation(PatternAnalyser):
                     gap_up_pct = ((open - yesterday_close) / yesterday_close) * 100
                     gap_up_occurrence_times = gap_up_occurrence_times_df.loc[new_high_test_time, (ticker, RuntimeIndicator.COMPARE.value)]
                     
-                    if (high >= new_high_test_lower_limit and high <= new_high_test_upper_limit):
-                        msg = f'{ticker} is testing new high of previous days\'s {ramp_up_high}'
-                        continuation = ramp_up_low
-                        last_pct_change = ((low - yesterday_close)/ yesterday_close) * 100
+                    if (high >= new_high_test_lower_limit or high <= new_high_test_upper_limit):
+                        close_pct = (((high - yesterday_close) / yesterday_close) * 100, 2)
+                        display_msg = f'{ticker} is testing previous days\'s high of {ramp_up_high} at {hit_scanner_datetime_display}, current high: {high} ({close_pct})%'
+                        readout_msg = f'{" ".join(ticker)} is testing previous day\'s high of {ramp_up_high} at {read_out_new_high_test_time}'
                     
                     if gap_up_occurrence_times:
                         if (gap_up_pct >= GAP_UP_PCT and gap_up_occurrence_times <= GAP_UP_FIRST_OCCURRENCE_TIMES):
-                            msg = f'{ticker}'
-                            support = ramp_up_open
-                            last_pct_change = ((low - yesterday_close)/ yesterday_close) * 100
+                            close_pct = (((close - yesterday_close) / yesterday_close) * 100, 2)
+                            display_msg = f'{ticker} is gapping up {gap_up_pct}% to test previous days\'s high of {ramp_up_high} at {hit_scanner_datetime_display}, current close: {close} ({close_pct})%'
+                            readout_msg = f'{" ".join(ticker)} is gapping up {gap_up_pct}% to test previous day\'s high of {ramp_up_high} at {read_out_new_high_test_time}'
                   
-                    message = ScannerResultMessage(title=f'{ticker}\'s {indicator} is hitting previous day continuation of {support} ({last_pct_change}%) at {hit_scanner_datetime_display}',
-                                                   readout_msg=f'{" ".join(ticker)} is hitting previous day continuation of {support} at {read_out_new_high_test_time}',
+                    message = ScannerResultMessage(title=display_msg,
+                                                   readout_msg=readout_msg,
                                                    close=close,
                                                    yesterday_close=yesterday_close,
                                                    volume=volume, total_volume=total_volume,
