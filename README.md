@@ -44,7 +44,7 @@
 <br />
 
 ### What It Does
-Stock scanner for day trade and swing trade
+Stock scanner for day trade and swing trade. When specific stock's price action or pattern hit the scanner, the discord chatbot will send message and notification to discord server. 
 
 <br />
 
