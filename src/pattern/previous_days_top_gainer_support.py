@@ -86,7 +86,7 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
                 
                 hit_support_boolean_df = low_hit_support_low_boolean_df | close_hit_support_low_boolean_df | low_hit_support_open_boolean_df | close_hit_support_open_boolean_df
                 
-                ticker_to_occurrence_idx_list_dict = get_ticker_to_occurrence_idx_list(hit_support_boolean_df, 3)
+                ticker_to_occurrence_idx_list_dict = get_ticker_to_occurrence_idx_list(hit_support_boolean_df)
                 occurrence_idx_list = ticker_to_occurrence_idx_list_dict[ticker]
 
                 for occurrence_idx in occurrence_idx_list:   

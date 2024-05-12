@@ -172,11 +172,11 @@ class Scanner:
                                                                                discord_client=discord_client)
         previous_day_top_gainer_support_analyser.analyse()
         
-        # previous_day_top_gainer_continuation_analyser = PreviousDayTopGainerSupport(daily_df=multi_days_top_gainers_df,
-        #                                                                             minute_df=intra_day_one_minute_candle_df,
-        #                                                                             ticker_to_contract_info_dict=ib_connector.get_ticker_to_contract_dict(), 
-        #                                                                             discord_client=discord_client)
-        # previous_day_top_gainer_continuation_analyser.analyse()
+        previous_day_top_gainer_continuation_analyser = PreviousDayTopGainerContinuation(daily_df=multi_days_top_gainers_df,
+                                                                                         minute_df=intra_day_one_minute_candle_df,
+                                                                                         ticker_to_contract_info_dict=ib_connector.get_ticker_to_contract_dict(), 
+                                                                                         discord_client=discord_client)
+        previous_day_top_gainer_continuation_analyser.analyse()
         
     def __analyse_yesterday_top_gainer(self, ib_connector: IBConnector, 
                                              discord_client: DiscordChatBotClient):
@@ -333,17 +333,12 @@ class Scanner:
         us_current_datetime = get_current_us_datetime().replace(microsecond=0, second=0)
         historical_data_interval_in_minute = (us_current_datetime - PRE_MARKET_START_DATETIME).total_seconds() / 60
         logger.log_debug_msg(f'Historical candle data retrieval period: {historical_data_interval_in_minute} minutes')
-    
-        # if False:
-        #     logger.log_debug_msg('Historical candle data retrieval retrieval period is less than 1 minute', with_std_out=True)
-        #     return None
-        # if True:
+
         if historical_data_interval_in_minute < 1:
             logger.log_debug_msg('Historical candle data retrieval retrieval period is less than 1 minute', with_std_out=True)
             return None
         else:
             candle_df = ib_connector.get_historical_candle_df(contract_list=contract_list, 
-                                                             #period=f'960min', 
                                                               period=f'{math.floor(historical_data_interval_in_minute)}min', 
                                                               bar_size=bar_size, 
                                                               outside_rth='true')
