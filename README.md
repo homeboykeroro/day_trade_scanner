@@ -17,9 +17,11 @@
 ### Pre-Requisite
 1. Install Oracle database
 2. Create Discord account and channels
-3. Download IB API Gateway from Interactive Brokers official website
-4. Execute `create.sql`
-5. Edit `config.ini`, change Oracle login credentials and logger file directory
+3. Create discord chatbot and invite it to your server
+4. Create Interactive Brokers trading account, and subscribe market data 
+5. Download IB API Gateway from Interactive Brokers official website
+6. Execute `create.sql`
+7. Edit `config.ini`, change Oracle login credentials and logger file directory
 
  <br />
 
@@ -44,14 +46,18 @@
 <br />
 
 ### What It Does
-Stock scanner for day trade and swing trade. When specific stock's price action or pattern hit the scanner, the discord chatbot will send message and notification to discord server. 
+Stock scanner for day trade and swing trade. When specific stock's price action or pattern hit the scanner, the discord chatbot will send message to discord server to notify trader. The scanner scan stocks in U.S stock market for following patterns:
 
+- Stocks that are popping up very quickly (for intra-day momentum trade)
+- Yesterday bullish daily candle (for intra-day/ swing bullish pattern continuation trade)
+- Previous days' top gainer support (for intra-day/ swing trade, buy at support level looking for bounce)
+- Previous days' top gainer continuation (for intra-day/ swing trade continuation trade, looking for strong momentum after breaking new high)
 <br />
 
 ### Discord Setup
+- [Inviting Your Bot to Join Your Server](https://www.sprinklr.com/help/articles/discord/create-a-discord-bot-account/645875020104980882a57cb7)
 - [Mute Specific Channels Notifications](https://support.discord.com/hc/en-us/articles/209791877-How-do-I-mute-and-disable-notifications-for-specific-channels)
 - [Prevent People from Joining Server](https://www.youtube.com/watch?v=j9OFFZw2beY&ab_channel=NoIntroTutorials)
-
 <br />
 
 ### Computer Setup

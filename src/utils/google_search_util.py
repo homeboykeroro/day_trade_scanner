@@ -259,17 +259,49 @@ class GoogleSearchUtil:
             search.params_dict["async"] = True
             
             result = search.get_dict()
+            
+            if result is None:
+              logger.log_debug_msg(f"data is empty for: {ticker}")
+              continue
+          
             ticker_list.append(ticker)
             company_name_list.append(company_name)
             search_query_list.append(query)
             result['symbol'] = ticker
             result['company_name'] = company_name
             
-            log_msg = f'Original company name list: {[contract.get("company_name") for contract in contract_list]}\n'
-            log_msg += f'Adjusted company name list: {company_name_list}\n'
-            log_msg += f'Search query list (async): {search_query_list}\n'
+            serp_api_account_info_log = ''
+            serp_api_account_info_log += 'SERP API remaining limit: ['
+            for api_key, limit in API_KEYS_TO_LIMIT_DICT.items():
+                serp_api_account_info_log += f'{api_key}: {limit}' + ',\n'
+            serp_api_account_info_log += ']\n\n'
+            discord_client.send_message(DiscordMessage(content=serp_api_account_info_log), DiscordChannel.SERP_API_ACCOUNT_INFO_LOG)
             
-            discord_client.send_message(DiscordMessage(content=log_msg), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+            yesterday_bullish_daily_candle_log = ''
+            yesterday_bullish_daily_candle_log += 'Yesterday bullish daily candle ticker list: ['
+            for contract_dict in contract_list:
+                yesterday_bullish_daily_candle_log += contract_dict.get("symbol") + ',\n'
+            yesterday_bullish_daily_candle_log += ']\n\n'
+            
+            yesterday_bullish_daily_candle_log = ''
+            yesterday_bullish_daily_candle_log += 'Original company name list: ['
+            for contract in contract_list:
+                yesterday_bullish_daily_candle_log += contract.get("company_name") + ',\n'
+            yesterday_bullish_daily_candle_log += ']\n\n'
+            
+            yesterday_bullish_daily_candle_log += 'Adjusted company name list: ['
+            for adjusted_name in company_name_list:
+                yesterday_bullish_daily_candle_log += adjusted_name + ',\n'
+            yesterday_bullish_daily_candle_log += ']\n\n'
+            discord_client.send_message(DiscordMessage(content=yesterday_bullish_daily_candle_log), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+            
+            search_query_log = ''
+            search_query_log += 'Search query list (async):\n'
+            
+            for index, search_query in enumerate(search_query_list):
+                search_query_log += f'{index + 1}: {search_query}\n' 
+                
+            discord_client.send_message(DiscordMessage(content=search_query_log), DiscordChannel.SERP_API_SEARCH_QUERY_LOG)
             
             if "error" in result:
                 ticker_to_datetime_to_news_dict[ticker] = 'error'
@@ -288,8 +320,12 @@ class GoogleSearchUtil:
             queue_ticker = result.get('symbol')
             queue_company_name = result.get('company_name')
             
+            #https://github.com/serpapi/google-search-results-python/blob/master/tests/test_example.py#L107
+            #search_id = result.get('search_metadata').get('id')
+            #search_archived = search.get_search_archive(search_id)
+            #succeeded = re.search('Cached|Success', search_archived['search_metadata']['status'])
             metadata = result.get('search_metadata')
-            status = result.get('search_metadata').get('status')
+            status = metadata.get('status')
             succeeded = status == 'Cached' or result.get('search_metadata').get('status') == 'Success' if metadata else None
             logger.log_debug_msg(f'ticker queue status: {status}')
             if succeeded:
@@ -299,6 +335,11 @@ class GoogleSearchUtil:
                 if not organic_results:
                     continue
                 
+                if organic_results:
+                    discord_client.send_message(DiscordMessage(content=f'{queue_ticker} no of organic result: {len(organic_results)}\n'), DiscordChannel.SERP_API_SEARCH_RESULT_LOG)
+                else:
+                    discord_client.send_message(DiscordMessage(content=f'{queue_ticker} has no organic result\n'), DiscordChannel.SERP_API_SEARCH_RESULT_LOG)
+                    
                 for search_result in organic_results:
                     position = search_result.get('position')
                     title = search_result.get('title')
@@ -316,24 +357,26 @@ class GoogleSearchUtil:
                         except ValueError:
                             continue
                     else:
-                        match = re.search(EXTRACT_DATE_STR_REGEX, snippet)
-                        if match:
-                            snippet_date_str = match.group()
+                        if snippet:
+                            match = re.search(EXTRACT_DATE_STR_REGEX, snippet)
                             
-                            try:
-                                parsed_date = datetime.strptime(snippet_date_str, "%B %d, %Y")
-                            except ValueError:
-                                continue
+                            if match:
+                                snippet_date_str = match.group()
+
+                                try:
+                                    parsed_date = datetime.strptime(snippet_date_str, "%B %d, %Y")
+                                except ValueError:
+                                    continue
                                 
                     filter_title_pattern = re.compile(FILTER_RESULT_TITLE_REGEX, re.IGNORECASE)
                     is_title_included_filtered_words = filter_title_pattern.search(title)
                     checking_title = title.lower().translate(str.maketrans('', '', PUNCTUATION_REGEX))
-                    checking_snippet = snippet.lower().replace('.',' ')
+                    #checking_snippet = snippet.lower().replace('.',' ')
                     
                     if (parsed_date 
                             and parsed_date not in filtered_result 
                             and queue_company_name.lower() in checking_title 
-                            and ('offering' in checking_title or 'offering' in checking_snippet)
+                            #and ('offering' in checking_title or 'offering' in checking_snippet)
                             and not is_title_included_filtered_words):
                         result_obj = {
                             'position': position,
@@ -355,10 +398,13 @@ class GoogleSearchUtil:
                 # requeue search_queue
                 logger.log_debug_msg(f"{queue_ticker} requeue search")
                 search_queue.put(result)
-                time.sleep(0.5)
+                time.sleep(1)
         
         original_url_to_shortened_url_dict = shorten_url(shorten_url_list)
         for ticker, datetime_to_news_dict in ticker_to_datetime_to_news_dict.items():
+            if datetime_to_news_dict == 'error':
+                continue
+            
             for _, news_dict in datetime_to_news_dict.items():
                 original_url = news_dict.get('link')
                 shortened_url = original_url_to_shortened_url_dict.get(original_url) if original_url_to_shortened_url_dict.get(original_url) else original_url

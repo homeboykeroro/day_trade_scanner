@@ -98,7 +98,6 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
         logger.log_debug_msg('Bullish candle scan')
         
         filtered_ticker_list = self.__get_and_update_filtered_result() 
-        self._discord_client.send_message_by_list_with_response([DiscordMessage(content=f'Yesterday bullish daily candle ticker list: {[ticker for ticker in filtered_ticker_list]}')], DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
         
         if filtered_ticker_list:
             for ticker in filtered_ticker_list:

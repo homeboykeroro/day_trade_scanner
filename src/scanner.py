@@ -177,6 +177,7 @@ class Scanner:
                                                                                          ticker_to_contract_info_dict=ib_connector.get_ticker_to_contract_dict(), 
                                                                                          discord_client=discord_client)
         previous_day_top_gainer_continuation_analyser.analyse()
+        logger.log_debug_msg('Multi-day top gainer scan completed')
         
     def __analyse_yesterday_top_gainer(self, ib_connector: IBConnector, 
                                              discord_client: DiscordChatBotClient):
@@ -213,21 +214,21 @@ class Scanner:
                                                                               discord_client=discord_client)
         yesterday_bullish_daily_candle_analyser.analyse()
         
-        intra_day_one_minute_candle_df = self.__retrieve_intra_day_minute_candle(ib_connector=ib_connector,
-                                                                                 contract_list=yesterday_bullish_daily_candle_analyser.filtered_contract_list, 
-                                                                                 bar_size=BarSize.ONE_MINUTE)
-        yesterday_one_minute_candle_df = self.__retrieve_yesterday_minute_candle(ib_connector=ib_connector,
-                                                                                 contract_list=yesterday_bullish_daily_candle_analyser.filtered_contract_list, 
-                                                                                 bar_size=BarSize.ONE_MINUTE)
-        concated_one_minute_candle_df = pd.concat([yesterday_one_minute_candle_df,
-                                                   intra_day_one_minute_candle_df], axis=0)
+        # intra_day_one_minute_candle_df = self.__retrieve_intra_day_minute_candle(ib_connector=ib_connector,
+        #                                                                          contract_list=yesterday_top_gainer_contract_list, 
+        #                                                                          bar_size=BarSize.ONE_MINUTE)
+        # yesterday_one_minute_candle_df = self.__retrieve_yesterday_minute_candle(ib_connector=ib_connector,
+        #                                                                          contract_list=yesterday_top_gainer_contract_list, 
+        #                                                                          bar_size=BarSize.ONE_MINUTE)
+        # concated_one_minute_candle_df = pd.concat([yesterday_one_minute_candle_df,
+        #                                            intra_day_one_minute_candle_df], axis=0)
 
-        with pd.option_context('display.max_rows', None,
-                   'display.max_columns', None,
-                   'display.precision', 3):
-            logger.log_debug_msg(f'yesterday top gainer\'s intra_day_one_minute_candle_df: {intra_day_one_minute_candle_df}', with_log_file=True, with_std_out=False)
-            logger.log_debug_msg(f'yesterday top gainer\'s yesterday_one_minute_candle_df: {yesterday_one_minute_candle_df}', with_log_file=True, with_std_out=False)
-            logger.log_debug_msg(f'yesterday top gainer\'s concated_one_minute_candle_df: {concated_one_minute_candle_df}', with_log_file=True, with_std_out=False)
+        # with pd.option_context('display.max_rows', None,
+        #            'display.max_columns', None,
+        #            'display.precision', 3):
+        #     logger.log_debug_msg(f'yesterday top gainer\'s intra_day_one_minute_candle_df: {intra_day_one_minute_candle_df}', with_log_file=True, with_std_out=False)
+        #     logger.log_debug_msg(f'yesterday top gainer\'s yesterday_one_minute_candle_df: {yesterday_one_minute_candle_df}', with_log_file=True, with_std_out=False)
+        #     logger.log_debug_msg(f'yesterday top gainer\'s concated_one_minute_candle_df: {concated_one_minute_candle_df}', with_log_file=True, with_std_out=False)
 
         logger.log_debug_msg('Yesterday top gainer scan completed')
         

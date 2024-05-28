@@ -30,7 +30,13 @@ YESTERDAY_TOP_GAINER_SCANNER_LIST_CHANNEL_ID = int(os.environ['DISCORD_YESTERDAY
 
 # Error Log
 CHATBOT_ERROR_LOG_CHANNEL_ID = int(os.environ['DISCORD_CHATBOT_ERROR_LOG_CHANNEL_ID'])
-CHATBOT_LOG_CHANNEL_ID = int(os.environ['DISCORD_CHATBOT_LOG_CHANNEL_ID'])
+
+# Log
+SERP_API_ACCOUNT_INFO_LOG = int(os.environ['DISCORD_SERP_API_ACCOUNT_INFO_LOG'])
+SERP_API_SEARCH_QUERY_LOG = int(os.environ['DISCORD_SERP_API_SEARCH_QUERY_LOG'])
+SERP_API_SEARCH_RESULT_LOG = int(os.environ['DISCORD_SERP_API_SEARCH_RESULT_LOG'])
+PREVIOUS_DAYS_TOP_GAINER_SUPPORT_LOG = int(os.environ['DISCORD_PREVIOUS_DAYS_TOP_GAINER_SUPPORT_LOG'])
+PREVIOUS_DAYS_TOP_GAINER_CONTINUATION_LOG = int(os.environ['DISCORD_PREVIOUS_DAYS_TOP_GAINER_CONTINUATION_LOG'])
 
 # NAV
 NAV_CHANNEL_ID = int(os.environ['DISCORD_NAV_CHANNEL_ID'])
@@ -123,7 +129,12 @@ class DiscordChatBotClient(discord.Client):
         self.__top_loser_scanner_list_channel = self.get_channel(TOP_LOSER_SCANNER_LIST_CHANNEL_ID)
         self.__yesterday_top_scanner_list_channel = self.get_channel(YESTERDAY_TOP_GAINER_SCANNER_LIST_CHANNEL_ID)
         
-        self.__chatbot_log_channel = self.get_channel(CHATBOT_LOG_CHANNEL_ID)
+        self.__serp_api_account_info_log_channel = self.get_channel(SERP_API_ACCOUNT_INFO_LOG)
+        self.__serp_api_search_query_log_channel = self.get_channel(SERP_API_SEARCH_QUERY_LOG)
+        self.__serp_api_search_result_log_channel = self.get_channel(SERP_API_SEARCH_RESULT_LOG)
+        self.__previous_days_top_gainer_support_log_channel = self.get_channel(PREVIOUS_DAYS_TOP_GAINER_SUPPORT_LOG)
+        self.__previous_days_top_gainer_continuation_log_channel = self.get_channel(PREVIOUS_DAYS_TOP_GAINER_CONTINUATION_LOG)
+        
         self.__chatbot_error_log_channel = self.get_channel(CHATBOT_ERROR_LOG_CHANNEL_ID)
         
         self.__ib_interests_channel = self.get_channel(IB_INTERESTS_CHANNEL_ID)
@@ -265,8 +276,16 @@ class DiscordChatBotClient(discord.Client):
             channel = self.__top_loser_scanner_list_channel
         elif channel_type == DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST:
             channel = self.__yesterday_top_scanner_list_channel
-        elif channel_type == DiscordChannel.CHATBOT_LOG:
-            channel = self.__chatbot_log_channel
+        elif channel_type == DiscordChannel.SERP_API_ACCOUNT_INFO_LOG:
+            channel = self.__serp_api_account_info_log_channel 
+        elif channel_type == DiscordChannel.SERP_API_SEARCH_QUERY_LOG:
+            channel = self.__serp_api_search_query_log_channel 
+        elif channel_type == DiscordChannel.SERP_API_SEARCH_RESULT_LOG:
+            channel = self.__serp_api_search_result_log_channel
+        elif channel_type == DiscordChannel.PREVIOUS_DAYS_TOP_GAINER_SUPPORT_LOG:
+            channel = self.__previous_days_top_gainer_support_log_channel
+        elif channel_type == DiscordChannel.PREVIOUS_DAYS_TOP_GAINERS_CONTINUATION_LOG:
+            channel = self.__previous_days_top_gainer_continuation_log_channel
         elif channel_type == DiscordChannel.CHATBOT_ERROR_LOG:
             channel = self.__chatbot_error_log_channel
         elif channel_type == DiscordChannel.FIRSTRADE_INTERESTS:
