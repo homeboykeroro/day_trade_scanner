@@ -2,15 +2,17 @@ import math
 import time
 import pandas as pd
 
-from model.discord.scanner_result_message import ScannerResultMessage
-
 from pattern.pattern_analyser import PatternAnalyser
 
+from utils.discord_message_record_util import count_no_of_alert_times
 from utils.datetime_util import convert_into_human_readable_time, convert_into_read_out_time, get_current_us_datetime
 from utils.dataframe_util import get_ticker_to_occurrence_idx_list, replace_daily_df_latest_day_with_minute
 from utils.chart_util import get_candlestick_chart
 from utils.config_util import get_config
 from utils.logger import Logger
+
+from model.discord.scanner_result_message import ScannerResultMessage
+from model.discord.discord_message import DiscordMessage
 
 from constant.indicator.indicator import Indicator
 from constant.indicator.customised_indicator import CustomisedIndicator
@@ -28,6 +30,7 @@ PATTERN_NAME = 'PREVIOUS_DAY_TOP_GAINER_SUPPORT'
 
 MIN_MULTI_DAYS_CLOSE_CHANGE_PCT = get_config('MULTI_DAYS_TOP_GAINER_SCAN_PARAM', 'MIN_MULTI_DAYS_CLOSE_CHANGE_PCT')
 MAX_TOLERANCE_PERIOD_IN_MINUTE = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'MAX_TOLERANCE_PERIOD_IN_MINUTE')
+MAX_NO_OF_ALERT_TIMES = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'MAX_NO_OF_ALERT_TIMES')
 RANGE_TOLERANCE = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'RANGE_TOLERANCE')
 MINUTE_CANDLE_POSITIVE_OFFSET = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'MINUTE_CANDLE_POSITIVE_OFFSET')
 MINUTE_CANDLE_NEGATIVE_OFFSET = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'MINUTE_CANDLE_NEGATIVE_OFFSET')
@@ -59,6 +62,30 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
         latest_daily_candle_date = self.__daily_df.index[-1]
         
         for ticker in previous_day_top_gainer_ticker_list:
+            with pd.option_context('display.max_rows', None,
+                                               'display.max_columns', None,
+                                            'display.precision', 3):
+                logger.log_debug_msg(f'{ticker} Support Daily Dataframe: {self.__daily_df}')
+                logger.log_debug_msg(f'{ticker} Support Minute Dataframe: {self.__minute_df}')
+            
+            minute_df_ticker_list = self.__minute_df.columns.get_level_values(0).unique().tolist()
+            daily_df_ticker_list = self.__daily_df.columns.get_level_values(0).unique().tolist()
+            
+            minute_data_not_found = ticker not in minute_df_ticker_list
+            daily_data_not_found = ticker not in daily_df_ticker_list
+            
+            if minute_data_not_found or daily_data_not_found:
+                concat_msg = ''
+                if minute_data_not_found:
+                    concat_msg += f'Minute candle data not found for {ticker}\n'
+                
+                if daily_data_not_found:
+                    concat_msg += f'Daily candle data not found for {ticker}\n'
+                    
+                if concat_msg:
+                    self._discord_client.send_message(DiscordMessage(content=concat_msg), DiscordChannel.PREVIOUS_DAYS_TOP_GAINER_SUPPORT_LOG)
+                continue
+                            
             ramp_up_candle_date = max_daily_volume_dt_index_series[(ticker, RuntimeIndicator.COMPARE.value)]
             candle_colour = daily_candle_colour_df.loc[ramp_up_candle_date, (ticker, CustomisedIndicator.CANDLE_COLOUR.value)]
             
@@ -89,16 +116,40 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
                 ticker_to_occurrence_idx_list_dict = get_ticker_to_occurrence_idx_list(hit_support_boolean_df)
                 occurrence_idx_list = ticker_to_occurrence_idx_list_dict[ticker]
 
-                for occurrence_idx in occurrence_idx_list:   
+                outside_tolerance_period_datetime_list = []
+                inside_tolerance_period_datetime_list = []
+                us_current_datetime = get_current_us_datetime().replace(tzinfo=None)
+                
+                for occurrence_idx in occurrence_idx_list:
                     if not occurrence_idx:
                         continue
+                    
+                    time_diff_in_minute = math.floor(((us_current_datetime - occurrence_idx).total_seconds()) / 60)
+                    
+                    if time_diff_in_minute > MAX_TOLERANCE_PERIOD_IN_MINUTE:
+                        outside_tolerance_period_datetime_list.append(occurrence_idx)
                     else:
-                        us_current_datetime = get_current_us_datetime()
-                        current_datetime_and_pop_up_time_diff = math.floor(((us_current_datetime.replace(tzinfo=None) - occurrence_idx).total_seconds()) / 60)
-                        
-                        if current_datetime_and_pop_up_time_diff > MAX_TOLERANCE_PERIOD_IN_MINUTE:
-                            logger.log_debug_msg(f'Exclude {ticker} previous day support at {occurrence_idx}, analysis datetime: {us_current_datetime}, out of tolerance period')
-                            continue
+                        inside_tolerance_period_datetime_list.append(occurrence_idx)
+                
+                filtered_occurrence_idx_list = []
+                
+                if outside_tolerance_period_datetime_list:
+                    filtered_occurrence_idx_list += [outside_tolerance_period_datetime_list[0]]
+                
+                if inside_tolerance_period_datetime_list:
+                    filtered_occurrence_idx_list += inside_tolerance_period_datetime_list
+                
+                logger.log_debug_msg(f'Previous day top gainer support\'s occurrence idx list: {filtered_occurrence_idx_list}')
+                
+                for occurrence_idx in filtered_occurrence_idx_list:  
+                    if not occurrence_idx:
+                        continue
+                    
+                    no_of_alert_times = count_no_of_alert_times(ticker=ticker, hit_scanner_datetime=occurrence_idx, pattern=PATTERN_NAME, bar_size=BarSize.ONE_MINUTE)
+                    logger.log_debug_msg(f'Previous day top gainer continuation\'s alert times: {no_of_alert_times}')
+                    
+                    if no_of_alert_times > MAX_NO_OF_ALERT_TIMES:
+                        continue
                     
                     hit_support_time = occurrence_idx
                     check_message_sent_start_time = time.time()
@@ -127,48 +178,52 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
                                                                 scatter_symbol=ScatterSymbol.SUPPORT, scatter_colour=ScatterColour.RED)
                         logger.log_debug_msg(f'Generate {ticker} previous top gainer support finished time: {time.time() - daily_chart_start_time} seconds')
                         
-                    hit_scanner_datetime_display = convert_into_human_readable_time(hit_support_time)
-                    read_out_hit_support_time = convert_into_read_out_time(hit_support_time)
-                    
-                    yesterday_close = self.__daily_df.loc[latest_daily_candle_date, (ticker, Indicator.CLOSE.value)]
-                    low = ticker_minute_candle_df.loc[hit_support_time, (ticker, Indicator.LOW.value)]
-                    close = ticker_minute_candle_df.loc[hit_support_time, (ticker, Indicator.CLOSE.value)]
-                    volume = ticker_minute_candle_df.loc[hit_support_time, (ticker, Indicator.VOLUME.value)]
-                    total_volume = ticker_minute_candle_df.loc[hit_support_time, (ticker, CustomisedIndicator.TOTAL_VOLUME.value)]
-                    
-                    if (low >= support_low_lower_limit and low <= support_low_upper_limit):
-                        indicator = 'low'
-                        support = ramp_up_low
-                        last_pct_change = round(((low - yesterday_close)/ yesterday_close) * 100, 2)
+                        hit_scanner_datetime_display = convert_into_human_readable_time(hit_support_time)
+                        read_out_hit_support_time = convert_into_read_out_time(hit_support_time)
                         
-                    if (low >= support_open_lower_limit and low <= support_open_upper_limit):
-                        indicator = 'low'
-                        support = ramp_up_open
-                        last_pct_change = round(((low - yesterday_close)/ yesterday_close) * 100, 2)
-                    
-                    if (close >= support_low_lower_limit and close <= support_low_upper_limit):
-                        indicator = 'close'
-                        support = ramp_up_low
-                        last_pct_change = round(((close - yesterday_close)/ yesterday_close) * 100, 2)
+                        yesterday_close = self.__daily_df.loc[latest_daily_candle_date, (ticker, Indicator.CLOSE.value)]
+                        low = ticker_minute_candle_df.loc[hit_support_time, (ticker, Indicator.LOW.value)]
+                        close = ticker_minute_candle_df.loc[hit_support_time, (ticker, Indicator.CLOSE.value)]
+                        volume = ticker_minute_candle_df.loc[hit_support_time, (ticker, Indicator.VOLUME.value)]
+                        total_volume = ticker_minute_candle_df.loc[hit_support_time, (ticker, CustomisedIndicator.TOTAL_VOLUME.value)]
                         
-                    if (close >= support_open_lower_limit and close <= support_open_upper_limit):
-                        indicator = 'close'
-                        support = ramp_up_open
-                        last_pct_change = round(((close - yesterday_close)/ yesterday_close) * 100, 2)
-                    
-                    message = ScannerResultMessage(title=f'{ticker}\'s {indicator} is hitting previous day support of {support} ({last_pct_change}%) at {hit_scanner_datetime_display}',
-                                                   readout_msg=f'{" ".join(ticker)} is hitting previous day support of {support} at {read_out_hit_support_time}',
-                                                   close=close,
-                                                   yesterday_close=yesterday_close,
-                                                   volume=volume, total_volume=total_volume,
-                                                   contract_info=contract_info,
-                                                   minute_chart_dir=minute_chart_dir,
-                                                   daily_chart_dir=daily_chart_dir, 
-                                                   ticker=ticker,
-                                                   hit_scanner_datetime=hit_support_time.replace(second=0, microsecond=0),
-                                                   pattern=PATTERN_NAME,
-                                                   bar_size=BarSize.ONE_MINUTE)
-                    message_list.append(message)
+                        if (low >= support_low_lower_limit and low <= support_low_upper_limit):
+                            indicator = 'low'
+                            ref_indicator = 'low'
+                            support = ramp_up_low
+                            last_pct_change = round(((low - yesterday_close)/ yesterday_close) * 100, 2)
+                            
+                        if (low >= support_open_lower_limit and low <= support_open_upper_limit):
+                            indicator = 'low'
+                            ref_indicator = 'open'
+                            support = ramp_up_open
+                            last_pct_change = round(((low - yesterday_close)/ yesterday_close) * 100, 2)
+                        
+                        if (close >= support_low_lower_limit and close <= support_low_upper_limit):
+                            indicator = 'close'
+                            ref_indicator = 'low'
+                            support = ramp_up_low
+                            last_pct_change = round(((close - yesterday_close)/ yesterday_close) * 100, 2)
+                            
+                        if (close >= support_open_lower_limit and close <= support_open_upper_limit):
+                            indicator = 'close'
+                            ref_indicator = 'open'
+                            support = ramp_up_open
+                            last_pct_change = round(((close - yesterday_close)/ yesterday_close) * 100, 2)
+                        
+                        message = ScannerResultMessage(title=f'{ticker}\'s {indicator} is hitting previous day support of {support} ({ref_indicator}) ({last_pct_change}%) at {hit_scanner_datetime_display}',
+                                                       readout_msg=f'{" ".join(ticker)}\'s {indicator} is hitting previous day support of {support} at {read_out_hit_support_time}',
+                                                       close=close,
+                                                       yesterday_close=yesterday_close,
+                                                       volume=volume, total_volume=total_volume,
+                                                       contract_info=contract_info,
+                                                       minute_chart_dir=minute_chart_dir,
+                                                       daily_chart_dir=daily_chart_dir, 
+                                                       ticker=ticker,
+                                                       hit_scanner_datetime=hit_support_time.replace(second=0, microsecond=0),
+                                                       pattern=PATTERN_NAME,
+                                                       bar_size=BarSize.ONE_MINUTE)
+                        message_list.append(message)
 
         if message_list:
             send_msg_start_time = time.time()

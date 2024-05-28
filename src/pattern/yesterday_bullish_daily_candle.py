@@ -82,7 +82,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
             check_start_time = time.time()
             is_yesterday_bullish_candle_analysis_msg_sent = check_if_pattern_analysis_message_sent(ticker=ticker, 
                                                                                                    hit_scanner_datetime=self.__hit_scanner_date, 
-                                                                                                   scan_pattern=PATTERN_NAME, 
+                                                                                                   pattern=PATTERN_NAME, 
                                                                                                    bar_size=BarSize.ONE_DAY.value)
             logger.log_debug_msg(f'Check if {ticker} pattern analysis exists in db finish time: {time.time() - check_start_time} seconds')
             
