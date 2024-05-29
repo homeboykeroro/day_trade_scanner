@@ -160,7 +160,8 @@ class Scanner:
         with pd.option_context('display.max_rows', None,
                        'display.max_columns', None,
                        'display.precision', 3):
-            logger.log_debug_msg(f'__analyse_multi_days_top_gainer daily df: {multi_days_top_gainers_df}', with_log_file=True, with_std_out=False)
+            logger.log_debug_msg('__analyse_multi_days_top_gainer daily df:')
+            logger.log_debug_msg(multi_days_top_gainers_df)
 
         intra_day_one_minute_candle_df = self.__retrieve_intra_day_minute_candle(ib_connector=ib_connector,
                                                                                  contract_list=request_candle_contract_list, 
@@ -205,7 +206,8 @@ class Scanner:
         with pd.option_context('display.max_rows', None,
                        'display.max_columns', None,
                        'display.precision', 3):
-            logger.log_debug_msg(f'__analyse_yesterday_top_gainer daily df: {previous_day_top_gainers_df}')
+            logger.log_debug_msg('__analyse_yesterday_top_gainer daily df')
+            logger.log_debug_msg(previous_day_top_gainers_df)
 
         yesterday_bullish_daily_candle_analyser = YesterdayBullishDailyCandle(hit_scanner_date=yesterday_top_gainer_retrieval_datetime.date(),
                                                                               yesterday_top_gainer_contract_list=yesterday_top_gainer_contract_list,
@@ -261,7 +263,8 @@ class Scanner:
         with pd.option_context('display.max_rows', None,
                        'display.max_columns', None,
                        'display.precision', 3):
-            logger.log_debug_msg(f'__analyse_intra_day_top_gainer daily df: {daily_df}', with_log_file=True, with_std_out=False)
+            logger.log_debug_msg('__analyse_intra_day_top_gainer daily df:')
+            logger.log_debug_msg(daily_df)
 
         send_msg_start_time = time.time()
         logger.log_debug_msg(f'Top gainer scanner result: {[contract["symbol"] for contract in contract_list]}')
@@ -306,7 +309,8 @@ class Scanner:
         with pd.option_context('display.max_rows', None,
                        'display.max_columns', None,
                        'display.precision', 3):
-            logger.log_debug_msg(f'__analyse_intra_day_top_loser daily df: {daily_df}', with_log_file=True, with_std_out=False)
+            logger.log_debug_msg('__analyse_intra_day_top_loser daily df:')
+            logger.log_debug_msg(daily_df)
 
         send_msg_start_time = time.time()
         logger.log_debug_msg(f'Top loser scanner result: {[contract["symbol"] for contract in contract_list]}')

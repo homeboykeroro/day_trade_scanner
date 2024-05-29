@@ -327,17 +327,16 @@ class GoogleSearchUtil:
             metadata = result.get('search_metadata')
             status = metadata.get('status')
             succeeded = status == 'Cached' or result.get('search_metadata').get('status') == 'Success' if metadata else None
-            logger.log_debug_msg(f'ticker queue status: {status}')
+            logger.log_debug_msg(f'{queue_ticker} queue status: {status}')
             if succeeded:
                 organic_results = result.get('organic_results')
-                logger.log_debug_msg(msg=organic_results)
+                logger.log_debug_msg(f'{queue_ticker} organic_results: {organic_results}')
 
-                if not organic_results:
-                    continue
-                
                 if organic_results:
+                    logger.log_debug_msg(f'{queue_ticker} no of organic result: {len(organic_results)}')
                     discord_client.send_message(DiscordMessage(content=f'{queue_ticker} no of organic result: {len(organic_results)}\n'), DiscordChannel.SERP_API_SEARCH_RESULT_LOG)
                 else:
+                    logger.log_debug_msg(f'{queue_ticker} has no organic result')
                     discord_client.send_message(DiscordMessage(content=f'{queue_ticker} has no organic result\n'), DiscordChannel.SERP_API_SEARCH_RESULT_LOG)
                     
                 for search_result in organic_results:
@@ -393,7 +392,9 @@ class GoogleSearchUtil:
                 ordered_filter_dict = OrderedDict(sorted(filtered_result.items(), key=lambda t: t[0]))
                 ticker_to_datetime_to_news_dict[queue_ticker] = ordered_filter_dict
             else:
-                if time.time() - search_start_time > MAX_WAITING_TIME:
+                processing_time = time.time() - search_start_time
+                if processing_time > MAX_WAITING_TIME:
+                    logger.log_debug_msg(f'Processing time exceed maximum limit of {MAX_WAITING_TIME}')
                     break
                 # requeue search_queue
                 logger.log_debug_msg(f"{queue_ticker} requeue search")

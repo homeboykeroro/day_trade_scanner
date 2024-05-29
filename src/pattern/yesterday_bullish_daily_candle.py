@@ -3,7 +3,6 @@ import time
 import pandas as pd
 
 from model.discord.scanner_result_message import ScannerResultMessage
-from model.discord.discord_message import DiscordMessage
 from model.financial_data import FinancialData
 from model.offering_news import OfferingNews
 
@@ -62,7 +61,8 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
         with pd.option_context('display.max_rows', None,
                                        'display.max_columns', None,
                                     'display.precision', 3):
-            logger.log_debug_msg(f'Bullish daily candle boolean dataframe: {yesterday_bullish_daily_candle_boolean_df}')
+            logger.log_debug_msg(f'Bullish daily candle boolean dataframe:')
+            logger.log_debug_msg(yesterday_bullish_daily_candle_boolean_df)
         
         yesterday_bullish_daily_candle_result_series = yesterday_bullish_daily_candle_boolean_df.any()   
         result_list = yesterday_bullish_daily_candle_result_series.index[yesterday_bullish_daily_candle_result_series].get_level_values(0).tolist()

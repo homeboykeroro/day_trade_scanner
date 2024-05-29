@@ -32,6 +32,16 @@ def isfloat(val):
          
     return result
 
+def is_bool(val):
+    result = False
+    is_str = isinstance(val, str)
+    
+    if is_str:
+        if val == 'True' or val == 'False':
+            result = True
+            
+    return result
+
 #https://medium.com/nerd-for-tech/python-configparser-a-comprehensive-guide-%EF%B8%8F-36331be5244f
 def get_config(section: str, key: str):
     try:
@@ -41,6 +51,8 @@ def get_config(section: str, key: str):
             result = int(result)
         elif isfloat(result):
             result = float(result)
+        elif is_bool(result):
+            result = bool(result)
     
     except Exception:
         result = None

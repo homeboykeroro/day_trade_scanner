@@ -1,22 +1,24 @@
 from datetime import datetime
 import logging
 import os
+import pandas as pd
 
 from utils.config_util import get_config
 
 LOGGER_DIR = get_config('LOGGER', 'PATH')
-LOG_DATAFRAME = get_config('LOGGER', 'LOG_DATAFRAME') # with pd.option_context('display.max_rows', None,
+LOG_DATAFRAME = get_config('LOGGER', 'LOG_DATAFRAME')
 
 class Logger:
     def __init__(self):
         self.__logger = self.__get_logger()
 
-    def log_debug_msg(self, msg: str, with_log_file: bool = True, with_std_out: bool = False, contain_df: bool = False):
+    def log_debug_msg(self, msg, with_log_file: bool = True, with_std_out: bool = False):
         if with_std_out:
             print(msg)
         
-        if with_log_file or (with_log_file and contain_df and LOG_DATAFRAME):
-            self.__logger.debug(msg)
+        if with_log_file:
+            if (isinstance(msg, pd.DataFrame) and LOG_DATAFRAME) or isinstance(msg, str):
+                self.__logger.debug(msg)
             
     def log_error_msg(self, msg: str, with_log_file: bool = True, with_std_out: bool = False):
         if with_std_out:

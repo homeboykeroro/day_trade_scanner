@@ -225,7 +225,8 @@ def get_candlestick_chart(candle_data_df: pd.DataFrame,
         with pd.option_context('display.max_rows', None,
                                'display.max_columns', None,
                                'display.precision', 3,):
-            logger.log_debug_msg(f'{ticker} candle chart data: {candle_data_df.loc[candle_start_range:candle_end_range, idx[[ticker], :]]}')
+            logger.log_debug_msg(f'{ticker} candle chart data:')
+            logger.log_debug_msg(candle_data_df.loc[candle_start_range:candle_end_range, idx[[ticker], :]])
 
         chart_dir = generate_chart(pattern=pattern, 
                                    bar_size=bar_size,

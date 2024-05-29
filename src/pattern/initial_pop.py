@@ -41,7 +41,14 @@ class InitialPop(PatternAnalyser):
         super().__init__(discord_client)
         self.__bar_size = bar_size
         self.__historical_data_df = historical_data_df
-        self.__daily_df = daily_df.loc[:, idx[ticker_list, :]]
+        
+        daily_df_ticker_list = daily_df.columns.get_level_values(0).unique().tolist()
+        select_daily_df_ticker_list = []
+        for ticker in ticker_list:
+            if ticker in daily_df_ticker_list:
+                select_daily_df_ticker_list.append(ticker)
+        
+        self.__daily_df = daily_df.loc[:, idx[select_daily_df_ticker_list, :]]
         self.__ticker_to_contract_info_dict = ticker_to_contract_info_dict
 
     def analyse(self) -> None:
@@ -104,8 +111,10 @@ class InitialPop(PatternAnalyser):
                         with pd.option_context('display.max_rows', None,
                                                'display.max_columns', None,
                                             'display.precision', 3):
-                            logger.log_debug_msg(f'{ticker} Pop Up Boolean Dataframe: {pop_up_boolean_df.loc[:, idx[[ticker], :]]}')
-                            logger.log_debug_msg(f'{ticker} Initial Pop Full Dataframe: {self.__historical_data_df.loc[:, idx[[ticker], :]]}')
+                            logger.log_debug_msg(f'{ticker} Pop Up Boolean Dataframe:')
+                            logger.log_debug_msg(pop_up_boolean_df.loc[:, idx[[ticker], :]])
+                            logger.log_debug_msg(f'{ticker} Initial Pop Full Dataframe:')
+                            logger.log_debug_msg(self.__historical_data_df.loc[:, idx[[ticker], :]])
                         
                         contract_info = self.__ticker_to_contract_info_dict[ticker]
                         close = self.__historical_data_df.loc[pop_up_time, (ticker, Indicator.CLOSE.value)]

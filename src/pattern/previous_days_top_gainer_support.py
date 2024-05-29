@@ -65,8 +65,10 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
             with pd.option_context('display.max_rows', None,
                                                'display.max_columns', None,
                                             'display.precision', 3):
-                logger.log_debug_msg(f'{ticker} Support Daily Dataframe: {self.__daily_df}')
-                logger.log_debug_msg(f'{ticker} Support Minute Dataframe: {self.__minute_df}')
+                logger.log_debug_msg(f'{ticker} Support Daily Dataframe:')
+                logger.log_debug_msg(self.__daily_df)
+                logger.log_debug_msg(f'{ticker} Support Minute Dataframe')
+                logger.log_debug_msg(self.__minute_df)
             
             minute_df_ticker_list = self.__minute_df.columns.get_level_values(0).unique().tolist()
             daily_df_ticker_list = self.__daily_df.columns.get_level_values(0).unique().tolist()

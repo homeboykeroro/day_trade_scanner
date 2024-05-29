@@ -41,7 +41,14 @@ class InitialDip(PatternAnalyser):
         super().__init__(discord_client)
         self.__bar_size = bar_size
         self.__historical_data_df = historical_data_df
-        self.__daily_df = daily_df.loc[:, idx[ticker_list, :]]
+        
+        daily_df_ticker_list = daily_df.columns.get_level_values(0).unique().tolist()
+        select_daily_df_ticker_list = []
+        for ticker in ticker_list:
+            if ticker in daily_df_ticker_list:
+                select_daily_df_ticker_list.append(ticker)
+        
+        self.__daily_df = daily_df.loc[:, idx[select_daily_df_ticker_list, :]]
         self.__ticker_to_contract_info_dict = ticker_to_contract_info_dict
 
     def analyse(self) -> None:
@@ -101,8 +108,13 @@ class InitialDip(PatternAnalyser):
                     logger.log_debug_msg(f'Check {ticker} dip pattern message send time: {time.time() - check_message_sent_start_time} seconds')
 
                     if not is_message_sent:
-                        logger.log_debug_msg(f'{ticker} Dip Boolean Dataframe: {dip_boolean_df.loc[:, idx[[ticker], :]]}')
-                        logger.log_debug_msg(f'{ticker} Initial Dip Full Dataframe: {self.__historical_data_df.loc[:, idx[[ticker], :]]}')
+                        with pd.option_context('display.max_rows', None,
+                                               'display.max_columns', None,
+                                            'display.precision', 3):
+                            logger.log_debug_msg(f'{ticker} Dip Boolean Dataframe:')
+                            logger.log_debug_msg(dip_boolean_df.loc[:, idx[[ticker], :]])
+                            logger.log_debug_msg(f'{ticker} Initial Dip Full Dataframe:')
+                            logger.log_debug_msg(self.__historical_data_df.loc[:, idx[[ticker], :]])
                         
                         contract_info = self.__ticker_to_contract_info_dict[ticker]
                         close = self.__historical_data_df.loc[dip_time, (ticker, Indicator.CLOSE.value)]

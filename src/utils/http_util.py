@@ -2,7 +2,6 @@ import asyncio
 import threading
 import aiohttp
 import time
-import json
 
 from utils.logger import Logger
 
@@ -30,7 +29,7 @@ async def fetch(session: aiohttp.ClientSession(), method: str, endpoint: str, pa
                     return await response.json()
         except Exception as e:
             logger.log_error_msg(f'Error during {method} request to {endpoint}, payload: {payload}, Cause: {e}, Status code: {response.status}')
-            return {'status': 'FAILED', 'errorMsg': str(e), 'payload': payload}
+            return {'status': 'FAILED', 'statusCode:': {response.status}, 'errorMsg': str(e), 'payload': payload}
 
 async def process_async_request(method: str, endpoint: str, payload_list: list, chunk_size: int, no_of_request_per_sec: int, headers: dict = None) -> dict:
     semaphore = asyncio.Semaphore(chunk_size)  # Limit to chunk_size concurrent requests
@@ -77,6 +76,9 @@ def send_async_request(method: str, endpoint: str, payload_list: list, chunk_siz
     error_response_list = response_result['error_response_list']
     
     if len(error_response_list) > 0:
-        raise Exception(f'Async requests not completed successfully, error response list: {json.dumps(error_response_list)}')
+        for error_response in error_response_list:
+            status_code = error_response.get('statusCode')
+            if status_code == 401:
+                raise aiohttp.ClientError(f'Client Portal Connection Error, response: {error_response}')
     
     return response_list
