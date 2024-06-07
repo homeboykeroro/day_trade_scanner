@@ -4,6 +4,8 @@ import threading
 import pandas as pd
 import mplfinance as mpf
 from matplotlib import dates, ticker
+import matplotlib as mpl
+mpl.use('Agg')
 
 from constant.indicator.scatter_colour import ScatterColour
 from constant.indicator.scatter_symbol import ScatterSymbol
@@ -199,6 +201,9 @@ def generate_chart(pattern: str, bar_size: BarSize, main_df: pd.DataFrame, scatt
     current_datetime_str = datetime.datetime.now().strftime('%Y%m%d%H%M%S')
     output_dir =  f"{CHART_ROOT_DIR}/{pattern}_{ticker_name}_{bar_size.value}_{current_datetime_str}.png"
     chart.savefig(output_dir)
+    del chart
+    
+    logger.log_debug_msg(f'Chart {output_dir} has been generated', with_std_out=True)
     
     return output_dir
     

@@ -52,7 +52,10 @@ def get_config(section: str, key: str):
         elif isfloat(result):
             result = float(result)
         elif is_bool(result):
-            result = bool(result)
+            if result == 'True':
+                result = True
+            elif result == 'False':
+                result = False
     
     except Exception:
         result = None
