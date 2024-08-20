@@ -4,8 +4,7 @@ import pandas as pd
 
 from pattern.pattern_analyser import PatternAnalyser
 
-from utils.discord_message_record_util import count_no_of_alert_times
-from utils.datetime_util import convert_into_human_readable_time, convert_into_read_out_time, get_current_us_datetime
+from utils.datetime_util import convert_into_human_readable_time, convert_into_read_out_time
 from utils.dataframe_util import get_ticker_to_occurrence_idx_list, replace_daily_df_latest_day_with_minute
 from utils.chart_util import get_candlestick_chart
 from utils.config_util import get_config
@@ -31,6 +30,7 @@ PATTERN_NAME = 'PREVIOUS_DAY_TOP_GAINER_CONTINUATION'
 MIN_MULTI_DAYS_CLOSE_CHANGE_PCT = get_config('MULTI_DAYS_TOP_GAINER_SCAN_PARAM', 'MIN_MULTI_DAYS_CLOSE_CHANGE_PCT')
 MAX_TOLERANCE_PERIOD_IN_MINUTE = get_config('PREVIOUS_DAY_TOP_GAINER_CONTINUATION_PARAM', 'MAX_TOLERANCE_PERIOD_IN_MINUTE')
 MAX_NO_OF_ALERT_TIMES = get_config('PREVIOUS_DAY_TOP_GAINER_CONTINUATION_PARAM', 'MAX_NO_OF_ALERT_TIMES')
+MIN_ALERT_CHECKING_INTERVAL_IN_MINUTE = get_config('PREVIOUS_DAY_TOP_GAINER_CONTINUATION_PARAM', 'MIN_ALERT_CHECKING_INTERVAL_IN_MINUTE')
 TEST_NEW_HIGH_TOLERANCE = get_config('PREVIOUS_DAY_TOP_GAINER_CONTINUATION_PARAM', 'TEST_NEW_HIGH_TOLERANCE')
 GAP_UP_PCT = get_config('PREVIOUS_DAY_TOP_GAINER_CONTINUATION_PARAM', 'GAP_UP_PCT')
 GAP_UP_FIRST_OCCURRENCE_TIMES = get_config('PREVIOUS_DAY_TOP_GAINER_CONTINUATION_PARAM', 'GAP_UP_FIRST_OCCURRENCE_TIMES')
@@ -52,10 +52,10 @@ class PreviousDayTopGainerContinuation(PatternAnalyser):
         daily_volume_df = self.__daily_df.loc[:, idx[:, Indicator.VOLUME.value]].apply(pd.to_numeric, errors='coerce')
         daily_candle_colour_df = self.__daily_df.loc[:, idx[:, CustomisedIndicator.CANDLE_COLOUR.value]]
         
-        max_daily_close_pct_series = (daily_close_pct_df.max() >= MIN_MULTI_DAYS_CLOSE_CHANGE_PCT).rename(index={CustomisedIndicator.CLOSE_CHANGE.value : RuntimeIndicator.COMPARE.value})
+        max_daily_close_pct_boolean_series = (daily_close_pct_df.max() >= MIN_MULTI_DAYS_CLOSE_CHANGE_PCT).rename(index={CustomisedIndicator.CLOSE_CHANGE.value : RuntimeIndicator.COMPARE.value})
         max_daily_volume_dt_index_series = daily_volume_df.idxmax().rename(index={Indicator.VOLUME.value: RuntimeIndicator.COMPARE.value})
         max_daily_close_pct_dt_index_series = daily_close_pct_df.idxmax().rename(index={CustomisedIndicator.CLOSE_CHANGE.value: RuntimeIndicator.COMPARE.value})
-        max_daily_close_with_most_volume_ticker_series = (max_daily_volume_dt_index_series == max_daily_close_pct_dt_index_series) & (max_daily_close_pct_series)
+        max_daily_close_with_most_volume_ticker_series = (max_daily_volume_dt_index_series == max_daily_close_pct_dt_index_series) & (max_daily_close_pct_boolean_series)
         previous_day_top_gainer_ticker_list = max_daily_close_with_most_volume_ticker_series.index[max_daily_close_with_most_volume_ticker_series].get_level_values(0).tolist()
 
         latest_daily_candle_date = self.__daily_df.index[-1]
@@ -95,9 +95,11 @@ class PreviousDayTopGainerContinuation(PatternAnalyser):
             ticker_minute_candle_df = self.__minute_df.loc[:, idx[ticker, :]]
             
             if is_green:
+                # Previous day resistence
                 ramp_up_close = self.__daily_df.loc[ramp_up_candle_date, (ticker, Indicator.CLOSE.value)]
                 ramp_up_high = self.__daily_df.loc[ramp_up_candle_date, (ticker, Indicator.HIGH.value)]
                 
+                # Minute candle
                 minute_high_df = ticker_minute_candle_df.loc[:, idx[:, Indicator.HIGH.value]].rename(columns={Indicator.HIGH.value: RuntimeIndicator.COMPARE.value})
                 minute_close_df = ticker_minute_candle_df.loc[:, idx[:, Indicator.CLOSE.value]].rename(columns={Indicator.CLOSE.value: RuntimeIndicator.COMPARE.value})
                 minute_open_df = ticker_minute_candle_df.loc[:, idx[:, Indicator.OPEN.value]].rename(columns={Indicator.OPEN.value: RuntimeIndicator.COMPARE.value})
@@ -112,62 +114,54 @@ class PreviousDayTopGainerContinuation(PatternAnalyser):
                 minute_close_new_high_test_boolean_df = (minute_close_df >= new_high_test_lower_limit) & (minute_close_df <= new_high_test_upper_limit)
                 minute_high_new_high_test_boolean_df = (minute_high_df >= new_high_test_lower_limit) & (minute_high_df <= new_high_test_upper_limit)
                 
-                hit_support_boolean_df = (gap_up_boolean_df) | (minute_close_new_high_test_boolean_df | minute_high_new_high_test_boolean_df)
+                new_high_test_boolean_df = (gap_up_boolean_df) | (minute_close_new_high_test_boolean_df | minute_high_new_high_test_boolean_df)
                 
-                ticker_to_occurrence_idx_list_dict = get_ticker_to_occurrence_idx_list(hit_support_boolean_df)
+                ticker_to_occurrence_idx_list_dict = get_ticker_to_occurrence_idx_list(new_high_test_boolean_df)
                 occurrence_idx_list = ticker_to_occurrence_idx_list_dict[ticker]
+                trigger_alert_datetime_list = []
 
-                outside_tolerance_period_datetime_list = []
-                inside_tolerance_period_datetime_list = []
-                us_current_datetime = get_current_us_datetime().replace(tzinfo=None)
-                
-                for occurrence_idx in occurrence_idx_list:
-                    if not occurrence_idx:
-                        continue
+                if occurrence_idx_list:
+                    earilest_alert_datetime = min(occurrence_idx_list)
                     
-                    time_diff_in_minute = math.floor(((us_current_datetime - occurrence_idx).total_seconds()) / 60)
-                    
-                    if time_diff_in_minute > MAX_TOLERANCE_PERIOD_IN_MINUTE:
-                        outside_tolerance_period_datetime_list.append(occurrence_idx)
-                    else:
-                        inside_tolerance_period_datetime_list.append(occurrence_idx)
+                    for occurrence_idx in occurrence_idx_list:
+                        if not occurrence_idx:
+                            continue
+                        
+                        if len(trigger_alert_datetime_list) > 0:
+                            previous_alert_trigger_datetime = trigger_alert_datetime_list[-1]
+                            time_diff_in_minute = math.floor(((occurrence_idx - previous_alert_trigger_datetime).total_seconds()) / 60)
+                            
+                            if (time_diff_in_minute >= MIN_ALERT_CHECKING_INTERVAL_IN_MINUTE 
+                                    and len(trigger_alert_datetime_list) < MAX_NO_OF_ALERT_TIMES):
+                                trigger_alert_datetime_list.append(occurrence_idx)
+                        else:
+                            trigger_alert_datetime_list.append(earilest_alert_datetime)
                 
-                filtered_occurrence_idx_list = []
-                
-                if outside_tolerance_period_datetime_list:
-                    filtered_occurrence_idx_list += [outside_tolerance_period_datetime_list[0]]
-                
-                if inside_tolerance_period_datetime_list:
-                    filtered_occurrence_idx_list += inside_tolerance_period_datetime_list
-                
-                logger.log_debug_msg(f'Previous day top gainer continuation\'s occurrence idx list: {filtered_occurrence_idx_list}')
-
-                for occurrence_idx in filtered_occurrence_idx_list:    
-                    if not occurrence_idx:
-                        continue
-                    
-                    no_of_alert_times = count_no_of_alert_times(ticker=ticker, hit_scanner_datetime=occurrence_idx, pattern=PATTERN_NAME, bar_size=BarSize.ONE_MINUTE)
-                    logger.log_debug_msg(f'Previous day top gainer continuation\'s alert times: {no_of_alert_times}')
-                    
-                    if no_of_alert_times > MAX_NO_OF_ALERT_TIMES:
-                        continue
-                    
-                    new_high_test_time = occurrence_idx
+                for trigger_alert_datetime in trigger_alert_datetime_list:    
                     check_message_sent_start_time = time.time()
-                    is_message_sent = self.check_if_pattern_analysis_message_sent(ticker=ticker, hit_scanner_datetime=new_high_test_time.replace(second=0, microsecond=0), pattern=PATTERN_NAME, bar_size=BarSize.ONE_MINUTE)
+                    is_message_sent = self.check_if_pattern_analysis_message_sent(ticker=ticker, hit_scanner_datetime=trigger_alert_datetime.replace(second=0, microsecond=0), pattern=PATTERN_NAME, bar_size=BarSize.ONE_MINUTE)
                     logger.log_debug_msg(f'Check {ticker} previous day continuation pattern message send time: {time.time() - check_message_sent_start_time} seconds')
                     
                     if not is_message_sent:
+                        # Add alert trigger datetime log
+                        trigger_alert_datetime_display = f'{ticker} previous day continuation alert trigger, datetime:'
+                        for index, dt in enumerate(trigger_alert_datetime_list):
+                            trigger_alert_datetime_display += dt.strftime('%Y-%m-%d %H:%M:%S')
+                            
+                            if index != len(trigger_alert_datetime_list) - 1:
+                                trigger_alert_datetime_display += ', '
+                        self._discord_client.send_message(DiscordMessage(content=trigger_alert_datetime_display), DiscordChannel.PREVIOUS_DAYS_TOP_GAINERS_CONTINUATION_LOG)
+                
                         contract_info = self.__ticker_to_contract_info_dict[ticker]
                         
                         daily_df = replace_daily_df_latest_day_with_minute(daily_df=self.__daily_df.loc[:, idx[[ticker], :]], 
-                                                                           minute_df=self.__minute_df.loc[[new_high_test_time], idx[[ticker], :]])
+                                                                           minute_df=self.__minute_df.loc[[trigger_alert_datetime], idx[[ticker], :]])
                         
                         one_minute_chart_start_time = time.time()
                         logger.log_debug_msg(f'Generate {ticker} previous day top gainer continuation one minute chart')
                         minute_chart_dir = get_candlestick_chart(candle_data_df=self.__minute_df,
                                                                  ticker=ticker, pattern=PATTERN_NAME, bar_size=BarSize.ONE_MINUTE,
-                                                                 hit_scanner_datetime=new_high_test_time,
+                                                                 hit_scanner_datetime=trigger_alert_datetime,
                                                                  positive_offset=MINUTE_CANDLE_POSITIVE_OFFSET, negative_offset=MINUTE_CANDLE_NEGATIVE_OFFSET,
                                                                  scatter_symbol=ScatterSymbol.NEW_HIGH_TEST, scatter_colour=ScatterColour.GREEN)
                         logger.log_debug_msg(f'Generate {ticker} previous day top gainer continuation one minute chart finished time: {time.time() - one_minute_chart_start_time} seconds')
@@ -179,17 +173,17 @@ class PreviousDayTopGainerContinuation(PatternAnalyser):
                                                                 scatter_symbol=ScatterSymbol.NEW_HIGH_TEST, scatter_colour=ScatterColour.GREEN)
                         logger.log_debug_msg(f'Generate {ticker} previous top gainer continuation finished time: {time.time() - daily_chart_start_time} seconds')
                         
-                        hit_scanner_datetime_display = convert_into_human_readable_time(new_high_test_time)
-                        read_out_new_high_test_time = convert_into_read_out_time(new_high_test_time)
+                        hit_scanner_datetime_display = convert_into_human_readable_time(trigger_alert_datetime)
+                        read_out_new_high_test_time = convert_into_read_out_time(trigger_alert_datetime)
                         
-                        open = ticker_minute_candle_df.loc[new_high_test_time, (ticker, Indicator.OPEN.value)]
-                        close = ticker_minute_candle_df.loc[new_high_test_time, (ticker, Indicator.CLOSE.value)]
-                        high = ticker_minute_candle_df.loc[new_high_test_time, (ticker, Indicator.HIGH.value)]
-                        volume = ticker_minute_candle_df.loc[new_high_test_time, (ticker, Indicator.VOLUME.value)]
-                        total_volume = ticker_minute_candle_df.loc[new_high_test_time, (ticker, CustomisedIndicator.TOTAL_VOLUME.value)]
+                        open = ticker_minute_candle_df.loc[trigger_alert_datetime, (ticker, Indicator.OPEN.value)]
+                        close = ticker_minute_candle_df.loc[trigger_alert_datetime, (ticker, Indicator.CLOSE.value)]
+                        high = ticker_minute_candle_df.loc[trigger_alert_datetime, (ticker, Indicator.HIGH.value)]
+                        volume = ticker_minute_candle_df.loc[trigger_alert_datetime, (ticker, Indicator.VOLUME.value)]
+                        total_volume = ticker_minute_candle_df.loc[trigger_alert_datetime, (ticker, CustomisedIndicator.TOTAL_VOLUME.value)]
                         
                         gap_up_pct = round(((open - yesterday_close) / yesterday_close) * 100, 2)
-                        gap_up_occurrence_times = gap_up_occurrence_times_df.loc[new_high_test_time, (ticker, RuntimeIndicator.COMPARE.value)]
+                        gap_up_occurrence_times = gap_up_occurrence_times_df.loc[trigger_alert_datetime, (ticker, RuntimeIndicator.COMPARE.value)]
                         
                         if (high >= new_high_test_lower_limit or high <= new_high_test_upper_limit):
                             close_pct = round(((high - yesterday_close) / yesterday_close) * 100, 2)
@@ -211,7 +205,7 @@ class PreviousDayTopGainerContinuation(PatternAnalyser):
                                                        minute_chart_dir=minute_chart_dir,
                                                        daily_chart_dir=daily_chart_dir, 
                                                        ticker=ticker,
-                                                       hit_scanner_datetime=new_high_test_time.replace(second=0, microsecond=0),
+                                                       hit_scanner_datetime=trigger_alert_datetime.replace(second=0, microsecond=0),
                                                        pattern=PATTERN_NAME,
                                                        bar_size=BarSize.ONE_MINUTE)
                         message_list.append(message)

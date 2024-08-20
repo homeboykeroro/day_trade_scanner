@@ -44,25 +44,6 @@ def add_sent_pattern_analysis_message_record(param_list: list):
     )
     
     execute_in_transaction(exec, param_list)
-    
-def count_no_of_alert_times(ticker: str, hit_scanner_datetime: str, pattern: str, bar_size: str):
-    def execute(cursor: Cursor, params):
-        cursor.execute(OracleQuery.COUNT_NO_OF_ALERT_TIMES_QUERY.value, **params)
-        result = cursor.fetchone()
-        no_of_result = result[0]
-        return no_of_result
-
-    exec = type(
-        "CountOfNoAlertTimes",
-        (ExecuteQueryImpl,),
-        {
-            "execute": execute
-        }
-    )
-    
-    params = dict(ticker=ticker, hit_scanner_datetime=hit_scanner_datetime, scan_pattern=pattern, bar_size=bar_size)
-    no_of_result = execute_in_transaction(exec, params)
-    return no_of_result
 
 def delete_all_sent_pattern_analysis_message_record() -> int:
     def execute(cursor: Cursor, params):

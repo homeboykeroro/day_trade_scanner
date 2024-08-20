@@ -36,7 +36,7 @@
 
 ### Build Executable File
 1. Run `pip install pyinstaller`
-2. Run `pyinstaller main.py --icon=<icon_path>` to export this project as the executable file in `dist` folder 
+2. Run `pyinstaller main.spec` to export this project as the executable file in `dist` folder 
 
 <br />
 

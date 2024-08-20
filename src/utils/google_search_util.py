@@ -24,7 +24,7 @@ MAX_SEARCH_DURATION_IN_YEAR = 2
 
 #https://developers.google.com/custom-search/docs/xml_results#PhraseSearchqt
 FILTER_RESULT_TITLE_REGEX = r'\b(closing|completes)\b'
-OFFERING_NEWS_KEYWORDS = 'intitle:"offering"'
+OFFERING_NEWS_KEYWORDS = '(intext:"offering" OR intext:"announces pricing")'
 TRUNCATE_COMPANY_NAME_SUFFIX_REGEX = r'\b(ltd\.?|plc\.?|adr|inc\.?|corp\.?|llc\.?|class|co\b|ab|gr|soluti)-?.?\b'
 EXTRACT_DATE_STR_REGEX = r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, \d{4}\b"
 PUNCTUATION_REGEX = r"""!"#$%&'()*+,./:;<=>?@[\]^_`{|}~"""
@@ -178,7 +178,7 @@ class GoogleSearchUtil:
                                            flags=re.IGNORECASE)
                                       .translate(str.maketrans('', '', PUNCTUATION_REGEX))
                                       .strip())
-                    query = f'(intext:"{ticker}" AND intext:"{company_name}" AND intext:"offering")'
+                    query = f'(intext:"{ticker}" AND intext:"{company_name}") AND {OFFERING_NEWS_KEYWORDS})'
 
                     #https://ahrefs.com/blog/google-advanced-search-operators/
                     search.params_dict['q'] = query
@@ -227,19 +227,12 @@ class GoogleSearchUtil:
                         filter_title_pattern = re.compile(FILTER_RESULT_TITLE_REGEX, re.IGNORECASE)
                         is_title_included_filtered_words = filter_title_pattern.search(title)
                         checking_title = title.lower().translate(str.maketrans('', '', PUNCTUATION_REGEX))
-                        checking_snippet = snippet.lower().replace('.',' ') if snippet else ''
+                        checking_snippet = snippet.lower().replace('.',' ') if snippet else '' 
                         
                         if (parsed_date 
                                 and parsed_date not in filtered_result 
-                                and (
-                                    ((company_name.lower() in checking_title or ticker.lower() in checking_title)
-                                        and ('offering' in checking_title 
-                                                or 'announces pricing' in checking_title)) 
-                                    or 
-                                    ((company_name.lower() in checking_snippet or ticker.lower() in checking_title)
-                                         and ('offering' in checking_snippet
-                                            or 'announces pricing' in checking_snippet))
-                                )
+                                and (('offering' in checking_title or 'announces' in checking_title)
+                                        or ('offering' in checking_snippet or 'announces' in checking_snippet))
                                 and not is_title_included_filtered_words):
                             result_obj = {
                                 'position': position,
