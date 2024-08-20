@@ -1,10 +1,15 @@
+from itertools import islice
+
+
 class OfferingNews:
     MAX_DISPLAY_RESULT = 3
     
     def __init__(self, symbol: str, 
-                 date_to_news_dict: dict):
+                 date_to_news_dict: dict,
+                 max_offering_news_size: int):
         self.__symbol = symbol
         self.__date_to_news_dict = date_to_news_dict
+        self.__max_offering_news_size = max_offering_news_size
     
     def __members(self):
         return (self.__symbol, self.__date_to_news_dict)
@@ -25,6 +30,9 @@ class OfferingNews:
         if self.__date_to_news_dict == 'error':
             embed.add_field(name = f'\nOffering History Data Not Available Due to Fatal Error', value='\u200b', inline = False)    
             return
+        
+        if self.__max_offering_news_size is not None and self.__date_to_news_dict is not None:
+            self.__date_to_news_dict = list(islice(self.__date_to_news_dict, self.__max_offering_news_size))
         
         concat_str = ''
         for publish_date, news in self.__date_to_news_dict.items():

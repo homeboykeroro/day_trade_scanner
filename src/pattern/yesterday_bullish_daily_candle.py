@@ -5,6 +5,7 @@ import pandas as pd
 from model.discord.scanner_result_message import ScannerResultMessage
 from model.financial_data import FinancialData
 from model.offering_news import OfferingNews
+from model.discord.discord_message import DiscordMessage
 
 from pattern.pattern_analyser import PatternAnalyser
 
@@ -31,6 +32,7 @@ google_search_util = GoogleSearchUtil()
 PATTERN_NAME = 'YESTERDAY_BULLISH_DAILY_CANDLE'
 
 MIN_YESTERDAY_CLOSE_CHANGE_PCT = get_config('YESTERDAY_BULLISH_DAILY_CANDLE_PARAM', 'MIN_YESTERDAY_CLOSE_CHANGE_PCT')
+MAX_OFFERING_NEWS_SIZE = get_config('YESTERDAY_BULLISH_DAILY_CANDLE_PARAM', 'MAX_OFFERING_NEWS_SIZE')
 
 class YesterdayBullishDailyCandle(PatternAnalyser):
     
@@ -114,7 +116,9 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
             date_to_news_dict = ticker_to_offering_news_dict.get(ticker)
             financial_data_dict = ticker_to_financial_data_dict.get(ticker)
             financial_data = FinancialData(symbol=ticker, financial_data_dict=financial_data_dict)
-            offering_news = OfferingNews(symbol=ticker, date_to_news_dict=date_to_news_dict)
+            offering_news = OfferingNews(symbol=ticker, date_to_news_dict=date_to_news_dict, max_offering_news_size=MAX_OFFERING_NEWS_SIZE)
+            
+            self._discord_client.send_message(DiscordMessage(content=f'{ticker} offering news size: {len(date_to_news_dict)}'), DiscordChannel.OFFERING_NEWS_LOG)
                 
             close = self.__daily_df.loc[self.__hit_scanner_date.strftime('%Y-%m-%d'), (ticker, Indicator.CLOSE.value)]
             close_pct = self.__daily_df.loc[self.__hit_scanner_date.strftime('%Y-%m-%d'), (ticker, CustomisedIndicator.CLOSE_CHANGE.value)]

@@ -84,7 +84,7 @@ class PreviousDayTopGainerContinuation(PatternAnalyser):
                     concat_msg += f'Daily candle data not found for {ticker}\n'
                     
                 if concat_msg:
-                    self._discord_client.send_message(DiscordMessage(content=concat_msg), DiscordChannel.PREVIOUS_DAYS_TOP_GAINERS_CONTINUATION_LOG)
+                    self._discord_client.send_message(DiscordMessage(content=concat_msg), DiscordChannel.PREVIOUS_DAYS_TOP_GAINERS_CONTINUATION_DATA_NOT_FOUND_LOG)
                 continue
             
             ramp_up_candle_date = max_daily_volume_dt_index_series[(ticker, RuntimeIndicator.COMPARE.value)]
@@ -118,15 +118,14 @@ class PreviousDayTopGainerContinuation(PatternAnalyser):
                 
                 ticker_to_occurrence_idx_list_dict = get_ticker_to_occurrence_idx_list(new_high_test_boolean_df)
                 occurrence_idx_list = ticker_to_occurrence_idx_list_dict[ticker]
+                non_none_occurrence_idx_list = [dt for dt in occurrence_idx_list if dt is not None]
                 trigger_alert_datetime_list = []
+                trigger_alert_datetime_display = f'Previous day top gainer continuation occurrence idx list: {str(occurrence_idx_list)}\nPrevious day top gainer continuation non none occurrence idx list: {str(non_none_occurrence_idx_list)}\n'
 
-                if occurrence_idx_list:
-                    earilest_alert_datetime = min(occurrence_idx_list)
+                if non_none_occurrence_idx_list:
+                    earilest_alert_datetime = min(non_none_occurrence_idx_list)
                     
-                    for occurrence_idx in occurrence_idx_list:
-                        if not occurrence_idx:
-                            continue
-                        
+                    for occurrence_idx in non_none_occurrence_idx_list:
                         if len(trigger_alert_datetime_list) > 0:
                             previous_alert_trigger_datetime = trigger_alert_datetime_list[-1]
                             time_diff_in_minute = math.floor(((occurrence_idx - previous_alert_trigger_datetime).total_seconds()) / 60)
@@ -144,13 +143,13 @@ class PreviousDayTopGainerContinuation(PatternAnalyser):
                     
                     if not is_message_sent:
                         # Add alert trigger datetime log
-                        trigger_alert_datetime_display = f'{ticker} previous day continuation alert trigger, datetime:'
+                        trigger_alert_datetime_display += f'{ticker} previous day continuation alert trigger, datetime:'
                         for index, dt in enumerate(trigger_alert_datetime_list):
                             trigger_alert_datetime_display += dt.strftime('%Y-%m-%d %H:%M:%S')
                             
                             if index != len(trigger_alert_datetime_list) - 1:
-                                trigger_alert_datetime_display += ', '
-                        self._discord_client.send_message(DiscordMessage(content=trigger_alert_datetime_display), DiscordChannel.PREVIOUS_DAYS_TOP_GAINERS_CONTINUATION_LOG)
+                                trigger_alert_datetime_display += '\n'
+                        self._discord_client.send_message(DiscordMessage(content=trigger_alert_datetime_display), DiscordChannel.PREVIOUS_DAYS_TOP_GAINER_CONTINUATION_ALERT)
                 
                         contract_info = self.__ticker_to_contract_info_dict[ticker]
                         

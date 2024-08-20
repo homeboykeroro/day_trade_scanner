@@ -143,24 +143,24 @@ class GoogleSearchUtil:
         serp_api_account_info_log += '\n\n' 
         discord_client.send_message(DiscordMessage(content=serp_api_account_info_log), DiscordChannel.SERP_API_ACCOUNT_INFO_LOG)
         
-        yesterday_bullish_daily_candle_log = 'Yesterday bullish daily candle ticker list: \n'
+        yesterday_bullish_daily_candle_log = 'Yesterday bullish daily candle ticker list: '
         last_contract = contract_list[-1]
         for index, contract in enumerate(contract_list):
-            yesterday_bullish_daily_candle_log += f'   {index + 1}. ' + contract.get("symbol") 
+            yesterday_bullish_daily_candle_log += f'{index + 1}. ' + contract.get("symbol") 
             
             if last_contract.get("symbol") != contract.get("symbol"):
                 yesterday_bullish_daily_candle_log += ', \n'
         yesterday_bullish_daily_candle_log += '\n\n'
         
-        yesterday_bullish_daily_candle_log += 'Original company name list: \n'
+        yesterday_bullish_daily_candle_log += 'Original company name list: '
         for index, contract in enumerate(contract_list):
-            yesterday_bullish_daily_candle_log += f'   {index + 1}. ' + contract.get("company_name")
+            yesterday_bullish_daily_candle_log += f'{index + 1}. ' + contract.get("company_name")
             
             if last_contract.get("symbol") != contract.get("symbol"):
                 yesterday_bullish_daily_candle_log += ', \n'
         yesterday_bullish_daily_candle_log += '\n\n'
         
-        yesterday_bullish_daily_candle_log += 'Adjusted company name list: \n'
+        yesterday_bullish_daily_candle_log += 'Adjusted company name list: '
             
         search_query_log = 'Search query list (sync): \n'
             
@@ -253,7 +253,7 @@ class GoogleSearchUtil:
                     #logging
                     completed_ticker_list.append(ticker)
                     
-                    yesterday_bullish_daily_candle_log += f'   {index + 1}. ' + company_name
+                    yesterday_bullish_daily_candle_log += f'{index + 1}. ' + company_name
                     search_query_log += f'   {index + 1}: {query}'  
                     if index < len(contract_chunk_list) - 1:
                         yesterday_bullish_daily_candle_log += ', \n'
