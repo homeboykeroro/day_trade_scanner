@@ -20,6 +20,7 @@ TEXT_TO_SPEECH_CHANNEL_ID = int(os.environ['DISCORD_TEXT_TO_SPEECH_CHANNEL_ID'])
 INITIAL_POP_CHANNEL_ID = int(os.environ['DISCORD_INITIAL_POP_CHANNEL_ID'])
 INITIAL_DIP_CHANNEL_ID = int(os.environ['DISCORD_INITIAL_DIP_CHANNEL_ID'])
 YESTERDAY_BULLISH_DAILY_CANDLE_CHANNEL_ID = int(os.environ['DISCORD_YESTERDAY_BULLISH_DAILY_CANDLE_CHANNEL_ID'])
+INTRA_DAY_BREAKOUT_CHANNEL_ID = int(os.environ['INTRA_DAY_BREAKOUT_CHANNEL_ID'])
 PREVIOUS_DAY_TOP_GAINER_SUPPORT_CHANNEL_ID = int(os.environ['DISCORD_PREVIOUS_DAY_TOP_GAINER_SUPPORT_CHANNEL_ID'])
 PREVIOUS_DAY_TOP_GAINER_CONTINUATION_CHANNEL_ID = int(os.environ['DISCORD_PREVIOUS_DAY_TOP_GAINER_CONTINUATION_CHANNEL_ID'])
 PREVIOUS_DAY_TOP_GAINER_SUPPORT_ALERT_LOG_CHANNEL_ID = int(os.environ['DISCORD_PREVIOUS_DAY_TOP_GAINER_SUPPORT_ALERT_LOG_CHANNEL_ID'])
@@ -125,6 +126,7 @@ class DiscordChatBotClient(discord.Client):
         self.__initial_pop_channel = self.get_channel(INITIAL_POP_CHANNEL_ID)
         self.__initial_dip_channel = self.get_channel(INITIAL_DIP_CHANNEL_ID)
         self.__yesterday_bullish_daily_candle_channel = self.get_channel(YESTERDAY_BULLISH_DAILY_CANDLE_CHANNEL_ID)
+        self.__intra_day_breakout_channel = self.get_channel(INTRA_DAY_BREAKOUT_CHANNEL_ID)
         self.__offering_news_log_channel = self.get_channel(OFFERING_NEWS_LOG_CHANNEL_ID)
         self.__previous_day_top_gainer_support_channel = self.get_channel(PREVIOUS_DAY_TOP_GAINER_SUPPORT_CHANNEL_ID)
         self.__previous_day_top_gainer_continuation_channel = self.get_channel(PREVIOUS_DAY_TOP_GAINER_CONTINUATION_CHANNEL_ID)
@@ -270,6 +272,8 @@ class DiscordChatBotClient(discord.Client):
             channel = self.__initial_pop_channel    
         elif channel_type == DiscordChannel.INITIAL_DIP:
             channel = self.__initial_dip_channel
+        elif channel_type == DiscordChannel.INTRA_DAY_BREAKOUT:
+            channel = self.__intra_day_breakout_channel
         elif channel_type == DiscordChannel.PREVIOUS_DAYS_TOP_GAINER_SUPPORT:
             channel = self.__previous_day_top_gainer_support_channel
         elif channel_type == DiscordChannel.PREVIOUS_DAYS_TOP_GAINER_CONTINUATION:

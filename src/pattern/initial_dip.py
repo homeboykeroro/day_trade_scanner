@@ -35,7 +35,6 @@ MINUTE_CANDLE_POSITIVE_OFFSET = get_config('INITIAL_DIP_PARAM', 'MINUTE_CANDLE_P
 MINUTE_CANDLE_NEGATIVE_OFFSET = get_config('INITIAL_DIP_PARAM', 'MINUTE_CANDLE_NEGATIVE_OFFSET')
 
 class InitialDip(PatternAnalyser):
-        
     def __init__(self, bar_size: BarSize, historical_data_df: DataFrame, daily_df: DataFrame, ticker_to_contract_info_dict: dict, discord_client):
         ticker_list = list(historical_data_df.columns.get_level_values(0).unique())
         super().__init__(discord_client)
