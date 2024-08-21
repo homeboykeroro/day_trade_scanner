@@ -148,7 +148,7 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
                             
                             if index != len(trigger_alert_datetime_list) - 1:
                                 trigger_alert_datetime_display += '\n'
-                        self._discord_client.send_message(DiscordMessage(content=trigger_alert_datetime_display), DiscordChannel.PREVIOUS_DAYS_TOP_GAINER_SUPPORT_ALERT)
+                        self._discord_client.send_message(DiscordMessage(content=trigger_alert_datetime_display), DiscordChannel.PREVIOUS_DAYS_TOP_GAINER_SUPPORT_ALERT_LOG)
                 
                         contract_info = self.__ticker_to_contract_info_dict[ticker]
                         
@@ -219,5 +219,5 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
 
         if message_list:
             send_msg_start_time = time.time()
-            self.send_notification(message_list, DiscordChannel.PREVIOUS_TOP_GAINER_SUPPORT)
+            self.send_notification(message_list, DiscordChannel.PREVIOUS_DAYS_TOP_GAINER_SUPPORT)
             logger.log_debug_msg(f'{PATTERN_NAME} send message time: {time.time() - send_msg_start_time} seconds')
