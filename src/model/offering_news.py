@@ -31,11 +31,14 @@ class OfferingNews:
             embed.add_field(name = f'\nOffering History Data Not Available Due to Fatal Error', value='\u200b', inline = False)    
             return
         
-        if self.__max_offering_news_size is not None and self.__date_to_news_dict is not None:
-            self.__date_to_news_dict = list(islice(self.__date_to_news_dict, self.__max_offering_news_size))
+        offering_news_dict = self.__date_to_news_dict
         
+        if self.__max_offering_news_size is not None and self.__date_to_news_dict is not None:
+            truncated_items = list(self.__date_to_news_dict.items())[-self.__max_offering_news_size:]
+            offering_news_dict = dict(truncated_items)
+                
         concat_str = ''
-        for publish_date, news in self.__date_to_news_dict.items():
+        for publish_date, news in offering_news_dict.items():
             concat_str += f"[{news.get('title')} - ({publish_date.strftime('%Y-%m-%d')})]({news.get('shortened_url')})\n"
             
         embed.add_field(name = f'\nOffering History:', value=concat_str, inline = False)
