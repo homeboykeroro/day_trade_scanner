@@ -14,6 +14,7 @@ from pattern.initial_dip import InitialDip
 from pattern.previous_days_top_gainer_support import PreviousDayTopGainerSupport
 from pattern.previous_days_top_gainer_continuation import PreviousDayTopGainerContinuation
 from pattern.yesterday_bullish_daily_candle import YesterdayBullishDailyCandle
+from pattern.intra_day_breakout import IntraDayBreakout
 
 from model.discord.discord_message import DiscordMessage
 from module.scanner_thread_wrapper import ScannerThreadWrapper
@@ -98,7 +99,7 @@ class Scanner:
                     time.sleep(30)
                     os._exit(1)
             
-            self.__discord_client.send_message_by_list_with_response([DiscordMessage(content='Reauthentication succeed')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+            #self.__discord_client.send_message_by_list_with_response([DiscordMessage(content='Reauthentication succeed')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
             logger.log_debug_msg('Reauthentication succeed', with_std_out=True)
             break 
     
@@ -107,7 +108,7 @@ class Scanner:
             self.__ib_connector.check_auth_status()
             self.__ib_connector.receive_brokerage_account()
         except Exception as preflight_request_exception:
-            self.__discord_client.send_message_by_list_with_response([DiscordMessage(content='Client Portal API preflight requests failed, re-authenticating seesion')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+            #self.__discord_client.send_message_by_list_with_response([DiscordMessage(content='Client Portal API preflight requests failed, re-authenticating seesion')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
             logger.log_error_msg(f'Client Portal API preflight requests error, {preflight_request_exception}', with_std_out=True)
             self.__reauthenticate()
     
@@ -278,7 +279,13 @@ class Scanner:
                                           discord_client=discord_client)
         initial_pop_analyser.analyse()
         
-        logger.log_debug_msg('Intra-day top gainer scan completed')
+        intra_day_breakout_analyser = IntraDayBreakout(bar_size=BarSize.ONE_MINUTE,
+                                                       historical_data_df=one_minute_candle_df,
+                                                       daily_df=daily_df,
+                                                       ticker_to_contract_info_dict=ib_connector.get_ticker_to_contract_dict(),
+                                                       discord_client=discord_client)
+        intra_day_breakout_analyser.analyse()
+        
     
     def __analyse_intra_day_top_loser(self, ib_connector: IBConnector,
                                             discord_client: DiscordChatBotClient) -> None:

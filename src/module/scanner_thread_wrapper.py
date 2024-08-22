@@ -61,7 +61,7 @@ class ScannerThreadWrapper(threading.Thread):
                         time.sleep(30)
                         os._exit(1)
                 
-                self.__discord_client.send_message_by_list_with_response([DiscordMessage(content='Reauthentication succeed')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+                #self.__discord_client.send_message_by_list_with_response([DiscordMessage(content='Reauthentication succeed')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
                 logger.log_debug_msg('Reauthentication succeed', with_std_out=True)
                 break    
             
@@ -70,7 +70,7 @@ class ScannerThreadWrapper(threading.Thread):
             try:
                 self.__scan(self.__ib_connector, self.__discord_client)
             except (RequestException, ClientError, HTTPError) as connection_exception:
-                self.__discord_client.send_message(DiscordMessage(content='Client Portal API connection failed, re-authenticating session'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+                #self.__discord_client.send_message(DiscordMessage(content='Client Portal API connection failed, re-authenticating session'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
                 logger.log_error_msg(f'Client Portal API connection error in stock screener, {connection_exception}', with_std_out=True)
                 self.__reauthenticate()
             except oracledb.Error as oracle_connection_exception:
