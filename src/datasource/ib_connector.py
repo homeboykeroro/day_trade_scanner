@@ -23,6 +23,9 @@ from constant.endpoint.ib.client_portal_api_endpoint import ClientPortalApiEndpo
 from constant.candle.bar_size import BarSize
 from constant.indicator.indicator import Indicator
 
+from exception.reauthentication_request_error import ReauthenticationRequestError
+from exception.sso_vaildation_error import SSOValidationError
+
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 logger = Logger()
@@ -79,8 +82,7 @@ class IBConnector:
             brokerage_account_response = session.get(f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.ACCOUNT}', verify=False)
             logger.log_debug_msg(f'Receive brokerage account response time: {time.time() - receive_brokerage_account_time} seconds')
             brokerage_account_response.raise_for_status()
-        except Exception as brokerage_account_request_exception:
-            logger.log_error_msg(f'Error occurred while receiving brokerage account: {brokerage_account_request_exception}')
+        except requests.exceptions.HTTPError as brokerage_account_request_exception:
             raise brokerage_account_request_exception
         else:
             brokerage_account = brokerage_account_response.json()
@@ -98,22 +100,22 @@ class IBConnector:
             reauthenticate_response = session.post(f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.REAUTHENTICATE}', verify=False)
             logger.log_debug_msg(f'Session re-authentication response time: {time.time() - reauthenticate_time} seconds')
 
-            if not reauthenticate_response.ok:
-               raise requests.RequestException('Failed to reauthenticate and validate session')
-
-            if sso_validate_response.ok:
-                sso_validate_result = sso_validate_response.json()
-                logger.log_debug_msg(f'SSO validation result: {sso_validate_result}', with_std_out=True)
-            else:
-                logger.log_debug_msg(f'SSO validation failed', with_std_out=True)
+            reauthenticate_response.raise_for_status()
+            sso_validate_response.raise_for_status()
+            logger.log_debug_msg(f'SSO validation result: {sso_validate_response.json()}', with_std_out=True)
                 
             reauthenticate_result = reauthenticate_response.json()
             reauthenticate_message = reauthenticate_result.get('message')
             
             if not reauthenticate_message:
                 raise requests.RequestException('Failed to reauthenticate session')
-        except Exception as reauthenticate_exception:
-            raise reauthenticate_exception
+        except ReauthenticationRequestError as connection_exception:
+            raise requests.RequestException('Failed to reauthenticate')
+        except SSOValidationError as sso_validation_exception:
+            raise requests.RequestException('Failed to validate session')
+        except Exception as exception:
+            logger.log_error_msg(f'Reauthentication and SSO validation fatal error, {exception}')
+            raise Exception(f'Reauthentication and SSO validation fatal error, {exception}')
     
     def check_auth_status(self):
         is_connection_success = True
@@ -123,8 +125,7 @@ class IBConnector:
             status_response = session.post(f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.AUTH_STATUS}', verify=False)
             logger.log_debug_msg(f'Check authentication status response time: {time.time() - check_status_start_time} seconds')
             status_response.raise_for_status()
-        except Exception as check_status_request_exception:
-            logger.log_error_msg(f'Error occurred while requesting authentication status: {check_status_request_exception}')
+        except requests.exceptions.HTTPError as check_status_request_exception:
             raise check_status_request_exception
         else:
             status_result = status_response.json()
@@ -170,9 +171,8 @@ class IBConnector:
                 scanner_response = session.post(f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.RUN_SCANNER}', json=scanner_filter_payload, verify=False)
                 logger.log_debug_msg(f'{scanner_type} scanner result response time: {time.time() - scanner_request_start_time} seconds')
                 scanner_response.raise_for_status()
-            except Exception as scanner_request_exception:
-                logger.log_error_msg(f'Error occurred while requesting {scanner_type} scanner result: {scanner_request_exception}')
-                raise scanner_request_exception
+            except requests.exceptions.HTTPError as scanner_request_exception:
+                raise Exception(f'Error occurred while requesting {scanner_type} scanner result')
             else:
                 logger.log_debug_msg(f'{scanner_type} scanner full result json: {[contract.get("symbol") for contract in scanner_response.json().get("contracts")]}')
                 logger.log_debug_msg(f'{scanner_type} scanner full result size: {len(scanner_response.json().get("contracts"))}') #bug fix Add 

@@ -46,13 +46,27 @@ class PatternAnalyser(ABC):
                     response_list.append(individual_msg_response_list[0])
 
             notification_message_list = []
+            send_notification_ticker_list = []
+            invalid_notification_ticker_list = []
             for response in response_list:
+                if not hasattr(response, 'embeds'):
+                    continue
+                
                 title = response.embeds[0].title   
                 jump_url = response.jump_url
                 readout_msg = title_to_read_out_message_dict[title]
                 ticker = title_to_ticker_dict[title]
                 message = DiscordMessage(ticker=ticker, jump_url=jump_url, content=readout_msg)
                 notification_message_list.append(message)
+                send_notification_ticker_list.append(ticker)
+            
+            for scanner_result in scanner_result_list:
+                scanner_ticker = scanner_result.ticker
+                if scanner_ticker not in send_notification_ticker_list:
+                    invalid_notification_ticker_list.append(scanner_ticker)
+            
+            if invalid_notification_ticker_list:
+                self.__discord_client.send_message(DiscordMessage(content=f'Failed to send notification to {discord_channel.value} channel, ticker list: {str(invalid_notification_ticker_list)}'), DiscordChannel.CHATBOT_ERROR_LOG)
             
             if is_async:
                 self._discord_client.send_message_by_list_with_response(message_list=notification_message_list, channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)

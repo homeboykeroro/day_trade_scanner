@@ -1,0 +1,2 @@
+class ReauthenticationRequestError(Exception):
+    pass

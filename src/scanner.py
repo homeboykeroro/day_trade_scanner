@@ -1,9 +1,8 @@
 import datetime
 import math
-import os
 import time
 import pandas as pd
-from requests import RequestException
+import requests
 
 from module.discord_chatbot_client import DiscordChatBotClient
 
@@ -69,48 +68,31 @@ class Scanner:
         self.__discord_client = discord_client
         self.__ib_connector = IBConnector()
         
-        self.__send_ib_preflight_request()
-        
         self.__daily_canlde_df = pd.DataFrame()
-        
         self.__yesterday_top_gainier_minute_candle_df_dict = {
             BarSize.ONE_MINUTE: pd.DataFrame()
         }
+        
+    @property
+    def ib_connector(self):
+        return self.__ib_connector
     
-    def __reauthenticate(self):
-        retry_times = 0
+    @ib_connector.setter
+    def ib_connector(self, ib_connector):
+        self.__ib_connector = ib_connector
     
-        while True:
-            try:
-                if retry_times < MAX_RETRY_CONNECTION_TIMES:
-                    logger.log_debug_msg('send reauthenticate requests', with_std_out=True)
-                    self.__ib_connector.reauthenticate()
-                else:
-                    raise RequestException("Reauthentication failed")
-            except Exception as reauthenticate_exception:
-                if retry_times < MAX_RETRY_CONNECTION_TIMES:
-                    self.__discord_client.send_message_by_list_with_response([DiscordMessage(content=f'Failed to re-authenticate session, retry after {CONNECTION_FAIL_RETRY_INTERVAL} seconds')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
-                    logger.log_error_msg(f'Session re-authentication error, {reauthenticate_exception}', with_std_out=True)
-                    retry_times += 1
-                    time.sleep(CONNECTION_FAIL_RETRY_INTERVAL)
-                    continue
-                else:
-                    self.__discord_client.send_message(DiscordMessage(content=f'Maximum re-authentication attemps exceed. Please restart application'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
-                    time.sleep(30)
-                    os._exit(1)
-            
-            #self.__discord_client.send_message_by_list_with_response([DiscordMessage(content='Reauthentication succeed')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
-            logger.log_debug_msg('Reauthentication succeed', with_std_out=True)
-            break 
-    
-    def __send_ib_preflight_request(self):
+    def send_ib_preflight_request(self):
+        try:
+            self.__ib_connector.receive_brokerage_account()
+        except requests.exceptions.HTTPError as preflight_request_exception:
+            #logger.log_error_msg(f'Client Portal API preflight requests error, {preflight_request_exception}', with_std_out=True)
+            raise preflight_request_exception
+        
+    def check_auth_status(self):
         try:
             self.__ib_connector.check_auth_status()
-            self.__ib_connector.receive_brokerage_account()
-        except Exception as preflight_request_exception:
-            #self.__discord_client.send_message_by_list_with_response([DiscordMessage(content='Client Portal API preflight requests failed, re-authenticating seesion')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
-            logger.log_error_msg(f'Client Portal API preflight requests error, {preflight_request_exception}', with_std_out=True)
-            self.__reauthenticate()
+        except requests.exceptions.HTTPError as check_auth_exception:
+            raise check_auth_exception
     
     def scan_multi_days_top_gainer(self):
         thread = ScannerThreadWrapper(scan=self.__analyse_multi_days_top_gainer,
