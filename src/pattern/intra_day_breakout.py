@@ -85,11 +85,11 @@ class IntraDayBreakout(PatternAnalyser):
         
         if period >= MIN_OBSERVE_PERIOD:
             breakout_with_max_vol_and_close_boolean_df = (((volume_df.iloc[[-1]] == max_volume_list) | (volume_df.iloc[[-1]] == second_lartest_volume_list))
-                                                            & (close_df.iloc[[-1] == max_close_list]) 
+                                                            & (close_df.iloc[[-1]] == max_close_list) 
                                                             & (candle_colour_df.iloc[[-1]] != CandleColour.GREY.value) 
                                                             & ((volume_df * close_df).iloc[[-1]] >= MIN_VOLUME_IN_USD))
             breakout_with_max_vol_and_high_boolean_df = (((volume_df.iloc[[-1]] == max_volume_list) | (volume_df.iloc[[-1]] == second_lartest_volume_list))
-                                                            & (high_df.iloc[[-1] == max_high_list]) 
+                                                            & (high_df.iloc[[-1]] == max_high_list) 
                                                             & (candle_colour_df.iloc[[-1]] != CandleColour.GREY.value) 
                                                             & ((volume_df * close_df).iloc[[-1]] >= MIN_VOLUME_IN_USD))
             

@@ -100,6 +100,7 @@ class Scanner:
                                       ib_connector=self.__ib_connector,
                                       discord_client=self.__discord_client)
         thread.start()
+        thread.join()
         
     def scan_yesterday_top_gainer(self):
         thread = ScannerThreadWrapper(scan=self.__analyse_yesterday_top_gainer, 
@@ -107,6 +108,7 @@ class Scanner:
                                       ib_connector=self.__ib_connector,
                                       discord_client=self.__discord_client)
         thread.start()
+        thread.join()
     
     def scan_intra_day_top_gainer(self):
         thread = ScannerThreadWrapper(scan=self.__analyse_intra_day_top_gainer, 
@@ -114,6 +116,7 @@ class Scanner:
                                       ib_connector=self.__ib_connector,
                                       discord_client=self.__discord_client)
         thread.start()
+        thread.join()
     
     def scan_intra_day_top_loser(self):
         thread = ScannerThreadWrapper(scan=self.__analyse_intra_day_top_loser, 
@@ -121,6 +124,7 @@ class Scanner:
                                       ib_connector=self.__ib_connector,
                                       discord_client=self.__discord_client)
         thread.start()
+        thread.join()
     
     def __analyse_multi_days_top_gainer(self, ib_connector: IBConnector,
                                              discord_client: DiscordChatBotClient):

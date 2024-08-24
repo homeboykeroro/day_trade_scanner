@@ -296,6 +296,7 @@ class IBConnector:
 
         try:
             snapshot_retrieval_success = False
+            incomplete_response_found = False 
             
             while not snapshot_retrieval_success:
                 get_contract_snapshot_start_time = time.time()
