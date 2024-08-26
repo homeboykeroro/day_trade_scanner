@@ -61,15 +61,15 @@ class IntraDayBreakout(PatternAnalyser):
         close_df = (self.__historical_data_df.loc[:, idx[:, Indicator.CLOSE.value]]
                             .rename(columns={Indicator.CLOSE.value: RuntimeIndicator.COMPARE.value}))
         max_close_list = close_df.max().values
-        numeric_idx_df = derive_idx_df(close_df, numeric_idx=False).rename(columns={RuntimeIndicator.INDEX.value: RuntimeIndicator.COMPARE.value})
+        datetime_idx_df = derive_idx_df(close_df, numeric_idx=False).rename(columns={RuntimeIndicator.INDEX.value: RuntimeIndicator.COMPARE.value})
         second_largest_close_idx_list = np.argsort(close_df.values, axis=0)[-2, :]
-        second_largest_close_datetime_idx_df = (numeric_idx_df == second_largest_close_idx_list).ffill().iloc[[-1]]
+        second_largest_close_datetime_idx_df = (datetime_idx_df == second_largest_close_idx_list).ffill().iloc[[-1]]
         
         high_df = (self.__historical_data_df.loc[:, idx[:, Indicator.HIGH.value]]
                             .rename(columns={Indicator.HIGH.value: RuntimeIndicator.COMPARE.value}))
         max_high_list = high_df.max().values
         second_largest_high_idx_list = np.argsort(high_df.values, axis=0)[-2, :]
-        second_largest_high_datetime_idx_df = (numeric_idx_df == second_largest_high_idx_list).ffill().iloc[[-1]]
+        second_largest_high_datetime_idx_df = (datetime_idx_df == second_largest_high_idx_list).ffill().iloc[[-1]]
         
         volume_df = (self.__historical_data_df.loc[:, idx[:, Indicator.VOLUME.value]]
                             .rename(columns={Indicator.VOLUME.value: RuntimeIndicator.COMPARE.value}))
@@ -116,7 +116,7 @@ class IntraDayBreakout(PatternAnalyser):
                         logger.log_debug_msg(self.__historical_data_df.loc[:, idx[[ticker], :]]) 
                     
                     contract_info = self.__ticker_to_contract_info_dict[ticker]
-                    yesterday_close_to_last_pct = yesterday_close_to_last_pct_df.loc[last_candle_datetime, (ticker, Indicator.CLOSE.value)]
+                    yesterday_close_to_last_pct = yesterday_close_to_last_pct_df.loc[last_candle_datetime, (ticker, RuntimeIndicator.COMPARE.value)]
                     close = self.__historical_data_df.loc[last_candle_datetime, (ticker, Indicator.CLOSE.value)]
                     yesterday_close = yesterday_close_df.loc[yesterday_close_df.index[-1], (ticker, Indicator.CLOSE.value)]
                     volume = self.__historical_data_df.loc[last_candle_datetime, (ticker, Indicator.VOLUME.value)]
