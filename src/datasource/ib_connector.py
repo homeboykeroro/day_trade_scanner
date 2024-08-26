@@ -172,7 +172,7 @@ class IBConnector:
                 logger.log_debug_msg(f'{scanner_type} scanner result response time: {time.time() - scanner_request_start_time} seconds')
                 scanner_response.raise_for_status()
             except requests.exceptions.HTTPError as scanner_request_exception:
-                raise Exception(f'Error occurred while requesting {scanner_type} scanner result')
+                raise requests.exceptions.HTTPError(f'Error occurred while requesting {scanner_type} scanner result')
             else:
                 logger.log_debug_msg(f'{scanner_type} scanner full result json: {[contract.get("symbol") for contract in scanner_response.json().get("contracts")]}')
                 logger.log_debug_msg(f'{scanner_type} scanner full result size: {len(scanner_response.json().get("contracts"))}') #bug fix Add 
