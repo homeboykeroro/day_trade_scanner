@@ -169,5 +169,5 @@ class IntraDayBreakout(PatternAnalyser):
 
             if message_list:
                 send_msg_start_time = time.time()
-                self.send_notification(message_list, DiscordChannel.INTRA_DAY_BREAKOUT)
+                self.send_notification(message_list, DiscordChannel.INTRA_DAY_BREAKOUT, False)
                 logger.log_debug_msg(f'{PATTERN_NAME} send message time: {time.time() - send_msg_start_time} seconds')

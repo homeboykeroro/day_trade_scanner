@@ -219,5 +219,5 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
 
         if message_list:
             send_msg_start_time = time.time()
-            self.send_notification(message_list, DiscordChannel.PREVIOUS_DAYS_TOP_GAINER_SUPPORT)
+            self.send_notification(message_list, DiscordChannel.PREVIOUS_DAYS_TOP_GAINER_SUPPORT, False)
             logger.log_debug_msg(f'{PATTERN_NAME} send message time: {time.time() - send_msg_start_time} seconds')

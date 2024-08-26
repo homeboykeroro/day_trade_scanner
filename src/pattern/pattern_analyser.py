@@ -50,6 +50,7 @@ class PatternAnalyser(ABC):
             invalid_notification_ticker_list = []
             for response in response_list:
                 if not hasattr(response, 'embeds'):
+                    self._discord_client.send_message(DiscordMessage(content=f'Failed to send message {str(response)} to {discord_channel.value}'), DiscordChannel.CHATBOT_ERROR_LOG)
                     continue
                 
                 title = response.embeds[0].title   
