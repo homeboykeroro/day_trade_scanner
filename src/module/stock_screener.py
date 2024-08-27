@@ -54,7 +54,7 @@ class StockScreener(threading.Thread):
                     time.sleep(30)
                     os._exit(1)
             except Exception as exception:
-                self.__discord_client.send_message(DiscordMessage(content=f'Re-authentication fatal error'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+                self.__discord_client.send_message(DiscordMessage(content=f'Re-authentication fatal error. Please restart application'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
                 time.sleep(30)
                 os._exit(1)
 

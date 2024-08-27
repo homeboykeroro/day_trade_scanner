@@ -48,6 +48,8 @@ class PreviousDayTopGainerContinuation(PatternAnalyser):
         message_list = []
         logger.log_debug_msg('Previous day top gainers continuation scan')
 
+        daily_close_df = self.__daily_df.loc[:, idx[:, Indicator.CLOSE.value]].apply(pd.to_numeric, errors='coerce')
+        daily_high_df = self.__daily_df.loc[:, idx[:, Indicator.HIGH.value]].apply(pd.to_numeric, errors='coerce')
         daily_close_pct_df = self.__daily_df.loc[:, idx[:, CustomisedIndicator.CLOSE_CHANGE.value]].apply(pd.to_numeric, errors='coerce')
         daily_volume_df = self.__daily_df.loc[:, idx[:, Indicator.VOLUME.value]].apply(pd.to_numeric, errors='coerce')
         daily_candle_colour_df = self.__daily_df.loc[:, idx[:, CustomisedIndicator.CANDLE_COLOUR.value]]
@@ -55,9 +57,14 @@ class PreviousDayTopGainerContinuation(PatternAnalyser):
         max_daily_close_pct_boolean_series = (daily_close_pct_df.max() >= MIN_MULTI_DAYS_CLOSE_CHANGE_PCT).rename(index={CustomisedIndicator.CLOSE_CHANGE.value : RuntimeIndicator.COMPARE.value})
         max_daily_volume_dt_index_series = daily_volume_df.idxmax().rename(index={Indicator.VOLUME.value: RuntimeIndicator.COMPARE.value})
         max_daily_close_pct_dt_index_series = daily_close_pct_df.idxmax().rename(index={CustomisedIndicator.CLOSE_CHANGE.value: RuntimeIndicator.COMPARE.value})
-        max_daily_close_with_most_volume_ticker_series = (max_daily_volume_dt_index_series == max_daily_close_pct_dt_index_series) & (max_daily_close_pct_boolean_series)
+        
+        max_daily_close_dt_index = daily_close_df.idxmax().rename(index={Indicator.CLOSE.value : RuntimeIndicator.COMPARE.value})
+        max_daily_high_dt_index = daily_high_df.idxmax().rename(index={Indicator.HIGH.value : RuntimeIndicator.COMPARE.value})
+        is_ramp_up_candle_resistence_boolean_series = (max_daily_close_dt_index == max_daily_volume_dt_index_series) | (max_daily_high_dt_index == max_daily_volume_dt_index_series)
+        
+        max_daily_close_with_most_volume_ticker_series = (max_daily_volume_dt_index_series == max_daily_close_pct_dt_index_series) & (max_daily_close_pct_boolean_series) & (is_ramp_up_candle_resistence_boolean_series)
         previous_day_top_gainer_ticker_list = max_daily_close_with_most_volume_ticker_series.index[max_daily_close_with_most_volume_ticker_series].get_level_values(0).tolist()
-
+        
         latest_daily_candle_date = self.__daily_df.index[-1]
         
         for ticker in previous_day_top_gainer_ticker_list:
@@ -90,6 +97,7 @@ class PreviousDayTopGainerContinuation(PatternAnalyser):
             ramp_up_candle_date = max_daily_volume_dt_index_series[(ticker, RuntimeIndicator.COMPARE.value)]
             candle_colour = daily_candle_colour_df.loc[ramp_up_candle_date, (ticker, CustomisedIndicator.CANDLE_COLOUR.value)]
             yesterday_close = self.__daily_df.loc[latest_daily_candle_date, (ticker, Indicator.CLOSE.value)]
+            
             
             is_green = candle_colour == CandleColour.GREEN.value
             ticker_minute_candle_df = self.__minute_df.loc[:, idx[ticker, :]]
