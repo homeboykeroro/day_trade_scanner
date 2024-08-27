@@ -61,21 +61,20 @@ class IntraDayBreakout(PatternAnalyser):
         close_df = (self.__historical_data_df.loc[:, idx[:, Indicator.CLOSE.value]]
                             .rename(columns={Indicator.CLOSE.value: RuntimeIndicator.COMPARE.value}))
         max_close_list = close_df.max().values
-        datetime_idx_df = derive_idx_df(close_df, numeric_idx=False).rename(columns={RuntimeIndicator.INDEX.value: RuntimeIndicator.COMPARE.value})
         second_largest_close_idx_list = np.argsort(close_df.values, axis=0)[-2, :]
-        second_largest_close_datetime_idx_df = (datetime_idx_df == second_largest_close_idx_list).ffill().iloc[[-1]]
+        second_largest_close_datetime_idx_df = pd.DataFrame([close_df.index[second_largest_close_idx_list]], columns=close_df.columns)
         
         high_df = (self.__historical_data_df.loc[:, idx[:, Indicator.HIGH.value]]
                             .rename(columns={Indicator.HIGH.value: RuntimeIndicator.COMPARE.value}))
         max_high_list = high_df.max().values
         second_largest_high_idx_list = np.argsort(high_df.values, axis=0)[-2, :]
-        second_largest_high_datetime_idx_df = (datetime_idx_df == second_largest_high_idx_list).ffill().iloc[[-1]]
+        second_largest_high_datetime_idx_df = pd.DataFrame([high_df.index[second_largest_high_idx_list]], columns=high_df.columns)
         
         volume_df = (self.__historical_data_df.loc[:, idx[:, Indicator.VOLUME.value]]
                             .rename(columns={Indicator.VOLUME.value: RuntimeIndicator.COMPARE.value}))
         max_volume_list = volume_df.max().values
-        second_lartest_volume_idx_list = np.argsort(volume_df.values, axis=0)[-2, :]
-        second_lartest_volume_list = volume_df.values[second_lartest_volume_idx_list, np.arange(volume_df.values.shape[1])]
+        second_largest_volume_idx_list = np.argsort(volume_df.values, axis=0)[-2, :]
+        second_largest_volume_list = volume_df.values[second_largest_volume_idx_list, np.arange(volume_df.shape[1])]
         
         yesterday_daily_candle_df = self.__daily_df.iloc[[-1]]
         yesterday_close_df = yesterday_daily_candle_df.loc[:, idx[:, Indicator.CLOSE.value]]
@@ -84,14 +83,14 @@ class IntraDayBreakout(PatternAnalyser):
                                                   .mul(100))
         
         if period >= MIN_OBSERVE_PERIOD:
-            breakout_with_max_vol_and_close_boolean_df = (((volume_df.iloc[[-1]] == max_volume_list) | (volume_df.iloc[[-1]] == second_lartest_volume_list))
-                                                            & (close_df.iloc[[-1]] == max_close_list) 
-                                                            & (candle_colour_df.iloc[[-1]] != CandleColour.GREY.value) 
-                                                            & ((volume_df * close_df).iloc[[-1]] >= MIN_VOLUME_IN_USD))
-            breakout_with_max_vol_and_high_boolean_df = (((volume_df.iloc[[-1]] == max_volume_list) | (volume_df.iloc[[-1]] == second_lartest_volume_list))
-                                                            & (high_df.iloc[[-1]] == max_high_list) 
-                                                            & (candle_colour_df.iloc[[-1]] != CandleColour.GREY.value) 
-                                                            & ((volume_df * close_df).iloc[[-1]] >= MIN_VOLUME_IN_USD))
+            breakout_with_max_vol_and_close_boolean_df = (((volume_df.iloc[[-1]].reset_index(drop=True) == max_volume_list) | (volume_df.iloc[[-1]].reset_index(drop=True) == second_largest_volume_list))
+                                                            & (close_df.iloc[[-1]].reset_index(drop=True) == max_close_list) 
+                                                            & (candle_colour_df.iloc[[-1]].reset_index(drop=True) != CandleColour.GREY.value) 
+                                                            & ((volume_df * close_df).iloc[[-1]].reset_index(drop=True) >= MIN_VOLUME_IN_USD))
+            breakout_with_max_vol_and_high_boolean_df = (((volume_df.iloc[[-1]].reset_index(drop=True) == max_volume_list) | (volume_df.iloc[[-1]].reset_index(drop=True) == second_largest_volume_list))
+                                                            & (high_df.iloc[[-1]].reset_index(drop=True) == max_high_list) 
+                                                            & (candle_colour_df.iloc[[-1]].reset_index(drop=True) != CandleColour.GREY.value) 
+                                                            & ((volume_df * close_df).iloc[[-1]].reset_index(drop=True) >= MIN_VOLUME_IN_USD))
             
             breakout_with_max_vol_and_close_result_series = breakout_with_max_vol_and_close_boolean_df.any()
             breakout_with_max_vol_and_high_result_series = breakout_with_max_vol_and_high_boolean_df.any()
