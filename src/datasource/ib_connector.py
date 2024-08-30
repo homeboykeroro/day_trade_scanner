@@ -72,9 +72,9 @@ class IBConnector:
         self.__ticker_to_contract_info_dict = {}
         self.__loop = loop
         
-        self.__scanner_lock = threading.Lock()
-        self.__snapshot_info_lock = threading.Lock()
-        self.__historical_data_lock = threading.Lock()
+        #self.__scanner_lock = threading.Lock()
+        #self.__snapshot_info_lock = threading.Lock()
+        #self.__historical_data_lock = threading.Lock()
     
     def receive_brokerage_account(self):
         try:
@@ -164,7 +164,7 @@ class IBConnector:
         return self.__ticker_to_contract_info_dict
     
     def get_screener_results(self, max_no_of_scanner_result: int, scanner_filter_payload: dict) -> list:
-        with self.__scanner_lock:
+        #with self.__scanner_lock:
             try:
                 scanner_type = scanner_filter_payload.get("type")
                 scanner_request_start_time = time.time()
@@ -268,7 +268,7 @@ class IBConnector:
                 snapshot_data_con_id_list.append(con_id)
         
         if snapshot_data_con_id_list:
-            with self.__snapshot_info_lock:
+            #with self.__snapshot_info_lock:
                 self.update_snapshot(snapshot_data_con_id_list)
                 self.update_sec_def(snapshot_data_con_id_list)
                 time.sleep(SNAPSHOT_RATE_LIMIT_WAIT_PERIOD)
@@ -522,7 +522,7 @@ class IBConnector:
             candle_payload_list.append(candle_payload)
 
         try:
-            with self.__historical_data_lock:
+            #with self.__historical_data_lock:
                 logger.log_debug_msg(f'Getting {bar_size.value} historical candle data, paylaod list: {candle_payload_list}')
                 get_one_minute_candle_start_time = time.time()
                 candle_response_list = send_async_request(method='GET', 

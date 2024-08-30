@@ -119,7 +119,8 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
             financial_data = FinancialData(symbol=ticker, financial_data_dict=financial_data_dict)
             offering_news = OfferingNews(symbol=ticker, date_to_news_dict=date_to_news_dict, max_offering_news_size=MAX_OFFERING_NEWS_SIZE)
             
-            self._discord_client.send_message(DiscordMessage(content=f'{ticker} offering news size: {len(date_to_news_dict)}'), DiscordChannel.OFFERING_NEWS_LOG)
+            date_to_news_dict_size = len(date_to_news_dict) if date_to_news_dict else 0
+            self._discord_client.send_message(DiscordMessage(content=f'{ticker} offering news size: {date_to_news_dict_size}'), DiscordChannel.OFFERING_NEWS_LOG)
                 
             close = self.__daily_df.loc[self.__hit_scanner_date.strftime('%Y-%m-%d'), (ticker, Indicator.CLOSE.value)]
             close_pct = self.__daily_df.loc[self.__hit_scanner_date.strftime('%Y-%m-%d'), (ticker, CustomisedIndicator.CLOSE_CHANGE.value)]
