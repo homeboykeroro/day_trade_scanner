@@ -74,6 +74,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
             close_pct = close_pct_df.loc[:, (ticker, RuntimeIndicator.COMPARE.value)].values[0]
             ticker_to_close_pct_dict[ticker] = close_pct
         
+        self._discord_client.send_message(DiscordMessage(content=f'Yesterday top gainer dict list: {ticker_to_close_pct_dict}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
         logger.log_debug_msg(f'Filtered bullish daily candle ticker to pct change dict: {ticker_to_close_pct_dict}')
         
         sorted_ticker_to_close_pct_dict =  {k: v for k, v in sorted(ticker_to_close_pct_dict.items(), key=lambda item: item[1])}

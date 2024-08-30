@@ -21,6 +21,7 @@ INITIAL_POP_CHANNEL_ID = int(os.environ['DISCORD_INITIAL_POP_CHANNEL_ID'])
 INITIAL_DIP_CHANNEL_ID = int(os.environ['DISCORD_INITIAL_DIP_CHANNEL_ID'])
 YESTERDAY_BULLISH_DAILY_CANDLE_CHANNEL_ID = int(os.environ['DISCORD_YESTERDAY_BULLISH_DAILY_CANDLE_CHANNEL_ID'])
 INTRA_DAY_BREAKOUT_CHANNEL_ID = int(os.environ['DISCORD_INTRA_DAY_BREAKOUT_CHANNEL_ID'])
+INTRA_DAY_BREAKOUT_LOG_CHANNEL_ID = int(os.environ['DISCORD_INTRA_DAY_BREAKOUT_LOG_CHANNEL_ID'])
 PREVIOUS_DAY_TOP_GAINER_SUPPORT_CHANNEL_ID = int(os.environ['DISCORD_PREVIOUS_DAY_TOP_GAINER_SUPPORT_CHANNEL_ID'])
 PREVIOUS_DAY_TOP_GAINER_CONTINUATION_CHANNEL_ID = int(os.environ['DISCORD_PREVIOUS_DAY_TOP_GAINER_CONTINUATION_CHANNEL_ID'])
 PREVIOUS_DAY_TOP_GAINER_SUPPORT_ALERT_LOG_CHANNEL_ID = int(os.environ['DISCORD_PREVIOUS_DAY_TOP_GAINER_SUPPORT_ALERT_LOG_CHANNEL_ID'])
@@ -142,6 +143,7 @@ class DiscordChatBotClient(discord.Client):
         self.__serp_api_search_result_log_channel = self.get_channel(SERP_API_SEARCH_RESULT_LOG)
         self.__previous_days_top_gainer_support_data_not_found_log_channel = self.get_channel(PREVIOUS_DAYS_TOP_GAINER_SUPPORT_DATA_NOT_FOUND_LOG_CHANNEL_ID)
         self.__previous_days_top_gainer_continuation_data_not_found_log_channel = self.get_channel(PREVIOUS_DAYS_TOP_GAINER_CONTINUATION_DATA_NOT_FOUND_LOG_CHANNEL_ID)
+        self.__intra_day_breakout_log_channel = self.get_channel(INTRA_DAY_BREAKOUT_LOG_CHANNEL_ID)
         
         self.__chatbot_error_log_channel = self.get_channel(CHATBOT_ERROR_LOG_CHANNEL_ID)
         
@@ -298,6 +300,8 @@ class DiscordChatBotClient(discord.Client):
             channel = self.__serp_api_search_query_log_channel 
         elif channel_type == DiscordChannel.SERP_API_SEARCH_RESULT_LOG:
             channel = self.__serp_api_search_result_log_channel
+        elif channel_type == DiscordChannel.INTRA_DAY_BREAKOUT_LOG:
+            channel = self.__intra_day_breakout_log_channel
         elif channel_type == DiscordChannel.PREVIOUS_DAYS_TOP_GAINER_SUPPORT_DATA_NOT_FOUND_LOG:
             channel = self.__previous_days_top_gainer_support_data_not_found_log_channel
         elif channel_type == DiscordChannel.PREVIOUS_DAYS_TOP_GAINERS_CONTINUATION_DATA_NOT_FOUND_LOG:
