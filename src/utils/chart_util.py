@@ -168,7 +168,7 @@ def generate_chart(pattern: str,
                      description = description_series[0]
             ))
             
-    if simple_chart:
+    if simple_chart and bar_size == BarSize.ONE_MINUTE:
         last_key = list(daily_date_to_fake_minute_datetime_x_axis_dict)[-1]
         last_daily_date = daily_date_to_fake_minute_datetime_x_axis_dict.get(last_key).strftime((DAILY_CANDLE_DISPLAY_FORMAT))
         last_daily_date_idx = dt_str_list.index(last_daily_date)
@@ -253,9 +253,9 @@ def generate_chart(pattern: str,
     
 def get_candlestick_chart(candle_data_df: pd.DataFrame, 
                           ticker: str, pattern: str, bar_size: BarSize,
-                          daily_date_to_fake_minute_datetime_x_axis_dict: dict,
                           hit_scanner_datetime: pd.Timestamp, 
                           scatter_symbol: ScatterSymbol, scatter_colour: ScatterColour,
+                          daily_date_to_fake_minute_datetime_x_axis_dict: dict = None,
                           positive_offset: int = None, negative_offset: int = None,
                           candle_comment_list: list = [CustomisedIndicator.CLOSE_CHANGE, CustomisedIndicator.GAP_PCT_CHANGE, Indicator.CLOSE, Indicator.VOLUME]) -> str:
     with candle_stick_chart_generation_lock:

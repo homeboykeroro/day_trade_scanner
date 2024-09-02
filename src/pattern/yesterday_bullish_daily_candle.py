@@ -127,11 +127,11 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
             volume = self.__daily_df.loc[self.__hit_scanner_date.strftime('%Y-%m-%d'), (ticker, Indicator.VOLUME.value)]
             
             chart_start_time = time.time()
-            daily_chart_dir = get_candlestick_chart(candle_data_df=self.__daily_df,
-                                                    ticker=ticker, pattern=PATTERN_NAME, bar_size=BarSize.ONE_DAY,
-                                                    hit_scanner_datetime=self.__hit_scanner_date,
-                                                    scatter_symbol=ScatterSymbol.POP, scatter_colour=ScatterColour.CYAN,
-                                                    candle_comment_list=[CustomisedIndicator.CLOSE_CHANGE, CustomisedIndicator.GAP_PCT_CHANGE])
+            chart_dir = get_candlestick_chart(candle_data_df=self.__daily_df,
+                                              ticker=ticker, pattern=PATTERN_NAME, bar_size=BarSize.ONE_DAY,
+                                              hit_scanner_datetime=self.__hit_scanner_date,
+                                              scatter_symbol=ScatterSymbol.POP, scatter_colour=ScatterColour.CYAN,
+                                              candle_comment_list=[CustomisedIndicator.CLOSE_CHANGE, CustomisedIndicator.GAP_PCT_CHANGE, Indicator.CLOSE, Indicator.VOLUME])
             logger.log_debug_msg(f'Generate {ticker} chart time, {time.time() - chart_start_time} seconds')
             
             message = ScannerResultMessage(title=f'{ticker}\'s yesterday\'s bullish daily candle, up {round(close_pct, 2)}% ({self.__hit_scanner_date})',
@@ -140,9 +140,9 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
                                            yesterday_close=close,
                                            total_volume=volume,
                                            contract_info=contract_info,
+                                           chart_dir=chart_dir,
                                            financial_data=financial_data,
                                            offering_news=offering_news,
-                                           daily_chart_dir=daily_chart_dir, 
                                            ticker=ticker,
                                            hit_scanner_datetime=self.__hit_scanner_date,
                                            pattern=PATTERN_NAME,
