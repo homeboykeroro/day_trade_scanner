@@ -83,6 +83,7 @@ def append_customised_indicator(src_df: pd.DataFrame) -> pd.DataFrame:
 def concat_daily_df_and_minute_df(daily_df: DataFrame, 
                                   minute_df: DataFrame, 
                                   hit_scanner_datetime: datetime.datetime, 
+                                  is_hit_scanner_datetime_start_range: bool = True,
                                   gap_btw_daily_and_minute: int = 1):
     concat_daily_candle_df = daily_df.copy()
     daily_date_to_fake_minute_datetime_x_axis_dict = {}
@@ -94,7 +95,12 @@ def concat_daily_df_and_minute_df(daily_df: DataFrame,
         dt_index_list.append(hit_scanner_datetime - offset)
     
     concat_daily_candle_df.index = pd.DatetimeIndex(dt_index_list)
-    candle_chart_data_df = minute_df.loc[hit_scanner_datetime:, :] 
+    
+    if is_hit_scanner_datetime_start_range:
+        candle_chart_data_df = minute_df.loc[hit_scanner_datetime:, :] 
+    else:
+        candle_chart_data_df = minute_df.loc[:hit_scanner_datetime, :] 
+    
     candle_chart_data_df = pd.concat([concat_daily_candle_df, candle_chart_data_df], axis=0)
     
     return candle_chart_data_df, daily_date_to_fake_minute_datetime_x_axis_dict

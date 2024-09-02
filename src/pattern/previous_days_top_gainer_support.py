@@ -5,7 +5,7 @@ import pandas as pd
 from pattern.pattern_analyser import PatternAnalyser
 
 from utils.datetime_util import convert_into_human_readable_time, convert_into_read_out_time
-from utils.dataframe_util import get_ticker_to_occurrence_idx_list, replace_daily_df_latest_day_with_minute
+from utils.dataframe_util import concat_daily_df_and_minute_df, get_ticker_to_occurrence_idx_list
 from utils.chart_util import get_candlestick_chart
 from utils.config_util import get_config
 from utils.logger import Logger
@@ -32,8 +32,7 @@ MAX_TOLERANCE_PERIOD_IN_MINUTE = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PAR
 MAX_NO_OF_ALERT_TIMES = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'MAX_NO_OF_ALERT_TIMES')
 MIN_ALERT_CHECKING_INTERVAL_IN_MINUTE = get_config('PREVIOUS_DAY_TOP_GAINER_CONTINUATION_PARAM', 'MIN_ALERT_CHECKING_INTERVAL_IN_MINUTE')
 RANGE_TOLERANCE = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'RANGE_TOLERANCE')
-MINUTE_CANDLE_POSITIVE_OFFSET = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'MINUTE_CANDLE_POSITIVE_OFFSET')
-MINUTE_CANDLE_NEGATIVE_OFFSET = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'MINUTE_CANDLE_NEGATIVE_OFFSET')
+DAILY_AND_MINUTE_CANDLE_GAP = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'DAILY_AND_MINUTE_CANDLE_GAP')
 
 LOWER_RANGE_TOLERANCE_FACTOR = 1 - (RANGE_TOLERANCE / 100)
 UPPER_RANGE_TOLERANCE_FACTOR = 1 + (RANGE_TOLERANCE / 100)
@@ -56,6 +55,7 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
         max_daily_close_pct_boolean_series = (daily_close_pct_df.max() >= MIN_MULTI_DAYS_CLOSE_CHANGE_PCT).rename(index={CustomisedIndicator.CLOSE_CHANGE.value : RuntimeIndicator.COMPARE.value})
         max_daily_volume_dt_index_series = daily_volume_df.idxmax().rename(index={Indicator.VOLUME.value: RuntimeIndicator.COMPARE.value})
         max_daily_close_pct_dt_index_series = daily_close_pct_df.idxmax().rename(index={CustomisedIndicator.CLOSE_CHANGE.value: RuntimeIndicator.COMPARE.value})
+        
         max_daily_close_with_most_volume_ticker_series = (max_daily_volume_dt_index_series == max_daily_close_pct_dt_index_series) & (max_daily_close_pct_boolean_series)
         previous_day_top_gainer_ticker_list = max_daily_close_with_most_volume_ticker_series.index[max_daily_close_with_most_volume_ticker_series].get_level_values(0).tolist()
 
@@ -137,8 +137,17 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
                 
                 for trigger_alert_datetime in trigger_alert_datetime_list:      
                     check_message_sent_start_time = time.time()
+                    
+                    candle_chart_data_df, daily_date_to_fake_minute_datetime_x_axis_dict = concat_daily_df_and_minute_df(daily_df=self.__daily_df, 
+                                                                                                                         minute_df=self.__minute_df, 
+                                                                                                                         hit_scanner_datetime=trigger_alert_datetime, 
+                                                                                                                         is_hit_scanner_datetime_start_range=False,
+                                                                                                                         gap_btw_daily_and_minute=DAILY_AND_MINUTE_CANDLE_GAP)
+                    
                     is_message_sent = self.check_if_pattern_analysis_message_sent(ticker=ticker, hit_scanner_datetime=trigger_alert_datetime.replace(second=0, microsecond=0), pattern=PATTERN_NAME, bar_size=BarSize.ONE_MINUTE)
                     logger.log_debug_msg(f'Check {ticker} previous day support pattern message send time: {time.time() - check_message_sent_start_time} seconds')
+                    
+                    candle_chart_negative_offset = math.ceil((trigger_alert_datetime - self.__minute_df.index[0]).total_seconds() / 60) + len(self.__daily_df)
                     
                     if not is_message_sent:
                         # Add alert trigger datetime log
@@ -151,26 +160,17 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
                         self._discord_client.send_message(DiscordMessage(content=trigger_alert_datetime_display), DiscordChannel.PREVIOUS_DAYS_TOP_GAINER_SUPPORT_ALERT_LOG)
                 
                         contract_info = self.__ticker_to_contract_info_dict[ticker]
-                        
-                        daily_df = replace_daily_df_latest_day_with_minute(daily_df=self.__daily_df.loc[:, idx[[ticker], :]], 
-                                                                           minute_df=self.__minute_df.loc[[trigger_alert_datetime], idx[[ticker], :]])
-                        
+
                         one_minute_chart_start_time = time.time()
                         logger.log_debug_msg(f'Generate {ticker} previous day top gainer support one minute chart')
-                        minute_chart_dir = get_candlestick_chart(candle_data_df=self.__minute_df,
-                                                                 ticker=ticker, pattern=PATTERN_NAME, bar_size=BarSize.ONE_MINUTE,
-                                                                 hit_scanner_datetime=trigger_alert_datetime,
-                                                                 positive_offset=MINUTE_CANDLE_POSITIVE_OFFSET, negative_offset=MINUTE_CANDLE_NEGATIVE_OFFSET,
-                                                                 scatter_symbol=ScatterSymbol.SUPPORT, scatter_colour=ScatterColour.RED)
+                        chart_dir = get_candlestick_chart(candle_data_df=candle_chart_data_df,
+                                                          ticker=ticker, pattern=PATTERN_NAME, bar_size=BarSize.ONE_MINUTE,
+                                                          daily_date_to_fake_minute_datetime_x_axis_dict=daily_date_to_fake_minute_datetime_x_axis_dict,
+                                                          hit_scanner_datetime=trigger_alert_datetime,
+                                                          positive_offset=0, negative_offset=candle_chart_negative_offset,
+                                                          scatter_symbol=ScatterSymbol.SUPPORT, scatter_colour=ScatterColour.RED)
                         logger.log_debug_msg(f'Generate {ticker} previous day top gainer support one minute chart finished time: {time.time() - one_minute_chart_start_time} seconds')
-                        daily_chart_start_time = time.time()
-                        logger.log_debug_msg(f'Generate {ticker} previous day top gainer support daily chart')
-                        daily_chart_dir = get_candlestick_chart(candle_data_df=daily_df,
-                                                                ticker=ticker, pattern=PATTERN_NAME, bar_size=BarSize.ONE_DAY,
-                                                                hit_scanner_datetime=ramp_up_candle_date,
-                                                                scatter_symbol=ScatterSymbol.SUPPORT, scatter_colour=ScatterColour.RED)
-                        logger.log_debug_msg(f'Generate {ticker} previous top gainer support finished time: {time.time() - daily_chart_start_time} seconds')
-                        
+
                         hit_scanner_datetime_display = convert_into_human_readable_time(trigger_alert_datetime)
                         read_out_hit_support_time = convert_into_read_out_time(trigger_alert_datetime)
                         
@@ -209,8 +209,7 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
                                                        yesterday_close=yesterday_close,
                                                        volume=volume, total_volume=total_volume,
                                                        contract_info=contract_info,
-                                                       minute_chart_dir=minute_chart_dir,
-                                                       daily_chart_dir=daily_chart_dir, 
+                                                       chart_dir=chart_dir,
                                                        ticker=ticker,
                                                        hit_scanner_datetime=trigger_alert_datetime.replace(second=0, microsecond=0),
                                                        pattern=PATTERN_NAME,
