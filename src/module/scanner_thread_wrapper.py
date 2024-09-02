@@ -32,8 +32,8 @@ class ScannerThreadWrapper():
     def start(self) -> None:  
         try:
             self.__scan(self.__ib_connector, self.__discord_client)
-            logger.log_debug_msg(f'{self.__name} scan finished, sleep 10 seconds')
-            time.sleep(10)
+            #logger.log_debug_msg(f'{self.__name} scan finished, sleep 10 seconds')
+            #time.sleep(5)
         except (RequestException, ClientError, HTTPError) as connection_exception:
             self.exc = connection_exception
             raise connection_exception

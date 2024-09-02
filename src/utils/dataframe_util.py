@@ -1,3 +1,5 @@
+from datetime import timedelta
+import datetime
 import time
 import pandas as pd
 import numpy as np
@@ -78,6 +80,25 @@ def append_customised_indicator(src_df: pd.DataFrame) -> pd.DataFrame:
     logger.log_debug_msg(f'Construct customised statistics dataframe time: {time.time() - construct_dataframe_start_time}')
     return complete_df
 
+def concat_daily_df_and_minute_df(daily_df: DataFrame, 
+                                  minute_df: DataFrame, 
+                                  hit_scanner_datetime: datetime.datetime, 
+                                  gap_btw_daily_and_minute: int = 1):
+    concat_daily_candle_df = daily_df.copy()
+    daily_date_to_fake_minute_datetime_x_axis_dict = {}
+    dt_index_list = []
+    
+    for position, dt in enumerate(daily_df.index):
+        offset = timedelta(minutes=(len(daily_df) - position) + gap_btw_daily_and_minute)
+        daily_date_to_fake_minute_datetime_x_axis_dict.update({hit_scanner_datetime - offset: dt})
+        dt_index_list.append(hit_scanner_datetime - offset)
+    
+    concat_daily_candle_df.index = pd.DatetimeIndex(dt_index_list)
+    candle_chart_data_df = minute_df.loc[hit_scanner_datetime:, :] 
+    candle_chart_data_df = pd.concat([concat_daily_candle_df, candle_chart_data_df], axis=0)
+    
+    return candle_chart_data_df, daily_date_to_fake_minute_datetime_x_axis_dict
+
 def replace_daily_df_latest_day_with_minute(daily_df: DataFrame, minute_df: DataFrame):
     daily_df_column_list = list(daily_df.columns.get_level_values(1).unique())
     
@@ -131,22 +152,30 @@ def get_candle_comments_df(src_df: DataFrame, indicator_list: list = [Customised
         
         src_indicator_df = src_df.loc[:, idx[[ticker_name], indicator.value]]
         
+        copied_array = src_indicator_df.values.copy()
+        string_array = copied_array.astype(str)
+        
         if indicator == CustomisedIndicator.CLOSE_CHANGE or indicator == CustomisedIndicator.GAP_PCT_CHANGE:
             src_df_value_np = np.around(src_indicator_df.values.astype(float), 2)
+            
+            for pos, arry in enumerate(src_df_value_np):
+                if pd.isna(arry[0]):
+                    string_array[pos][0] = ''
+                else:
+                    string_array[pos][0] = f'{indicator.value + whitespace}: {arry[0]}%\n'
         elif indicator == Indicator.VOLUME:
-            src_df_value_np = np.around(src_indicator_df.values.astype(float))
+            for pos, arry in enumerate(src_indicator_df.values):
+                if pd.isna(arry[0]):
+                    string_array[pos][0] = f'{indicator.value + whitespace}: NA\n'
+                else:
+                    string_array[pos][0] = f'{indicator.value + whitespace}: {"{:,}".format(int(arry[0]))}\n'
         elif indicator == Indicator.CLOSE:
             src_df_value_np = np.around(src_indicator_df.values.astype(float), 3)
 
-        src_df_value_np = np.where(np.isnan(src_df_value_np), 'N/A', src_df_value_np).astype(str)
-            
-        indicator_description_np = np.char.add(indicator_description_np, f'{indicator.value + whitespace}: ') 
-        indicator_description_np = np.char.add(indicator_description_np, src_df_value_np) 
+            for pos, arry in enumerate(src_df_value_np):
+                string_array[pos][0] = f'{indicator.value + whitespace}: ${arry[0]}\n'
         
-        if indicator == CustomisedIndicator.CLOSE_CHANGE or indicator == CustomisedIndicator.GAP_PCT_CHANGE:
-            indicator_description_np = np.char.add(indicator_description_np, '%') 
-        
-        indicator_description_np = np.char.add(indicator_description_np, '\n')
+        indicator_description_np = np.char.add(indicator_description_np, string_array) 
         
     indicator_description_df = pd.DataFrame(indicator_description_np, 
                                             columns=pd.MultiIndex.from_product([[ticker_name], [MatplotFinance.DESCRIPTION.value]]),

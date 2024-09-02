@@ -89,9 +89,9 @@ class StockScreener(threading.Thread):
         while True:     
             try:
                 self.__scanner.scan_intra_day_top_gainer()
-                self.__scanner.scan_intra_day_top_loser()
                 self.__scanner.scan_multi_days_top_gainer()
                 self.__scanner.scan_yesterday_top_gainer()
+                self.__scanner.scan_intra_day_top_loser()
             except (RequestException, ClientError, HTTPError) as connection_exception:
                 logger.log_error_msg(f'Client portal API connection error, {connection_exception}', with_std_out=True)
                 self.__reauthenticate(self.__scanner.ib_connector)

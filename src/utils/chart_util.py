@@ -71,9 +71,21 @@ DESCRIPTION_X_AXIS_OFFSET = -0.35
 INDICATOR_Y_AXIS_TICK_OFFSET_FACTOR = 2
 MIN_PRICE_RANGE_Y_AXIS_TICK_OFFSET_FACTOR = 2
 
-def generate_chart(pattern: str, bar_size: BarSize, main_df: pd.DataFrame, scatter_symbol_df = None, scatter_colour_df = None, description_df = None, description_offset: float = DESCRIPTION_X_AXIS_OFFSET) -> str:
+def generate_chart(pattern: str, 
+                   bar_size: BarSize, 
+                   main_df: pd.DataFrame, 
+                   hit_scanner_datetime: pd.Timestamp,
+                   daily_date_to_fake_minute_datetime_x_axis_dict:dict, 
+                   scatter_symbol_df = None, 
+                   scatter_colour_df = None, 
+                   description_df = None, 
+                   description_offset: float = DESCRIPTION_X_AXIS_OFFSET) -> str:
+    simple_chart = True if len(main_df) > 7 else False
     chart_setting = COMMON_CHART_SETTING
     ticker_name = main_df.columns.get_level_values(0).values[0]
+    
+    scatter_size = 600
+    description_font_size = 14
 
     ticker_level_dropped_df = main_df.copy()
     ticker_level_dropped_df.columns = ticker_level_dropped_df.columns.droplevel(0)
@@ -124,7 +136,15 @@ def generate_chart(pattern: str, bar_size: BarSize, main_df: pd.DataFrame, scatt
                                   show_nontrading=False,
                                   scale_padding=dict(left=0.5, right=3, bottom=1.5, top=2)))
     elif bar_size == BarSize.ONE_MINUTE:
-        dt_str_list = [dt.strftime((MINUTE_CANDLE_DISPLAY_FORMAT)) for dt in main_df.index.tolist()]
+        dt_str_list = []
+        for dt in main_df.index.tolist():
+            if dt not in daily_date_to_fake_minute_datetime_x_axis_dict:
+                dt_str = dt.strftime((MINUTE_CANDLE_DISPLAY_FORMAT)) 
+            else:
+                dt_str = daily_date_to_fake_minute_datetime_x_axis_dict.get(dt).strftime((DAILY_CANDLE_DISPLAY_FORMAT))
+            
+            dt_str_list.append(dt_str)
+
         x_axis_unit = dates.MinuteLocator(interval=1)
         chart_setting.update(dict(datetime_format = MINUTE_CANDLE_DISPLAY_FORMAT, 
                                   xrotation=0,
@@ -147,11 +167,35 @@ def generate_chart(pattern: str, bar_size: BarSize, main_df: pd.DataFrame, scatt
                      y_axis = main_df.loc[idx_datetime, (ticker_name, Indicator.HIGH.value)],
                      description = description_series[0]
             ))
+            
+    if simple_chart:
+        last_key = list(daily_date_to_fake_minute_datetime_x_axis_dict)[-1]
+        last_daily_date = daily_date_to_fake_minute_datetime_x_axis_dict.get(last_key).strftime((DAILY_CANDLE_DISPLAY_FORMAT))
+        last_daily_date_idx = dt_str_list.index(last_daily_date)
+        hit_scanner_date_idx = dt_str_list.index(hit_scanner_datetime.strftime((MINUTE_CANDLE_DISPLAY_FORMAT)))
+        
+        simpified_dt_str_list = []
+        for i, dt in enumerate(dt_str_list):
+            if (i == last_daily_date_idx 
+                    or i == len(dt_str_list) - 1 
+                    or i == hit_scanner_date_idx):
+                simpified_dt_str_list.append(dt)
+            else:
+                simpified_dt_str_list.append('')
+        
+        dt_str_list = simpified_dt_str_list
+        
+        for i, description_dict in enumerate(description_dict_list):
+            if not dt_str_list[i]:
+                description_dict['description'] = ''
+        
+        scatter_size = 200
+        description_font_size = 12
 
     if scatter_symbol_df is not None and scatter_colour_df is not None:
         indicator_plot = mpf.make_addplot((ticker_level_dropped_df[Indicator.LOW.value] * scatter_symbol_multiplier),
                                           type='scatter', 
-                                          markersize=800, 
+                                          markersize=scatter_size, 
                                           marker=scatter_symbol_df.values.flatten(), 
                                           color=scatter_colour_df.values.flatten())
 
@@ -172,7 +216,7 @@ def generate_chart(pattern: str, bar_size: BarSize, main_df: pd.DataFrame, scatt
             axis_list[0].text(description['x_axis'], 
                               description['y_axis'], 
                               description['description'], 
-                              fontsize=17, 
+                              fontsize=description_font_size, 
                               fontweight='bold', 
                               color='white')
 
@@ -209,6 +253,7 @@ def generate_chart(pattern: str, bar_size: BarSize, main_df: pd.DataFrame, scatt
     
 def get_candlestick_chart(candle_data_df: pd.DataFrame, 
                           ticker: str, pattern: str, bar_size: BarSize,
+                          daily_date_to_fake_minute_datetime_x_axis_dict: dict,
                           hit_scanner_datetime: pd.Timestamp, 
                           scatter_symbol: ScatterSymbol, scatter_colour: ScatterColour,
                           positive_offset: int = None, negative_offset: int = None,
@@ -235,6 +280,8 @@ def get_candlestick_chart(candle_data_df: pd.DataFrame,
 
         chart_dir = generate_chart(pattern=pattern, 
                                    bar_size=bar_size,
+                                   hit_scanner_datetime=hit_scanner_datetime,
+                                   daily_date_to_fake_minute_datetime_x_axis_dict=daily_date_to_fake_minute_datetime_x_axis_dict,
                                    main_df=candle_data_df.loc[candle_start_range:candle_end_range, idx[[ticker], :]],
                                    scatter_symbol_df=symbol_df.loc[candle_start_range:candle_end_range, :],
                                    scatter_colour_df=colour_df.loc[candle_start_range:candle_end_range, :],

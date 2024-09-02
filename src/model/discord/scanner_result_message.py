@@ -19,8 +19,7 @@ class ScannerResultMessage(DiscordMessage):
                        contract_info: ContractInfo = None,
                        financial_data: FinancialData = None,
                        offering_news: OfferingNews = None,
-                       minute_chart_dir: str = None, 
-                       daily_chart_dir: str = None, 
+                       chart_dir: str = None, 
                        ticker: str = None,
                        hit_scanner_datetime: datetime = None, 
                        pattern: Pattern = None, 
@@ -42,12 +41,9 @@ class ScannerResultMessage(DiscordMessage):
         
         candle_chart_list = []
         
-        if minute_chart_dir:
-            embed.set_image(url=f"attachment://{os.path.basename(minute_chart_dir)}")
-            candle_chart_list.append(discord.File(minute_chart_dir, filename=os.path.basename(minute_chart_dir)))
-        if daily_chart_dir:
-            embed.set_image(url=f"attachment://{os.path.basename(daily_chart_dir)}")
-            candle_chart_list.append(discord.File(daily_chart_dir, filename=os.path.basename(daily_chart_dir)))
+        if chart_dir:
+            embed.set_image(url=f"attachment://{os.path.basename(chart_dir)}")
+            candle_chart_list.append(discord.File(chart_dir, filename=os.path.basename(chart_dir)))
         
         if contract_info:
             contract_info.add_contract_info_to_embed_msg(embed)
