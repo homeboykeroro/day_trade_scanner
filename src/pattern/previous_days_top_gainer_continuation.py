@@ -154,7 +154,7 @@ class PreviousDayTopGainerContinuation(PatternAnalyser):
                     is_message_sent = self.check_if_pattern_analysis_message_sent(ticker=ticker, hit_scanner_datetime=trigger_alert_datetime.replace(second=0, microsecond=0), pattern=PATTERN_NAME, bar_size=BarSize.ONE_MINUTE)
                     logger.log_debug_msg(f'Check {ticker} previous day continuation pattern message send time: {time.time() - check_message_sent_start_time} seconds')
                     
-                    candle_chart_negative_offset = math.ceil((trigger_alert_datetime - self.__minute_df.index[0]).total_seconds() / 60) + len(self.__daily_df)
+                    candle_chart_negative_offset = int((trigger_alert_datetime - self.__minute_df.index[0]).total_seconds() / 60) + len(self.__daily_df)
                     
                     if not is_message_sent:
                         # Add alert trigger datetime log

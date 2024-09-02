@@ -116,7 +116,7 @@ class InitialPop(PatternAnalyser):
                     is_message_sent = self.check_if_pattern_analysis_message_sent(ticker=ticker, hit_scanner_datetime=pop_up_time.replace(second=0, microsecond=0), pattern=PATTERN_NAME, bar_size=self.__bar_size)
                     logger.log_debug_msg(f'Check {ticker} pop up pattern message send time: {time.time() - check_message_sent_start_time} seconds')
 
-                    candle_chart_negative_offset = math.ceil((pop_up_time - first_pop_up_datetime).total_seconds() / 60) + len(self.__daily_df)
+                    candle_chart_negative_offset = int((pop_up_time - first_pop_up_datetime).total_seconds() / 60) + len(self.__daily_df)
 
                     if not is_message_sent:
                         with pd.option_context('display.max_rows', None,

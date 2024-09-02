@@ -89,18 +89,19 @@ def concat_daily_df_and_minute_df(daily_df: DataFrame,
     daily_date_to_fake_minute_datetime_x_axis_dict = {}
     dt_index_list = []
     
+    if is_hit_scanner_datetime_start_range:
+        candle_chart_data_df = minute_df.loc[hit_scanner_datetime:, :] 
+        minute_start_datetime = hit_scanner_datetime
+    else:
+        candle_chart_data_df = minute_df.loc[:hit_scanner_datetime, :] 
+        minute_start_datetime = minute_df.index[0]
+
     for position, dt in enumerate(daily_df.index):
         offset = timedelta(minutes=(len(daily_df) - position) + gap_btw_daily_and_minute)
-        daily_date_to_fake_minute_datetime_x_axis_dict.update({hit_scanner_datetime - offset: dt})
+        daily_date_to_fake_minute_datetime_x_axis_dict.update({minute_start_datetime - offset: dt})
         dt_index_list.append(hit_scanner_datetime - offset)
     
     concat_daily_candle_df.index = pd.DatetimeIndex(dt_index_list)
-    
-    if is_hit_scanner_datetime_start_range:
-        candle_chart_data_df = minute_df.loc[hit_scanner_datetime:, :] 
-    else:
-        candle_chart_data_df = minute_df.loc[:hit_scanner_datetime, :] 
-    
     candle_chart_data_df = pd.concat([concat_daily_candle_df, candle_chart_data_df], axis=0)
     
     return candle_chart_data_df, daily_date_to_fake_minute_datetime_x_axis_dict
