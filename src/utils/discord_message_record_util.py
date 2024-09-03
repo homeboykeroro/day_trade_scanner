@@ -26,7 +26,7 @@ def check_if_pattern_analysis_message_sent(ticker: str, hit_scanner_datetime: da
     params = dict(ticker=ticker, hit_scanner_datetime=hit_scanner_datetime, scan_pattern=pattern, bar_size=bar_size)
     no_of_result = execute_in_transaction(exec, params)
     
-    if no_of_result == 1:
+    if no_of_result >= 1:
         return True
     else:
         return False
