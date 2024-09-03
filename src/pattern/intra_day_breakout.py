@@ -54,6 +54,10 @@ class IntraDayBreakout(PatternAnalyser):
         logger.log_debug_msg('Intra day breakout scan')
         start_time = time.time()
         
+        period = len(self.__historical_data_df)
+        if period < MIN_OBSERVE_PERIOD:
+            return
+        
         close_df = (self.__historical_data_df.loc[:, idx[:, Indicator.CLOSE.value]]
                                              .rename(columns={Indicator.CLOSE.value: RuntimeIndicator.COMPARE.value}))
         high_df = (self.__historical_data_df.loc[:, idx[:, Indicator.HIGH.value]]
@@ -85,40 +89,65 @@ class IntraDayBreakout(PatternAnalyser):
                 continue
             
             breakout_indicator = None
-            previous_high = None
             breakout_value = None
+            previous_high = None
+            previous_high_datetime = None
             breakout_close_datetime = min_breakout_volume_close_df.index[sorted_breakout_close_idx_np[-1][0]]
             breakout_high_datetime = min_breakout_volume_high_df.index[sorted_breakout_high_idx_np[-1][0]]
     
             if breakout_high != -1:
-                breakout_indicator = Indicator.HIGH.value
-                breakout_value = breakout_high
-                breakout_datetime = breakout_high_datetime
-                
                 normalised_high_df = (high_df.replace(np.nan, -1)
-                                             .loc[:breakout_datetime, idx[[ticker], :]])
+                                             .loc[:breakout_high_datetime, idx[[ticker], :]])
                 
                 sorted_high_idx_np = np.argsort(normalised_high_df.values, axis=0)
                 sorted_high_np = normalised_high_df.values[sorted_high_idx_np, np.arange(normalised_high_df.shape[1])]
 
-                previous_high = sorted_high_np[-2][0]
-                previous_high_datetime = normalised_high_df.index[sorted_high_idx_np[-2][0]]
+                if len(sorted_high_np) >= 2:
+                    if sorted_high_np[-2][0] != -1:
+                        breakout_indicator = Indicator.HIGH.value
+                        breakout_value = breakout_high
+                        breakout_datetime = breakout_high_datetime
+                        
+                        previous_high = sorted_high_np[-2][0]
+                        previous_high_datetime = normalised_high_df.index[sorted_high_idx_np[-2][0]]
+                    else:
+                        breakout_value = None
+                        breakout_datetime = breakout_high_datetime
+                        previous_high = None
+                        previous_high_datetime = None
+                else:
+                    breakout_value = breakout_high
+                    breakout_datetime = breakout_high_datetime
+                    previous_high = None
+                    previous_high_datetime = None
                 
             if breakout_value is None or previous_high is None:
-                breakout_indicator = Indicator.CLOSE.value
-                breakout_value = breakout_close
-                breakout_datetime = breakout_close_datetime
-    
                 normalised_close_df = (close_df.replace(np.nan, -1)
-                                               .loc[:breakout_datetime, idx[[ticker], :]])
+                                               .loc[:breakout_close_datetime, idx[[ticker], :]])
                 
                 sorted_close_idx_np = np.argsort(normalised_close_df.values, axis=0)
                 sorted_close_np = normalised_close_df.values[sorted_close_idx_np, np.arange(normalised_close_df.shape[1])]
                 
-                previous_high = sorted_close_np[-2][0]
-                previous_high_datetime = normalised_close_df.index[sorted_close_idx_np[-2][0]]
+                if len(sorted_close_np) >= 2:
+                    if sorted_close_np[-2][0] != -1:
+                        breakout_indicator = Indicator.CLOSE.value
+                        breakout_value = breakout_close
+                        breakout_datetime = breakout_close_datetime
+
+                        previous_high = sorted_close_np[-2][0]
+                        previous_high_datetime = normalised_close_df.index[sorted_close_idx_np[-2][0]]
+                    else:
+                        breakout_value = None
+                        breakout_datetime = breakout_close_datetime
+                        previous_high = None
+                        previous_high_datetime = None
+                else:
+                    breakout_value = breakout_close
+                    breakout_datetime = breakout_close_datetime
+                    previous_high = None
+                    previous_high_datetime = None
             
-            if breakout_value == -1 and previous_high == -1:
+            if breakout_value is None:
                 continue
             
             normalised_volume_df = (volume_df.where(min_breakout_trading_volume_boolean_df.values)
@@ -144,9 +173,6 @@ class IntraDayBreakout(PatternAnalyser):
             if not is_top_n_volume:
                 continue
             
-            logger.log_debug_msg(f'{ticker} breakout datetime: {breakout_datetime}, breakout value of {breakout_indicator}: ${breakout_value} \n previous high datetime: {previous_high_datetime}, previous high value: ${previous_high}')
-            self._discord_client.send_message(DiscordMessage(content=f'{ticker} breakout datetime: {breakout_datetime}, breakout value of {breakout_indicator}: ${breakout_value} \n previous high datetime: {previous_high_datetime}, previous high value: ${previous_high}'), DiscordChannel.INTRA_DAY_BREAKOUT_LOG)
-            
             check_message_sent_start_time = time.time()
             is_message_sent = self.check_if_pattern_analysis_message_sent(ticker=ticker, hit_scanner_datetime=breakout_datetime.replace(second=0, microsecond=0), pattern=PATTERN_NAME, bar_size=self.__bar_size)
             logger.log_debug_msg(f'Check {ticker} intra day breakout message send time: {time.time() - check_message_sent_start_time} seconds')
@@ -157,6 +183,9 @@ class IntraDayBreakout(PatternAnalyser):
                                     'display.precision', 3):
                     logger.log_debug_msg(f'{ticker} Intra Day Breakout Full Dataframe:')
                     logger.log_debug_msg(self.__historical_data_df.loc[:, idx[[ticker], :]]) 
+                
+                logger.log_debug_msg(f'{ticker} breakout datetime: {breakout_datetime}, breakout value of {breakout_indicator}: ${breakout_value} \n previous high datetime: {previous_high_datetime}, previous high value: ${previous_high}')
+                self._discord_client.send_message(DiscordMessage(content=f'{ticker} breakout datetime: {breakout_datetime}, breakout value of {breakout_indicator}: ${breakout_value} \n previous high datetime: {previous_high_datetime}, previous high value: ${previous_high}'), DiscordChannel.INTRA_DAY_BREAKOUT_LOG)
                 
                 candle_chart_data_df, daily_date_to_fake_minute_datetime_x_axis_dict = concat_daily_df_and_minute_df(daily_df=self.__daily_df, 
                                                                                                                      minute_df=self.__historical_data_df, 
@@ -189,7 +218,9 @@ class IntraDayBreakout(PatternAnalyser):
                 hit_scanner_datetime_display = convert_into_human_readable_time(breakout_datetime)
                 read_out_dip_time = convert_into_read_out_time(breakout_datetime)
                     
-                message = ScannerResultMessage(title=f'{ticker} is breaking out {yesterday_close_to_last_pct}% at {hit_scanner_datetime_display}, breaking high: ${breakout_value}, previous high: ${previous_high}, breakout volume: {"{:,}".format(breakout_volume)}',
+                append_previous_high_display = f'${previous_high}' if previous_high is not None else 'None'
+                append_previous_high_datetime_display = f'at {previous_high_datetime.strftime(("%Y-%m-%d %H:%M"))}' if previous_high_datetime is not None else 'at None'
+                message = ScannerResultMessage(title=f'{ticker} is breaking out {yesterday_close_to_last_pct}% at {hit_scanner_datetime_display}, breaking high: ${breakout_value} at {breakout_datetime.strftime(("%Y-%m-%d %H:%M"))}, previous high: {append_previous_high_display} {append_previous_high_datetime_display}, breakout volume: {"{:,}".format(int(breakout_volume))}',
                                                readout_msg=f'{" ".join(ticker)} is breaking out {yesterday_close_to_last_pct}% at {read_out_dip_time}',
                                                close=close,
                                                yesterday_close=yesterday_close,

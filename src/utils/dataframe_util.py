@@ -99,7 +99,7 @@ def concat_daily_df_and_minute_df(daily_df: DataFrame,
     for position, dt in enumerate(daily_df.index):
         offset = timedelta(minutes=(len(daily_df) - position) + gap_btw_daily_and_minute)
         daily_date_to_fake_minute_datetime_x_axis_dict.update({minute_start_datetime - offset: dt})
-        dt_index_list.append(hit_scanner_datetime - offset)
+        dt_index_list.append(minute_start_datetime - offset)
     
     concat_daily_candle_df.index = pd.DatetimeIndex(dt_index_list)
     candle_chart_data_df = pd.concat([concat_daily_candle_df, candle_chart_data_df], axis=0)
