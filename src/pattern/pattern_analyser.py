@@ -67,7 +67,7 @@ class PatternAnalyser(ABC):
                     invalid_notification_ticker_list.append(scanner_ticker)
             
             if invalid_notification_ticker_list:
-                self.__discord_client.send_message(DiscordMessage(content=f'Failed to send notification to {discord_channel.value} channel, ticker list: {str(invalid_notification_ticker_list)}'), DiscordChannel.CHATBOT_ERROR_LOG)
+                self._discord_client.send_message(DiscordMessage(content=f'Failed to send notification to {discord_channel.value} channel, ticker list: {str(invalid_notification_ticker_list)}'), DiscordChannel.CHATBOT_ERROR_LOG)
             
             if is_async:
                 self._discord_client.send_message_by_list_with_response(message_list=notification_message_list, channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
