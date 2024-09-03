@@ -53,13 +53,3 @@ Stock scanner for day trade and swing trade. When specific stock's price action 
 - Previous days' top gainer support (for intra-day/ swing trade, buy at support level looking for bounce)
 - Previous days' top gainer continuation (for intra-day/ swing trade continuation trade, looking for strong momentum after breaking new high)
 <br />
-
-### Discord Setup
-- [Inviting Your Bot to Join Your Server](https://www.sprinklr.com/help/articles/discord/create-a-discord-bot-account/645875020104980882a57cb7)
-- [Mute Specific Channels Notifications](https://support.discord.com/hc/en-us/articles/209791877-How-do-I-mute-and-disable-notifications-for-specific-channels)
-- [Prevent People from Joining Server](https://www.youtube.com/watch?v=j9OFFZw2beY&ab_channel=NoIntroTutorials)
-<br />
-
-### Computer Setup
-- [Disable laptop boot light/ sound](https://www.asus.com/support/faq/1050213/)
-- [Keep applications running with computer's lid closed](https://www.pcmag.com/how-to/how-to-run-your-laptop-with-the-lid-closed)
