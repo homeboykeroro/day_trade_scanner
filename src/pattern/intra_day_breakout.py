@@ -185,7 +185,7 @@ class IntraDayBreakout(PatternAnalyser):
                     logger.log_debug_msg(self.__historical_data_df.loc[:, idx[[ticker], :]]) 
                 
                 logger.log_debug_msg(f'{ticker} breakout datetime: {breakout_datetime}, breakout value of {breakout_indicator}: ${breakout_value} \n previous high datetime: {previous_high_datetime}, previous high value: ${previous_high}')
-                self._discord_client.send_message(DiscordMessage(content=f'{ticker} breakout datetime: {breakout_datetime}, breakout value of {breakout_indicator}: ${breakout_value} \n previous high datetime: {previous_high_datetime}, previous high value: ${previous_high}'), DiscordChannel.INTRA_DAY_BREAKOUT_LOG)
+                #self._discord_client.send_message(DiscordMessage(content=f'{ticker} breakout datetime: {breakout_datetime}, breakout value of {breakout_indicator}: ${breakout_value} \n previous high datetime: {previous_high_datetime}, previous high value: ${previous_high}'), DiscordChannel.INTRA_DAY_BREAKOUT_LOG)
                 
                 candle_chart_data_df, daily_date_to_fake_minute_datetime_x_axis_dict = concat_daily_df_and_minute_df(daily_df=self.__daily_df, 
                                                                                                                      minute_df=self.__historical_data_df, 
