@@ -11,6 +11,9 @@ LOG_DATAFRAME = get_config('LOGGER', 'LOG_DATAFRAME')
 class Logger:
     def __init__(self):
         self.__logger = self.__get_logger()
+        
+    def log_df_debug_msg(self, msg):
+        self.__logger.debug(msg)
 
     def log_debug_msg(self, msg, with_log_file: bool = True, with_std_out: bool = False):
         if with_std_out:

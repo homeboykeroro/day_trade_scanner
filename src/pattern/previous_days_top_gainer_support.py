@@ -4,7 +4,7 @@ import pandas as pd
 
 from pattern.pattern_analyser import PatternAnalyser
 
-from utils.datetime_util import convert_into_human_readable_time, convert_into_read_out_time
+from utils.datetime_util import convert_into_human_readable_time, convert_into_read_out_time, get_current_us_datetime
 from utils.dataframe_util import concat_daily_df_and_minute_df, get_ticker_to_occurrence_idx_list
 from utils.chart_util import get_candlestick_chart
 from utils.config_util import get_config
@@ -30,9 +30,9 @@ PATTERN_NAME = 'PREVIOUS_DAY_TOP_GAINER_SUPPORT'
 SHOW_DISCORD_DEBUG_LOG = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'SHOW_DISCORD_DEBUG_LOG')
 
 MIN_MULTI_DAYS_CLOSE_CHANGE_PCT = get_config('MULTI_DAYS_TOP_GAINER_SCAN_PARAM', 'MIN_MULTI_DAYS_CLOSE_CHANGE_PCT')
-MAX_TOLERANCE_PERIOD_IN_MINUTE = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'MAX_TOLERANCE_PERIOD_IN_MINUTE')
 MAX_NO_OF_ALERT_TIMES = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'MAX_NO_OF_ALERT_TIMES')
-MIN_ALERT_CHECKING_INTERVAL_IN_MINUTE = get_config('PREVIOUS_DAY_TOP_GAINER_CONTINUATION_PARAM', 'MIN_ALERT_CHECKING_INTERVAL_IN_MINUTE')
+MIN_ALERT_CHECKING_INTERVAL_IN_MINUTE = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'MIN_ALERT_CHECKING_INTERVAL_IN_MINUTE')
+MAX_CURRENT_DATETIME_AND_ALERT_DATETIME_DIFF_IN_MINUTE = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'MAX_CURRENT_DATETIME_AND_ALERT_DATETIME_DIFF_IN_MINUTE')
 RANGE_TOLERANCE = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'RANGE_TOLERANCE')
 DAILY_AND_MINUTE_CANDLE_GAP = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'DAILY_AND_MINUTE_CANDLE_GAP')
 
@@ -121,14 +121,26 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
                 
                 ticker_to_occurrence_idx_list_dict = get_ticker_to_occurrence_idx_list(hit_support_boolean_df)
                 occurrence_idx_list = ticker_to_occurrence_idx_list_dict[ticker]
-                non_none_occurrence_idx_list = [dt for dt in occurrence_idx_list if dt is not None]
+                check_alert_datetime_list = []
                 trigger_alert_datetime_list = []
-                trigger_alert_datetime_display = f'Previous day top gainer support occurrence idx list: {str(occurrence_idx_list)}\nPrevious day top gainer support non none occurrence idx list: {str(non_none_occurrence_idx_list)}\n'
 
-                if non_none_occurrence_idx_list:
-                    earilest_alert_datetime = min(non_none_occurrence_idx_list)
+                us_current_datetime = get_current_us_datetime()
+                
+                for dt in occurrence_idx_list:
+                    if dt is None:
+                        continue
+                    else:
+                        time_diff_in_minute = (us_current_datetime - dt).total_seconds() / 60
+                        
+                        if time_diff_in_minute <= MAX_CURRENT_DATETIME_AND_ALERT_DATETIME_DIFF_IN_MINUTE:
+                            check_alert_datetime_list.append(dt)
+
+                trigger_alert_datetime_display = f'Previous day top gainer support occurrence idx list: {str(occurrence_idx_list)}\nPrevious day top gainer support non none occurrence idx list: {str([dt for dt in occurrence_idx_list if dt is not None])}\nPrevious day top gainer support check alert datetime list: {check_alert_datetime_list}\n'
+
+                if check_alert_datetime_list:
+                    earilest_alert_datetime = min(check_alert_datetime_list)
                     
-                    for occurrence_idx in non_none_occurrence_idx_list:
+                    for occurrence_idx in check_alert_datetime_list:
                         if len(trigger_alert_datetime_list) > 0:
                             previous_alert_trigger_datetime = trigger_alert_datetime_list[-1]
                             time_diff_in_minute = math.floor(((occurrence_idx - previous_alert_trigger_datetime).total_seconds()) / 60)
