@@ -27,6 +27,8 @@ logger = Logger()
 
 PATTERN_NAME = 'INTRA_DAY_BREAKOUT'
 
+SHOW_DISCORD_DEBUG_LOG = get_config('INTRA_DAY_BREAKOUT_PARAM', 'SHOW_DISCORD_DEBUG_LOG')
+
 MIN_OBSERVE_PERIOD = get_config('INTRA_DAY_BREAKOUT_PARAM', 'MIN_OBSERVE_PERIOD')
 TOP_N_VOLUME = get_config('INTRA_DAY_BREAKOUT_PARAM', 'TOP_N_VOLUME')
 MIN_BREAKOUT_TRADING_VOLUME_IN_USD = get_config('INTRA_DAY_BREAKOUT_PARAM', 'MIN_BREAKOUT_TRADING_VOLUME_IN_USD')
@@ -185,7 +187,9 @@ class IntraDayBreakout(PatternAnalyser):
                     logger.log_debug_msg(self.__historical_data_df.loc[:, idx[[ticker], :]]) 
                 
                 logger.log_debug_msg(f'{ticker} breakout datetime: {breakout_datetime}, breakout value of {breakout_indicator}: ${breakout_value} \n previous high datetime: {previous_high_datetime}, previous high value: ${previous_high}')
-                self._discord_client.send_message(DiscordMessage(content=f'{ticker} breakout datetime: {breakout_datetime}, breakout value of {breakout_indicator}: ${breakout_value} \n previous high datetime: {previous_high_datetime}, previous high value: ${previous_high}'), DiscordChannel.INTRA_DAY_BREAKOUT_LOG)
+                
+                if SHOW_DISCORD_DEBUG_LOG:
+                    self._discord_client.send_message(DiscordMessage(content=f'{ticker} breakout datetime: {breakout_datetime}, breakout value of {breakout_indicator}: ${breakout_value} \n previous high datetime: {previous_high_datetime}, previous high value: ${previous_high}'), DiscordChannel.INTRA_DAY_BREAKOUT_LOG)
                 
                 candle_chart_data_df, daily_date_to_fake_minute_datetime_x_axis_dict = concat_daily_df_and_minute_df(daily_df=self.__daily_df, 
                                                                                                                      minute_df=self.__historical_data_df, 

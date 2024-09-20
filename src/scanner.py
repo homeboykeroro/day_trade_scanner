@@ -52,6 +52,9 @@ IB_TOP_LOSER_FILTER = get_ib_scanner_filter(ScannerTarget.TOP_LOSER,
                                       max_market_cap = MAX_MARKET_CAP_FOR_DAY_TRADE_SCANNER, 
                                       additional_filter_list = [])
 
+SHOW_TOP_GAINER_SCANNER_DISCORD_DEBUG_LOG = get_config('TOP_GAINER_SCANNER', 'SHOW_DISCORD_DEBUG_LOG')
+SHOW_TOP_LOSER_SCANNER_DISCORD_DEBUG_LOG = get_config('TOP_LOSER_SCANNER', 'SHOW_DISCORD_DEBUG_LOG')
+
 INITIAL_POP_DAILY_CANDLE_DAYS = get_config('INITIAL_POP_PARAM', 'DAILY_CANDLE_DAYS')
 INITIAL_DIP_DAILY_CANDLE_DAYS = get_config('INITIAL_DIP_PARAM', 'DAILY_CANDLE_DAYS')
 
@@ -253,10 +256,12 @@ class Scanner:
             logger.log_debug_msg('__analyse_intra_day_top_gainer daily df:')
             logger.log_debug_msg(daily_df)
 
-        send_msg_start_time = time.time()
         logger.log_debug_msg(f'Top gainer scanner result: {[contract["symbol"] for contract in contract_list]}')
-        discord_client.send_message(DiscordMessage(content=f'{[contract["symbol"] for contract in contract_list]}'), DiscordChannel.TOP_GAINER_SCANNER_LIST)
-        logger.log_debug_msg(f'Send top gainer scanner result time: {time.time() - send_msg_start_time}')
+        
+        if SHOW_TOP_GAINER_SCANNER_DISCORD_DEBUG_LOG:
+            send_msg_start_time = time.time()
+            discord_client.send_message(DiscordMessage(content=f'{[contract["symbol"] for contract in contract_list]}'), DiscordChannel.TOP_GAINER_SCANNER_LIST)
+            logger.log_debug_msg(f'Send top gainer scanner result time: {time.time() - send_msg_start_time}')
 
         initial_pop_analyser = InitialPop(bar_size=BarSize.ONE_MINUTE,
                                           historical_data_df=one_minute_candle_df, 
@@ -305,10 +310,12 @@ class Scanner:
             logger.log_debug_msg('__analyse_intra_day_top_loser daily df:')
             logger.log_debug_msg(daily_df)
 
-        send_msg_start_time = time.time()
         logger.log_debug_msg(f'Top loser scanner result: {[contract["symbol"] for contract in contract_list]}')
-        discord_client.send_message(DiscordMessage(content=f'{[contract["symbol"] for contract in contract_list]}'), DiscordChannel.TOP_LOSER_SCANNER_LIST)
-        logger.log_debug_msg(f'Send top loser scanner result time: {time.time() - send_msg_start_time}')
+        
+        if SHOW_TOP_LOSER_SCANNER_DISCORD_DEBUG_LOG:
+            send_msg_start_time = time.time()
+            discord_client.send_message(DiscordMessage(content=f'{[contract["symbol"] for contract in contract_list]}'), DiscordChannel.TOP_LOSER_SCANNER_LIST)
+            logger.log_debug_msg(f'Send top loser scanner result time: {time.time() - send_msg_start_time}')
         
         initial_dip_analyser = InitialDip(bar_size=BarSize.ONE_MINUTE,
                                           historical_data_df=one_minute_candle_df, 

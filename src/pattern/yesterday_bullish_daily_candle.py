@@ -31,6 +31,8 @@ google_search_util = GoogleSearchUtil()
 
 PATTERN_NAME = 'YESTERDAY_BULLISH_DAILY_CANDLE'
 
+SHOW_DISCORD_DEBUG_LOG = get_config('YESTERDAY_BULLISH_DAILY_CANDLE_PARAM', 'SHOW_DISCORD_DEBUG_LOG')
+
 MIN_YESTERDAY_CLOSE_CHANGE_PCT = get_config('YESTERDAY_BULLISH_DAILY_CANDLE_PARAM', 'MIN_YESTERDAY_CLOSE_CHANGE_PCT')
 MAX_OFFERING_NEWS_SIZE = get_config('YESTERDAY_BULLISH_DAILY_CANDLE_PARAM', 'MAX_OFFERING_NEWS_SIZE')
 
@@ -74,7 +76,8 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
             close_pct = close_pct_df.loc[:, (ticker, RuntimeIndicator.COMPARE.value)].values[0]
             ticker_to_close_pct_dict[ticker] = close_pct
         
-        self._discord_client.send_message(DiscordMessage(content=f'Yesterday top gainer dict list: {ticker_to_close_pct_dict}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
+        if SHOW_DISCORD_DEBUG_LOG:
+            self._discord_client.send_message(DiscordMessage(content=f'Yesterday top gainer dict list: {ticker_to_close_pct_dict}'), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
         logger.log_debug_msg(f'Filtered bullish daily candle ticker to pct change dict: {ticker_to_close_pct_dict}')
         
         sorted_ticker_to_close_pct_dict =  {k: v for k, v in sorted(ticker_to_close_pct_dict.items(), key=lambda item: item[1])}
@@ -120,7 +123,9 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
             offering_news = OfferingNews(symbol=ticker, date_to_news_dict=date_to_news_dict, max_offering_news_size=MAX_OFFERING_NEWS_SIZE)
             
             date_to_news_dict_size = len(date_to_news_dict) if date_to_news_dict else 0
-            self._discord_client.send_message(DiscordMessage(content=f'{ticker} offering news size: {date_to_news_dict_size}'), DiscordChannel.OFFERING_NEWS_LOG)
+            
+            if SHOW_DISCORD_DEBUG_LOG:
+                self._discord_client.send_message(DiscordMessage(content=f'{ticker} offering news size: {date_to_news_dict_size}'), DiscordChannel.OFFERING_NEWS_LOG)
                 
             close = self.__daily_df.loc[self.__hit_scanner_date.strftime('%Y-%m-%d'), (ticker, Indicator.CLOSE.value)]
             close_pct = self.__daily_df.loc[self.__hit_scanner_date.strftime('%Y-%m-%d'), (ticker, CustomisedIndicator.CLOSE_CHANGE.value)]

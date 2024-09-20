@@ -27,6 +27,8 @@ logger = Logger()
 
 PATTERN_NAME = 'PREVIOUS_DAY_TOP_GAINER_SUPPORT'
 
+SHOW_DISCORD_DEBUG_LOG = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'SHOW_DISCORD_DEBUG_LOG')
+
 MIN_MULTI_DAYS_CLOSE_CHANGE_PCT = get_config('MULTI_DAYS_TOP_GAINER_SCAN_PARAM', 'MIN_MULTI_DAYS_CLOSE_CHANGE_PCT')
 MAX_TOLERANCE_PERIOD_IN_MINUTE = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'MAX_TOLERANCE_PERIOD_IN_MINUTE')
 MAX_NO_OF_ALERT_TIMES = get_config('PREVIOUS_DAY_TOP_GAINER_SUPPORT_PARAM', 'MAX_NO_OF_ALERT_TIMES')
@@ -84,7 +86,7 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
                 if daily_data_not_found:
                     concat_msg += f'Daily candle data not found for {ticker}\n'
                     
-                if concat_msg:
+                if concat_msg and SHOW_DISCORD_DEBUG_LOG:
                     self._discord_client.send_message(DiscordMessage(content=concat_msg), DiscordChannel.PREVIOUS_DAYS_TOP_GAINER_SUPPORT_DATA_NOT_FOUND_LOG)
                 continue
                             
@@ -157,7 +159,9 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
                             
                             if index != len(trigger_alert_datetime_list) - 1:
                                 trigger_alert_datetime_display += '\n'
-                        self._discord_client.send_message(DiscordMessage(content=trigger_alert_datetime_display), DiscordChannel.PREVIOUS_DAYS_TOP_GAINER_SUPPORT_ALERT_LOG)
+                                
+                        if SHOW_DISCORD_DEBUG_LOG:
+                            self._discord_client.send_message(DiscordMessage(content=trigger_alert_datetime_display), DiscordChannel.PREVIOUS_DAYS_TOP_GAINER_SUPPORT_ALERT_LOG)
                 
                         contract_info = self.__ticker_to_contract_info_dict[ticker]
 
