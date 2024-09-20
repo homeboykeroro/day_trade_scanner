@@ -138,7 +138,7 @@ class PreviousDayTopGainerContinuation(PatternAnalyser):
                     if dt is None:
                         continue
                     else:
-                        time_diff_in_minute = (us_current_datetime - dt).total_seconds() / 60
+                        time_diff_in_minute = (us_current_datetime.replace(tzinfo=None) - dt).total_seconds() / 60
                         
                         if time_diff_in_minute <= MAX_CURRENT_DATETIME_AND_ALERT_DATETIME_DIFF_IN_MINUTE:
                             check_alert_datetime_list.append(dt)
