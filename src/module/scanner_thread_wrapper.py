@@ -12,7 +12,7 @@ from module.discord_chatbot_client import DiscordChatBotClient
 from utils.logger import Logger
 
 logger = Logger()
-reauthentication_lock = threading.Lock()
+#reauthentication_lock = threading.Lock()
 
 #class ScannerThreadWrapper(threading.Thread):
 class ScannerThreadWrapper():

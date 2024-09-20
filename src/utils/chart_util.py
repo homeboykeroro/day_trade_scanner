@@ -23,7 +23,7 @@ from constant.indicator.indicator import Indicator
 idx = pd.IndexSlice
 logger = Logger()
 
-candle_stick_chart_generation_lock = threading.Lock()
+#candle_stick_chart_generation_lock = threading.Lock()
 
 CHART_ROOT_DIR = get_config('CHART_SETTING', 'PATH')
 
@@ -258,7 +258,7 @@ def get_candlestick_chart(candle_data_df: pd.DataFrame,
                           daily_date_to_fake_minute_datetime_x_axis_dict: dict = None,
                           positive_offset: int = None, negative_offset: int = None,
                           candle_comment_list: list = [CustomisedIndicator.CLOSE_CHANGE, CustomisedIndicator.GAP_PCT_CHANGE, Indicator.CLOSE, Indicator.VOLUME]) -> str:
-    with candle_stick_chart_generation_lock:
+    #with candle_stick_chart_generation_lock:
         symbol_df, colour_df = get_scatter_symbol_and_colour_df(src_df=candle_data_df.loc[:, idx[[ticker], Indicator.LOW.value]], 
                                                                 occurrence_idx_list=[hit_scanner_datetime], 
                                                                 scatter_symbol=scatter_symbol, 

@@ -26,7 +26,7 @@ MAX_SEARCH_DURATION_IN_YEAR = 2
 #https://developers.google.com/custom-search/docs/xml_results#PhraseSearchqt
 FILTER_RESULT_TITLE_REGEX = r'\b(closing|completes)\b'
 OFFERING_NEWS_KEYWORDS = '(intext:"offering" OR intext:"announces pricing")'
-TRUNCATE_COMPANY_NAME_SUFFIX_REGEX = r'\b(ltd\.?|plc\.?|adr|inc\.?|corp\.?|llc\.?|class|co\b|ab|gr|soluti)-?.?\b'
+TRUNCATE_COMPANY_NAME_SUFFIX_REGEX = r'\b(lt\.?|ltd\.?|plc\.?|adr|inc\.?|corp\.?|llc\.?|class|co\b|ab|gr|soluti)-?.?\b'
 EXTRACT_DATE_STR_REGEX = r"\b(?:January|February|March|April|May|June|July|August|September|October|November|December) \d{1,2}, \d{4}\b"
 PUNCTUATION_REGEX = r"""!"#$%&'()*+,./:;<=>?@[\]^_`{|}~"""
 

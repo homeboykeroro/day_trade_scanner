@@ -91,6 +91,8 @@ class PreviousDayTopGainerContinuation(PatternAnalyser):
                 if daily_data_not_found:
                     concat_msg += f'Daily candle data not found for {ticker}\n'
                     
+                logger.log_debug_msg(f'{PATTERN_NAME} invalid dataframe found: \n{concat_msg}')    
+                
                 if concat_msg and SHOW_DISCORD_DEBUG_LOG:
                     self._discord_client.send_message(DiscordMessage(content=concat_msg), DiscordChannel.PREVIOUS_DAYS_TOP_GAINERS_CONTINUATION_DATA_NOT_FOUND_LOG)
                 continue

@@ -192,7 +192,7 @@ class IBConnector:
                         logger.log_debug_msg(f'Exclude unknown contract from scanner result, {result}', with_std_out=True)
                 
                 time.sleep(SCANNER_RATE_LIMIT_WAIT_PERIOD)
-                logger.log_debug_msg('Release scanner result retrieval lock')
+                #logger.log_debug_msg('Release scanner result retrieval lock')
                 
                 return scanner_result_without_otc_stock[:max_no_of_scanner_result]
     
@@ -272,7 +272,7 @@ class IBConnector:
                 self.update_snapshot(snapshot_data_con_id_list)
                 self.update_sec_def(snapshot_data_con_id_list)
                 time.sleep(SNAPSHOT_RATE_LIMIT_WAIT_PERIOD)
-                logger.log_debug_msg('Release snapshot retrieval lock')
+                #logger.log_debug_msg('Release snapshot retrieval lock')
         else:
             logger.log_debug_msg(f'No snapshot data is required to update for the contracts: {contract_list}')
         
@@ -531,7 +531,7 @@ class IBConnector:
                                                           chunk_size=5,
                                                           loop=self.__loop)
                 logger.log_debug_msg(f'Get {bar_size.value} historical candle data time: {time.time() - get_one_minute_candle_start_time}')
-                logger.log_debug_msg('Release historical data retrieval lock')
+                #logger.log_debug_msg('Release historical data retrieval lock')
         except Exception as historical_data_request_exception:
             logger.log_error_msg(f'An error occurred while requesting {bar_size.value} historical data, Cause: {historical_data_request_exception}')
             raise historical_data_request_exception
@@ -601,7 +601,7 @@ class IBConnector:
             
             incomplete_response_ticker_list = np.setdiff1d(ticker_list, complete_df_ticker_list)
             if len(incomplete_response_ticker_list) > 0:
-                logger.log_debug_msg(f'Get incomplete response in {bar_size.value} historical candle data, incomplete response ticker list: {incomplete_response_ticker_list}, full ticker list: {ticker_list}')
+                logger.log_debug_msg(f'Get incomplete response in {bar_size.value} historical candle data, incomplete response ticker list: {incomplete_response_ticker_list}, full ticker list: {ticker_list}, response ticker list: {complete_df_ticker_list}, contract list: {contract_list}')
                 ticker_list = [ticker for ticker in ticker_list if ticker not in incomplete_response_ticker_list]
                 
             return complete_df[ticker_list]
