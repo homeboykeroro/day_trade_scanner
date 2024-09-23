@@ -112,10 +112,13 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
                 minute_low_df = ticker_minute_candle_df.loc[:, idx[:, Indicator.LOW.value]].rename(columns={Indicator.LOW.value: RuntimeIndicator.COMPARE.value})
                 minute_close_df = ticker_minute_candle_df.loc[:, idx[:, Indicator.CLOSE.value]].rename(columns={Indicator.CLOSE.value: RuntimeIndicator.COMPARE.value})
                 
-                low_hit_support_low_boolean_df = (minute_low_df >= support_low_lower_limit) & (minute_low_df <= support_low_upper_limit)
-                close_hit_support_low_boolean_df = (minute_close_df >= support_low_lower_limit) & (minute_close_df <= support_low_upper_limit)
-                low_hit_support_open_boolean_df = (minute_low_df >= support_open_lower_limit) & (minute_low_df <= support_open_upper_limit)
-                close_hit_support_open_boolean_df = (minute_close_df >= support_open_lower_limit) & (minute_close_df <= support_open_upper_limit)
+                minute_colour_df = ticker_minute_candle_df.loc[:, idx[:, CustomisedIndicator.CANDLE_COLOUR.value]].rename(columns={CustomisedIndicator.CANDLE_COLOUR.value: RuntimeIndicator.COMPARE.value})
+                minute_volume_df = ticker_minute_candle_df.loc[:, idx[:, Indicator.VOLUME.value]].rename(columns={Indicator.VOLUME.value: RuntimeIndicator.COMPARE.value})
+                
+                low_hit_support_low_boolean_df = (minute_low_df >= support_low_lower_limit) & (minute_low_df <= support_low_upper_limit) & (minute_colour_df != CandleColour.GREY.value) & (minute_volume_df > 0)
+                close_hit_support_low_boolean_df = (minute_close_df >= support_low_lower_limit) & (minute_close_df <= support_low_upper_limit) & (minute_colour_df != CandleColour.GREY.value) & (minute_volume_df > 0)
+                low_hit_support_open_boolean_df = (minute_low_df >= support_open_lower_limit) & (minute_low_df <= support_open_upper_limit) & (minute_colour_df != CandleColour.GREY.value) & (minute_volume_df > 0)
+                close_hit_support_open_boolean_df = (minute_close_df >= support_open_lower_limit) & (minute_close_df <= support_open_upper_limit) & (minute_colour_df != CandleColour.GREY.value) & (minute_volume_df > 0)
                 
                 hit_support_boolean_df = low_hit_support_low_boolean_df | close_hit_support_low_boolean_df | low_hit_support_open_boolean_df | close_hit_support_open_boolean_df
                 
@@ -151,7 +154,7 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
                         else:
                             trigger_alert_datetime_list.append(earilest_alert_datetime)
                 
-                for trigger_alert_datetime in trigger_alert_datetime_list:      
+                for pos, trigger_alert_datetime in enumerate(trigger_alert_datetime_list):      
                     check_message_sent_start_time = time.time()
                     
                     candle_chart_data_df, daily_date_to_fake_minute_datetime_x_axis_dict = concat_daily_df_and_minute_df(daily_df=self.__daily_df, 
@@ -163,7 +166,13 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
                     is_message_sent = self.check_if_pattern_analysis_message_sent(ticker=ticker, hit_scanner_datetime=trigger_alert_datetime.replace(second=0, microsecond=0), pattern=PATTERN_NAME, bar_size=BarSize.ONE_MINUTE)
                     logger.log_debug_msg(f'Check {ticker} previous day support pattern message send time: {time.time() - check_message_sent_start_time} seconds')
                     
-                    candle_chart_negative_offset = int((trigger_alert_datetime - self.__minute_df.index[0]).total_seconds() / 60) + len(self.__daily_df)
+                    candlestick_display_start_datetime = None
+                    if pos > 0:
+                        candlestick_display_start_datetime = trigger_alert_datetime_list[pos - 1]
+                    else:
+                        candlestick_display_start_datetime = self.__minute_df.index[0]
+                    
+                    candle_chart_negative_offset = int((trigger_alert_datetime - candlestick_display_start_datetime).total_seconds() / 60) + len(self.__daily_df)
                     
                     if not is_message_sent:
                         # Add alert trigger datetime log

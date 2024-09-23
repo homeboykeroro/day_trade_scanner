@@ -70,7 +70,7 @@ class IntraDayBreakout(PatternAnalyser):
         trading_volume_df = close_df * volume_df
         min_breakout_trading_volume_boolean_df = (trading_volume_df >= MIN_BREAKOUT_TRADING_VOLUME_IN_USD)
         
-        select_valid_volume_candlestick_display_boolean_df = trading_volume_df >= MIN_VALID_CANDLESTICK_CHART_DISPLAY_VOLUME
+        select_valid_volume_candlestick_display_boolean_df = (trading_volume_df >= MIN_VALID_CANDLESTICK_CHART_DISPLAY_VOLUME)
         datetime_idx_df = derive_idx_df(select_valid_volume_candlestick_display_boolean_df, False)
         first_valid_volume_datetime_df = (datetime_idx_df.where(select_valid_volume_candlestick_display_boolean_df.values)
                                                          .bfill()
