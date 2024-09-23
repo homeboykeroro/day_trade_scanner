@@ -17,7 +17,7 @@ from constant.candle.bar_size import BarSize
 from constant.discord.discord_channel import DiscordChannel
 
 from utils.chart_util import get_candlestick_chart
-from utils.dataframe_util import concat_daily_df_and_minute_df
+from utils.dataframe_util import concat_daily_df_and_minute_df, derive_idx_df
 from utils.datetime_util import convert_into_human_readable_time, convert_into_read_out_time
 from utils.logger import Logger
 from utils.config_util import get_config
@@ -33,6 +33,7 @@ MIN_OBSERVE_PERIOD = get_config('INTRA_DAY_BREAKOUT_PARAM', 'MIN_OBSERVE_PERIOD'
 TOP_N_VOLUME = get_config('INTRA_DAY_BREAKOUT_PARAM', 'TOP_N_VOLUME')
 MIN_BREAKOUT_TRADING_VOLUME_IN_USD = get_config('INTRA_DAY_BREAKOUT_PARAM', 'MIN_BREAKOUT_TRADING_VOLUME_IN_USD')
 DAILY_AND_MINUTE_CANDLE_GAP = get_config('INTRA_DAY_BREAKOUT_PARAM', 'DAILY_AND_MINUTE_CANDLE_GAP')
+MIN_VALID_CANDLESTICK_CHART_DISPLAY_VOLUME = get_config('INTRA_DAY_BREAKOUT_PARAM', 'MIN_VALID_CANDLESTICK_CHART_DISPLAY_VOLUME')
 
 class IntraDayBreakout(PatternAnalyser):    
     def __init__(self, bar_size: BarSize, historical_data_df: DataFrame, daily_df: DataFrame, ticker_to_contract_info_dict: dict, discord_client):
@@ -69,6 +70,12 @@ class IntraDayBreakout(PatternAnalyser):
         trading_volume_df = close_df * volume_df
         min_breakout_trading_volume_boolean_df = (trading_volume_df >= MIN_BREAKOUT_TRADING_VOLUME_IN_USD)
         
+        select_valid_volume_candlestick_display_boolean_df = trading_volume_df >= MIN_VALID_CANDLESTICK_CHART_DISPLAY_VOLUME
+        datetime_idx_df = derive_idx_df(select_valid_volume_candlestick_display_boolean_df, False)
+        first_valid_volume_datetime_df = (datetime_idx_df.where(select_valid_volume_candlestick_display_boolean_df.values)
+                                                         .bfill()
+                                                         .iloc[[0]])
+        
         for ticker in self.__ticker_list:
             min_breakout_volume_close_df = (close_df.where(min_breakout_trading_volume_boolean_df.values)
                                                     .replace(np.nan, -1)
@@ -94,6 +101,8 @@ class IntraDayBreakout(PatternAnalyser):
             breakout_value = None
             previous_high = None
             previous_high_datetime = None
+            first_valid_volume_datetime = None
+            candlestick_chart_display_start_datetime = None
             breakout_close_datetime = min_breakout_volume_close_df.index[sorted_breakout_close_idx_np[-1][0]]
             breakout_high_datetime = min_breakout_volume_high_df.index[sorted_breakout_high_idx_np[-1][0]]
     
@@ -104,6 +113,23 @@ class IntraDayBreakout(PatternAnalyser):
                 sorted_high_idx_np = np.argsort(normalised_high_df.values, axis=0)
                 sorted_high_np = normalised_high_df.values[sorted_high_idx_np, np.arange(normalised_high_df.shape[1])]
 
+                # first breakout occurrence (high)
+                for high_idx in sorted_breakout_high_idx_np:
+                    high_idx = high_idx[0]
+                    high_val = min_breakout_volume_high_df.loc[min_breakout_volume_high_df.index[high_idx], (ticker, RuntimeIndicator.COMPARE.value)]
+                
+                    if high_val != -1:
+                        high_datetime = min_breakout_volume_high_df.index[high_idx]
+                        candlestick_chart_display_start_datetime = high_datetime
+                        break
+                
+                if (candlestick_chart_display_start_datetime is None 
+                        or candlestick_chart_display_start_datetime == breakout_high_datetime):
+                    first_valid_volume_datetime = first_valid_volume_datetime_df.loc[first_valid_volume_datetime_df.index[0], (ticker, RuntimeIndicator.INDEX.value)]
+                    
+                    if candlestick_chart_display_start_datetime > first_valid_volume_datetime:
+                        candlestick_chart_display_start_datetime = first_valid_volume_datetime
+                
                 if len(sorted_high_np) >= 2:
                     if sorted_high_np[-2][0] != -1:
                         breakout_indicator = Indicator.HIGH.value
@@ -123,12 +149,30 @@ class IntraDayBreakout(PatternAnalyser):
                     previous_high = None
                     previous_high_datetime = None
                 
+            #Intra Day Breakout Message Precedence, Breakout Close > Breakout High
             if breakout_value is None or previous_high is None:
                 normalised_close_df = (close_df.replace(np.nan, -1)
                                                .loc[:breakout_close_datetime, idx[[ticker], :]])
                 
                 sorted_close_idx_np = np.argsort(normalised_close_df.values, axis=0)
                 sorted_close_np = normalised_close_df.values[sorted_close_idx_np, np.arange(normalised_close_df.shape[1])]
+                
+                # first breakout occurrence (close)
+                for close_idx in sorted_breakout_close_idx_np:
+                    close_idx = close_idx[0]
+                    close_val = min_breakout_volume_close_df.loc[min_breakout_volume_close_df.index[close_idx], (ticker, RuntimeIndicator.COMPARE.value)]
+                
+                    if close_val != -1:
+                        close_datetime = min_breakout_volume_close_df.index[close_idx]
+                        candlestick_chart_display_start_datetime = close_datetime
+                        break
+                
+                if (candlestick_chart_display_start_datetime is None 
+                        or candlestick_chart_display_start_datetime == breakout_close_datetime):
+                    first_valid_volume_datetime = first_valid_volume_datetime_df.loc[first_valid_volume_datetime_df.index[0], (ticker, RuntimeIndicator.INDEX.value)]
+                    
+                    if candlestick_chart_display_start_datetime > first_valid_volume_datetime:
+                        candlestick_chart_display_start_datetime = first_valid_volume_datetime
                 
                 if len(sorted_close_np) >= 2:
                     if sorted_close_np[-2][0] != -1:
@@ -189,7 +233,7 @@ class IntraDayBreakout(PatternAnalyser):
                 logger.log_debug_msg(f'{ticker} breakout datetime: {breakout_datetime}, breakout value of {breakout_indicator}: ${breakout_value} \n previous high datetime: {previous_high_datetime}, previous high value: ${previous_high}')
                 
                 if SHOW_DISCORD_DEBUG_LOG:
-                    self._discord_client.send_message(DiscordMessage(content=f'{ticker} breakout datetime: {breakout_datetime}, breakout value of {breakout_indicator}: ${breakout_value} \n previous high datetime: {previous_high_datetime}, previous high value: ${previous_high}'), DiscordChannel.INTRA_DAY_BREAKOUT_LOG)
+                    self._discord_client.send_message(DiscordMessage(content=f'{ticker} breakout datetime: {breakout_datetime}, breakout value of {breakout_indicator}: ${breakout_value} \n previous high datetime: {previous_high_datetime}, previous high value: ${previous_high}, candlestick chart display start datetime: {candlestick_chart_display_start_datetime}, first valid volume datetime: {first_valid_volume_datetime}'), DiscordChannel.INTRA_DAY_BREAKOUT_LOG)
                 
                 candle_chart_data_df, daily_date_to_fake_minute_datetime_x_axis_dict = concat_daily_df_and_minute_df(daily_df=self.__daily_df, 
                                                                                                                      minute_df=self.__historical_data_df, 
@@ -204,7 +248,7 @@ class IntraDayBreakout(PatternAnalyser):
 
                 total_volume = self.__historical_data_df.loc[breakout_datetime, (ticker, CustomisedIndicator.TOTAL_VOLUME.value)]
                 
-                minute_candle_negative_offset = int(((breakout_datetime - self.__historical_data_df.index[0]).total_seconds() / 60)) + len(self.__daily_df)
+                minute_candle_negative_offset = int(((breakout_datetime - candlestick_chart_display_start_datetime).total_seconds() / 60)) + len(self.__daily_df)
                 
                 candle_comment_list = [CustomisedIndicator.CLOSE_CHANGE, CustomisedIndicator.GAP_PCT_CHANGE, Indicator.CLOSE, Indicator.VOLUME]
                 
