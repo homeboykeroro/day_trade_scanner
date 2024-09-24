@@ -238,7 +238,7 @@ class IntraDayBreakout(PatternAnalyser):
                 candle_chart_data_df, daily_date_to_fake_minute_datetime_x_axis_dict = concat_daily_df_and_minute_df(daily_df=self.__daily_df, 
                                                                                                                      minute_df=self.__historical_data_df, 
                                                                                                                      hit_scanner_datetime=breakout_datetime,
-                                                                                                                     is_hit_scanner_datetime_start_range=False,
+                                                                                                                     select_datetime_start_range=candlestick_chart_display_start_datetime,
                                                                                                                      gap_btw_daily_and_minute=DAILY_AND_MINUTE_CANDLE_GAP)
                 
                 contract_info = self.__ticker_to_contract_info_dict[ticker]
@@ -248,8 +248,6 @@ class IntraDayBreakout(PatternAnalyser):
 
                 total_volume = self.__historical_data_df.loc[breakout_datetime, (ticker, CustomisedIndicator.TOTAL_VOLUME.value)]
                 
-                minute_candle_negative_offset = int(((breakout_datetime - candlestick_chart_display_start_datetime).total_seconds() / 60)) + len(self.__daily_df)
-                
                 candle_comment_list = [CustomisedIndicator.CLOSE_CHANGE, CustomisedIndicator.GAP_PCT_CHANGE, Indicator.CLOSE, Indicator.VOLUME]
                 
                 one_minute_chart_start_time = time.time()
@@ -258,7 +256,7 @@ class IntraDayBreakout(PatternAnalyser):
                                                   ticker=ticker, pattern=PATTERN_NAME, bar_size=self.__bar_size,
                                                   daily_date_to_fake_minute_datetime_x_axis_dict=daily_date_to_fake_minute_datetime_x_axis_dict,
                                                   hit_scanner_datetime=breakout_datetime,
-                                                  positive_offset=0, negative_offset=minute_candle_negative_offset,
+                                                  positive_offset=0, negative_offset=0,
                                                   scatter_symbol=ScatterSymbol.POP, scatter_colour=ScatterColour.GREEN,
                                                   candle_comment_list=candle_comment_list)
                 logger.log_debug_msg(f'Generate {ticker} intra day breakout one minute chart finished time: {time.time() - one_minute_chart_start_time} seconds')

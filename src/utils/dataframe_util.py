@@ -83,18 +83,18 @@ def append_customised_indicator(src_df: pd.DataFrame) -> pd.DataFrame:
 def concat_daily_df_and_minute_df(daily_df: DataFrame, 
                                   minute_df: DataFrame, 
                                   hit_scanner_datetime: datetime.datetime, 
-                                  is_hit_scanner_datetime_start_range: bool = True,
+                                  select_datetime_start_range: datetime.datetime = None,
                                   gap_btw_daily_and_minute: int = 1):
     concat_daily_candle_df = daily_df.copy()
     daily_date_to_fake_minute_datetime_x_axis_dict = {}
     dt_index_list = []
     
-    if is_hit_scanner_datetime_start_range:
+    if select_datetime_start_range is None:
         candle_chart_data_df = minute_df.loc[hit_scanner_datetime:, :] 
         minute_start_datetime = hit_scanner_datetime
     else:
-        candle_chart_data_df = minute_df.loc[:hit_scanner_datetime, :] 
-        minute_start_datetime = minute_df.index[0]
+        candle_chart_data_df = minute_df.loc[select_datetime_start_range:hit_scanner_datetime, :] 
+        minute_start_datetime = select_datetime_start_range
 
     for position, dt in enumerate(daily_df.index):
         offset = timedelta(minutes=(len(daily_df) - position) + gap_btw_daily_and_minute)

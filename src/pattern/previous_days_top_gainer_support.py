@@ -157,22 +157,20 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
                 for pos, trigger_alert_datetime in enumerate(trigger_alert_datetime_list):      
                     check_message_sent_start_time = time.time()
                     
-                    candle_chart_data_df, daily_date_to_fake_minute_datetime_x_axis_dict = concat_daily_df_and_minute_df(daily_df=self.__daily_df, 
-                                                                                                                         minute_df=self.__minute_df, 
-                                                                                                                         hit_scanner_datetime=trigger_alert_datetime, 
-                                                                                                                         is_hit_scanner_datetime_start_range=False,
-                                                                                                                         gap_btw_daily_and_minute=DAILY_AND_MINUTE_CANDLE_GAP)
-                    
-                    is_message_sent = self.check_if_pattern_analysis_message_sent(ticker=ticker, hit_scanner_datetime=trigger_alert_datetime.replace(second=0, microsecond=0), pattern=PATTERN_NAME, bar_size=BarSize.ONE_MINUTE)
-                    logger.log_debug_msg(f'Check {ticker} previous day support pattern message send time: {time.time() - check_message_sent_start_time} seconds')
-                    
                     candlestick_display_start_datetime = None
                     if pos > 0:
                         candlestick_display_start_datetime = trigger_alert_datetime_list[pos - 1]
                     else:
                         candlestick_display_start_datetime = self.__minute_df.index[0]
                     
-                    candle_chart_negative_offset = int((trigger_alert_datetime - candlestick_display_start_datetime).total_seconds() / 60) + len(self.__daily_df)
+                    candle_chart_data_df, daily_date_to_fake_minute_datetime_x_axis_dict = concat_daily_df_and_minute_df(daily_df=self.__daily_df, 
+                                                                                                                         minute_df=self.__minute_df, 
+                                                                                                                         hit_scanner_datetime=trigger_alert_datetime, 
+                                                                                                                         select_datetime_start_range=candlestick_display_start_datetime,
+                                                                                                                         gap_btw_daily_and_minute=DAILY_AND_MINUTE_CANDLE_GAP)
+                    
+                    is_message_sent = self.check_if_pattern_analysis_message_sent(ticker=ticker, hit_scanner_datetime=trigger_alert_datetime.replace(second=0, microsecond=0), pattern=PATTERN_NAME, bar_size=BarSize.ONE_MINUTE)
+                    logger.log_debug_msg(f'Check {ticker} previous day support pattern message send time: {time.time() - check_message_sent_start_time} seconds')
                     
                     if not is_message_sent:
                         # Add alert trigger datetime log
@@ -194,7 +192,7 @@ class PreviousDayTopGainerSupport(PatternAnalyser):
                                                           ticker=ticker, pattern=PATTERN_NAME, bar_size=BarSize.ONE_MINUTE,
                                                           daily_date_to_fake_minute_datetime_x_axis_dict=daily_date_to_fake_minute_datetime_x_axis_dict,
                                                           hit_scanner_datetime=trigger_alert_datetime,
-                                                          positive_offset=0, negative_offset=candle_chart_negative_offset,
+                                                          positive_offset=0, negative_offset=0,
                                                           scatter_symbol=ScatterSymbol.SUPPORT, scatter_colour=ScatterColour.RED)
                         logger.log_debug_msg(f'Generate {ticker} previous day top gainer support one minute chart finished time: {time.time() - one_minute_chart_start_time} seconds')
 
