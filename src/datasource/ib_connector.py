@@ -6,6 +6,8 @@ from datetime import datetime, timedelta
 from datetime import time as dt_time
 import html
 import pytz
+from aiohttp import ClientError
+from requests import HTTPError, RequestException
 import requests
 import numpy as np
 import pandas as pd
@@ -16,15 +18,13 @@ from model.ib.snapshot import Snapshot
 
 from utils.http_util import send_async_request
 from utils.collection_util import get_chunk_list
+from utils.api_endpoint_lock_record_util import check_api_endpoint_locked
 from utils.datetime_util import  US_BUSINESS_DAY, get_us_business_day, get_current_us_datetime
 from utils.logger import Logger
 
 from constant.endpoint.ib.client_portal_api_endpoint import ClientPortalApiEndpoint
 from constant.candle.bar_size import BarSize
 from constant.indicator.indicator import Indicator
-
-from exception.reauthentication_request_error import ReauthenticationRequestError
-from exception.sso_vaildation_error import SSOValidationError
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -76,6 +76,15 @@ class IBConnector:
         #self.__snapshot_info_lock = threading.Lock()
         #self.__historical_data_lock = threading.Lock()
     
+    def control_api_endpoint_rate_limit(self, endpoint: ClientPortalApiEndpoint, check_interval: int):
+        while True:
+            is_locked = check_api_endpoint_locked(endpoint.value)    
+            
+            if not is_locked:
+                break
+            
+            time.sleep(check_interval)
+    
     def receive_brokerage_account(self):
         try:
             receive_brokerage_account_time = time.time()
@@ -100,19 +109,23 @@ class IBConnector:
             reauthenticate_response = session.post(f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.REAUTHENTICATE}', verify=False)
             logger.log_debug_msg(f'Session re-authentication response time: {time.time() - reauthenticate_time} seconds')
 
-            reauthenticate_response.raise_for_status()
             sso_validate_response.raise_for_status()
+            reauthenticate_response.raise_for_status()
             logger.log_debug_msg(f'SSO validation result: {sso_validate_response.json()}', with_std_out=True)
                 
             reauthenticate_result = reauthenticate_response.json()
             reauthenticate_message = reauthenticate_result.get('message')
             
+            is_sso_validation_successful = sso_validate_response.json().get('RESULT')
+            
+            if not is_sso_validation_successful:
+                raise RequestException('SSO validation failed')
+            
             if not reauthenticate_message:
-                raise requests.RequestException('Failed to reauthenticate session')
-        except ReauthenticationRequestError as connection_exception:
-            raise requests.RequestException('Failed to reauthenticate')
-        except SSOValidationError as sso_validation_exception:
-            raise requests.RequestException('Failed to validate session')
+                raise RequestException('Failed to reauthenticate session')
+        except (RequestException, ClientError, HTTPError)  as reauthenticate_exception:
+            logger.log_error_msg(f'Reauthentication falied, {reauthenticate_exception}')
+            raise reauthenticate_exception
         except Exception as exception:
             logger.log_error_msg(f'Reauthentication and SSO validation fatal error, {exception}')
             raise Exception(f'Reauthentication and SSO validation fatal error, {exception}')

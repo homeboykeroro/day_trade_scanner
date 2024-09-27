@@ -11,14 +11,12 @@ from utils.logger import Logger
 
 from constant.discord.discord_channel import DiscordChannel
 
-CHATBOT_TOKEN = os.environ['DISCORD_CHATBOT_TOKEN']
-
 # Text to Speech
 TEXT_TO_SPEECH_CHANNEL_ID = int(os.environ['DISCORD_TEXT_TO_SPEECH_CHANNEL_ID'])
 
 # For Pattern Analysis
 INITIAL_POP_CHANNEL_ID = int(os.environ['DISCORD_INITIAL_POP_CHANNEL_ID'])
-INITIAL_DIP_CHANNEL_ID = int(os.environ['DISCORD_INITIAL_DIP_CHANNEL_ID'])
+INITIAL_FLUSH_CHANNEL_ID = int(os.environ['DISCORD_INITIAL_FLUSH_CHANNEL_ID'])
 YESTERDAY_BULLISH_DAILY_CANDLE_CHANNEL_ID = int(os.environ['DISCORD_YESTERDAY_BULLISH_DAILY_CANDLE_CHANNEL_ID'])
 INTRA_DAY_BREAKOUT_CHANNEL_ID = int(os.environ['DISCORD_INTRA_DAY_BREAKOUT_CHANNEL_ID'])
 INTRA_DAY_BREAKOUT_LOG_CHANNEL_ID = int(os.environ['DISCORD_INTRA_DAY_BREAKOUT_LOG_CHANNEL_ID'])
@@ -125,7 +123,7 @@ class DiscordChatBotClient(discord.Client):
         self.__text_to_speech_channel = self.get_channel(TEXT_TO_SPEECH_CHANNEL_ID)
         
         self.__initial_pop_channel = self.get_channel(INITIAL_POP_CHANNEL_ID)
-        self.__initial_dip_channel = self.get_channel(INITIAL_DIP_CHANNEL_ID)
+        self.__initial_flush_channel = self.get_channel(INITIAL_FLUSH_CHANNEL_ID)
         self.__yesterday_bullish_daily_candle_channel = self.get_channel(YESTERDAY_BULLISH_DAILY_CANDLE_CHANNEL_ID)
         self.__intra_day_breakout_channel = self.get_channel(INTRA_DAY_BREAKOUT_CHANNEL_ID)
         self.__offering_news_log_channel = self.get_channel(OFFERING_NEWS_LOG_CHANNEL_ID)
@@ -272,8 +270,8 @@ class DiscordChatBotClient(discord.Client):
             channel = self.__text_to_speech_channel
         elif channel_type == DiscordChannel.INITIAL_POP:
             channel = self.__initial_pop_channel    
-        elif channel_type == DiscordChannel.INITIAL_DIP:
-            channel = self.__initial_dip_channel
+        elif channel_type == DiscordChannel.INITIAL_FLUSH:
+            channel = self.__initial_flush_channel
         elif channel_type == DiscordChannel.INTRA_DAY_BREAKOUT:
             channel = self.__intra_day_breakout_channel
         elif channel_type == DiscordChannel.PREVIOUS_DAYS_TOP_GAINER_SUPPORT:
@@ -379,8 +377,8 @@ class DiscordChatBotClient(discord.Client):
             
         return channel
 
-    def run_chatbot(self) -> threading.Thread:
-        bot_thread = threading.Thread(target=self.run, name="discord_chatbot_thread", args=(CHATBOT_TOKEN,))
+    def run_chatbot(self, chatbot_token: str = None) -> threading.Thread:
+        bot_thread = threading.Thread(target=self.run, name="discord_chatbot_thread", args=(chatbot_token,))
         bot_thread.start()
         
         while True:

@@ -1,5 +1,6 @@
 from module.discord_chatbot_client import DiscordChatBotClient
 from module.stock_screener import StockScreener
+from previous_day_top_gainer_scraper import scrap
 #from module.pl_report_generator import PLReportGenerator
 
 from utils.logger import Logger

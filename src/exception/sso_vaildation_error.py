@@ -1,2 +1,0 @@
-class SSOValidationError(Exception):
-    pass

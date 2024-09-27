@@ -34,7 +34,7 @@ MAX_YESTERDAY_CLOSE_TO_LAST_PCT = get_config('INITIAL_DIP_PARAM', 'MAX_YESTERDAY
 DAILY_AND_MINUTE_CANDLE_GAP = get_config('INITIAL_DIP_PARAM', 'DAILY_AND_MINUTE_CANDLE_GAP')
 
 
-class InitialDip(PatternAnalyser):
+class InitialFlush(PatternAnalyser):
     def __init__(self, bar_size: BarSize, historical_data_df: DataFrame, daily_df: DataFrame, ticker_to_contract_info_dict: dict, discord_client):
         ticker_list = list(historical_data_df.columns.get_level_values(0).unique())
         super().__init__(discord_client)

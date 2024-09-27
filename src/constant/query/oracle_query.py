@@ -1,6 +1,10 @@
 from enum import Enum
 
 class OracleQuery(str, Enum):
+    #API Endpoint Lock
+    GET_API_ENDPOINT_LOCK_QUERY = "SELECT * FROM API_ENDPOINT_LOCK WHERE endpoint = :endpoint"     
+    UPDATE_API_ENDPOINT_LOCK_QUERY = "UPDATE API_ENDPOINT_LOCK SET IS_LOCKED = : is_locked, LOCKED_BY = :locked_by, LOCK_DATETIME = :lock_datetime WHERE ENDPOINT = :endpoint"
+    
     #For Top Gainer History
     GET_TOP_GAINER_QUERY = "SELECT * FROM TOP_GAINER_HISTORY WHERE PERCENTAGE >= :percentage AND TRUNC(SCAN_DATE, 'DD') BETWEEN TRUNC(:start_datetime, 'DD') AND TRUNC(:end_datetime, 'DD') ORDER BY SCAN_DATE DESC, PERCENTAGE DESC"    
 

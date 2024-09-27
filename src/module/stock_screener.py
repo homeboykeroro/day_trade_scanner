@@ -10,7 +10,7 @@ from datasource.ib_connector import IBConnector
 
 from module.discord_chatbot_client import DiscordChatBotClient
 
-from scanner import Scanner
+from stock_scanner.src.ib_market_data import Scanner
 
 from utils.config_util import get_config
 from utils.datetime_util import is_within_trading_day_and_hours
