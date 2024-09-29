@@ -43,6 +43,7 @@ peewee==3.17.1
 pefile==2023.2.7
 pillow==10.2.0
 platformdirs==4.2.0
+-e git+https://github.com/homeboykeroro/previous_day_top_gainer_scraper.git@2974a026aefb104bc515fedae7c9f76df38c6bcb#egg=previous_day_top_gainer_scraper
 pycparser==2.21
 pycryptodome==3.20.0
 pyinstaller==6.5.0

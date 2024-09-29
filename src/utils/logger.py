@@ -1,5 +1,6 @@
 from datetime import datetime
 import logging
+import threading
 import os
 import pandas as pd
 
@@ -36,7 +37,14 @@ class Logger:
                    display_format: str = '\r(%(threadName)s) %(asctime)s - %(message)s (%(levelname)s)',
                    date_format: str = '%m/%d/%Y %I:%M:%S %p'):
         log_date = datetime.now().strftime('%Y%m%d')
-        log_filename = 'client_portal_scanner_log_' + log_date + '.txt'
+        
+        thread_name = threading.current_thread().name
+        
+        if thread_name == 'InitialPopScannerThread':
+            log_filename = 'initial_pop_scanner_' + log_date + '.txt'
+        elif thread_name == 'InitialFlushScannerThread':
+            log_filename = 'initial_flush_scanner_' + log_date + '.txt'
+            
         log_dir = log_parent_directory + "/" + log_filename
         if not os.path.exists(os.path.dirname(log_dir)) and os.path.dirname(log_dir):
             os.makedirs(os.path.dirname(log_dir))

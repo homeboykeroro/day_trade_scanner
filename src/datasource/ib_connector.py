@@ -78,7 +78,9 @@ class IBConnector:
     
     def control_api_endpoint_rate_limit(self, endpoint: ClientPortalApiEndpoint, check_interval: int):
         while True:
+            check_start_time = time.time()
             is_locked = check_api_endpoint_locked(endpoint.value)    
+            logger.log_debug_msg(f'Check {endpoint} API endpoint lock time: {time.time() - check_start_time} seconds')
             
             if not is_locked:
                 break
@@ -297,6 +299,7 @@ class IBConnector:
         
         logger.log_debug_msg(f'Getting market cap, is shortable, shortable shares, and rebate rate data, conId list: {con_id_list}')
         snapshot_payload_list = []
+        incomplete_response_payload_list = []
 
         chunk_list = get_chunk_list(con_id_list, CONCAT_TICKER_CHUNK_SIZE)
         
