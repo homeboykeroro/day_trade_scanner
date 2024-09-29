@@ -5,6 +5,7 @@ import time
 from datetime import datetime, timedelta
 from datetime import time as dt_time
 import html
+import oracledb
 import pytz
 from aiohttp import ClientError
 from requests import HTTPError, RequestException
@@ -78,14 +79,18 @@ class IBConnector:
     
     def control_api_endpoint_rate_limit(self, endpoint: ClientPortalApiEndpoint, check_interval: int):
         while True:
-            check_start_time = time.time()
-            is_locked = check_api_endpoint_locked(endpoint.value)    
-            logger.log_debug_msg(f'Check {endpoint} API endpoint lock time: {time.time() - check_start_time} seconds')
-            
-            if not is_locked:
-                break
-            
-            time.sleep(check_interval)
+            try:
+                check_start_time = time.time()
+                is_locked = check_api_endpoint_locked(endpoint.value)    
+                logger.log_debug_msg(f'Check {endpoint} API endpoint lock time: {time.time() - check_start_time} seconds')
+
+                if not is_locked:
+                    break
+                
+                time.sleep(check_interval)
+            except Exception as e:
+                logger.log_error_msg(f'Check {endpoint.value} lock record error, {e}', with_std_out=True)
+                raise oracledb.Error(f'Check {endpoint.value} lock record error, {e}')
     
     def receive_brokerage_account(self):
         try:

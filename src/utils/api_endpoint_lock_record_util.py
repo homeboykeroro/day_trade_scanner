@@ -42,9 +42,12 @@ def check_api_endpoint_locked(endpoint: str) -> bool:
     params = dict(endpoint=endpoint)
     result = execute_in_transaction(exec, params)
     
-    is_locked = result[1]
-    locked_by = result[2]
-    lock_datetime = result[3]
+    if result:
+        is_locked = result[1]
+        locked_by = result[2]
+        lock_datetime = result[3]
+    else:
+        raise Exception(f'Get API endpoint {endpoint} record error')
     
     logger.log_debug_msg(f'{endpoint} lock status: {is_locked}, locked by: {locked_by}, lock datetime: {lock_datetime}')
     

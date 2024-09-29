@@ -86,10 +86,34 @@ def reauthenticate(ib_connector: IBConnector, discord_client: DiscordChatBotClie
         break 
 
 def scan():  
+    idle_message = None
     discord_client.run_chatbot(CHATBOT_TOKEN)
-    logger.log_debug_msg('start sending testing message')
-    discord_client.send_message_by_list_with_response([DiscordMessage(content='Initial Pop Scanner Starts')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
-    logger.log_debug_msg('pop scan completed')
+    
+    while True: 
+        start_scan = is_within_trading_day_and_hours()
+            
+        if start_scan:
+            break
+        else:
+            if idle_message:
+                logger.log_debug_msg(idle_message, with_std_out=True)
+            else:
+                idle_message = 'Initial pop scanner is idle until valid trading weekday and time'
+
+            time.sleep(SCANNER_IDLE_REFRESH_INTERVAL)
+            
+    while True:    
+        try:
+            ib_connector.control_api_endpoint_rate_limit(ClientPortalApiEndpoint.RUN_SCANNER, 1)
+            logger.log_debug_msg('start sending testing message')
+            discord_client.send_message_by_list_with_response([DiscordMessage(content='Initial Pop Scanner Starts')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+            logger.log_debug_msg('pop scan completed')
+        except (RequestException, ClientError, HTTPError) as connection_exception:
+            logger.log_error_msg(f'Client portal API connection error, {connection_exception}', with_std_out=True)
+            #reauthenticate(ib_connector, discord_client, reauthentication_retry_times)
+        except oracledb.Error as oracle_connection_exception:
+            logger.log_error_msg(f'Oracle connection error, {oracle_connection_exception}', with_std_out=True)
+            discord_client.send_message(DiscordMessage(content='Database connection error'), channel_type=DiscordChannel.CHATBOT_ERROR_LOG, with_text_to_speech=True)
 
 if __name__ == '__main__':
     scan()
