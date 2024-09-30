@@ -47,7 +47,7 @@ def check_api_endpoint_locked(endpoint: str) -> bool:
         locked_by = result[2]
         lock_datetime = result[3]
     else:
-        raise Exception(f'Get API endpoint {endpoint} record error')
+        raise Exception(f'Get API endpoint {endpoint} record error, no record found')
     
     logger.log_debug_msg(f'{endpoint} lock status: {is_locked}, locked by: {locked_by}, lock datetime: {lock_datetime}')
     

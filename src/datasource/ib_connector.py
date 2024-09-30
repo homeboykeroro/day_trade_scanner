@@ -12,14 +12,16 @@ from requests import HTTPError, RequestException
 import requests
 import numpy as np
 import pandas as pd
+from exception.ib_data_retrieval_timeout_error import IBDataRetrievalTimeoutError
 import urllib3
 
 from model.ib.contract_info import ContractInfo
 from model.ib.snapshot import Snapshot
 
+from utils.config_util import get_config
 from utils.http_util import send_async_request
 from utils.collection_util import get_chunk_list
-from utils.api_endpoint_lock_record_util import check_api_endpoint_locked
+from utils.api_endpoint_lock_record_util import check_api_endpoint_locked, update_api_endpoint_lock
 from utils.datetime_util import  US_BUSINESS_DAY, get_us_business_day, get_current_us_datetime
 from utils.logger import Logger
 
@@ -65,8 +67,11 @@ idx = pd.IndexSlice
 SNAPSHOT_FIELD_LIST_STR = '55,7221,7051,7289,7644,7636,7637,6509,31,7741'
 CONCAT_TICKER_CHUNK_SIZE = 300
 
-SCANNER_RATE_LIMIT_WAIT_PERIOD = 1
-SNAPSHOT_RATE_LIMIT_WAIT_PERIOD = 10
+#SCANNER_RATE_LIMIT_WAIT_PERIOD = 1
+#SNAPSHOT_RATE_LIMIT_WAIT_PERIOD = 10
+MAX_SNAPSHOT_RETRIEVAL_TIME_IN_MINUTE = get_config('SYS_PARAM', 'MAX_SNAPSHOT_RETRIEVAL_TIME_IN_MINUTE')
+SNAPSHOT_RATE_LIMIT_WAIT_PERIOD = get_config('SYS_PARAM', 'SNAPSHOT_RATE_LIMIT_WAIT_PERIOD')
+
 
 class IBConnector:
     def __init__(self, loop: AbstractEventLoop = None) -> None:
@@ -77,20 +82,20 @@ class IBConnector:
         #self.__snapshot_info_lock = threading.Lock()
         #self.__historical_data_lock = threading.Lock()
     
-    def control_api_endpoint_rate_limit(self, endpoint: ClientPortalApiEndpoint, check_interval: int):
-        while True:
-            try:
-                check_start_time = time.time()
-                is_locked = check_api_endpoint_locked(endpoint.value)    
-                logger.log_debug_msg(f'Check {endpoint} API endpoint lock time: {time.time() - check_start_time} seconds')
+    def update_api_endpoint_lock(self, endpoint: ClientPortalApiEndpoint, lock: bool):
+        try:
+            update_lock_start_time = time.time()
 
-                if not is_locked:
-                    break
-                
-                time.sleep(check_interval)
-            except Exception as e:
-                logger.log_error_msg(f'Check {endpoint.value} lock record error, {e}', with_std_out=True)
-                raise oracledb.Error(f'Check {endpoint.value} lock record error, {e}')
+            thread_name = threading.current_thread().name
+            update_api_endpoint_lock(endpoint=endpoint, 
+                                     is_locked=lock, 
+                                     locked_by=thread_name, 
+                                     lock_datetime=get_current_us_datetime())
+            
+            logger.log_debug_msg(f'Update lock time: {time.time() - update_lock_start_time} seconds')
+        except Exception as e:
+            logger.log_error_msg(f'Update {endpoint.value} lock error, {e}', with_std_out=True)
+            raise oracledb.Error(f'Update {endpoint.value} lock error, {e}')
     
     def receive_brokerage_account(self):
         try:
@@ -188,6 +193,8 @@ class IBConnector:
             try:
                 scanner_type = scanner_filter_payload.get("type")
                 scanner_request_start_time = time.time()
+                
+                is_locked = check_api_endpoint_locked(ClientPortalApiEndpoint.RUN_SCANNER)    
                 scanner_response = session.post(f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.RUN_SCANNER}', json=scanner_filter_payload, verify=False)
                 logger.log_debug_msg(f'{scanner_type} scanner result response time: {time.time() - scanner_request_start_time} seconds')
                 scanner_response.raise_for_status()
@@ -211,7 +218,6 @@ class IBConnector:
                     else:
                         logger.log_debug_msg(f'Exclude unknown contract from scanner result, {result}', with_std_out=True)
                 
-                time.sleep(SCANNER_RATE_LIMIT_WAIT_PERIOD)
                 #logger.log_debug_msg('Release scanner result retrieval lock')
                 
                 return scanner_result_without_otc_stock[:max_no_of_scanner_result]
@@ -291,7 +297,6 @@ class IBConnector:
             #with self.__snapshot_info_lock:
                 self.update_snapshot(snapshot_data_con_id_list)
                 self.update_sec_def(snapshot_data_con_id_list)
-                time.sleep(SNAPSHOT_RATE_LIMIT_WAIT_PERIOD)
                 #logger.log_debug_msg('Release snapshot retrieval lock')
         else:
             logger.log_debug_msg(f'No snapshot data is required to update for the contracts: {contract_list}')
@@ -304,7 +309,6 @@ class IBConnector:
         
         logger.log_debug_msg(f'Getting market cap, is shortable, shortable shares, and rebate rate data, conId list: {con_id_list}')
         snapshot_payload_list = []
-        incomplete_response_payload_list = []
 
         chunk_list = get_chunk_list(con_id_list, CONCAT_TICKER_CHUNK_SIZE)
         
@@ -315,11 +319,14 @@ class IBConnector:
             }
             snapshot_payload_list.append(get_snapshot_payload)
 
+        snapshot_retrieval_start_time = time.time()
+        
         try:
             snapshot_retrieval_success = False
             incomplete_response_found = False 
             
             while not snapshot_retrieval_success:
+                incomplete_snapshot_response_list = []
                 get_contract_snapshot_start_time = time.time()
                 snapshot_response_list = send_async_request(method='GET', 
                                                             endpoint=f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.SNAPSHOT}', 
@@ -330,19 +337,20 @@ class IBConnector:
                 logger.log_debug_msg(f'Get market cap, is shortable, shortable shares, and rebate rate data response time: {time.time() - get_contract_snapshot_start_time}')
                 
                 for snapshot_list in snapshot_response_list:
-                    incomplete_response_found = False
-                    
                     for snapshot_data in snapshot_list:
                         if '_updated' not in snapshot_data:
                             logger.log_debug_msg(f'Incomplete snapshot response found: {snapshot_data}')
                             logger.log_debug_msg(f'Full snapshot response list: {snapshot_response_list}')
                             incomplete_response_found = True
-                            break
-                            
-                    if incomplete_response_found:
-                        break
-                        
+                            incomplete_snapshot_response_list.append(snapshot_data)
+                
+                retrieval_time_min = (time.time() - snapshot_retrieval_start_time) / 60
+                
                 if incomplete_response_found:
+                    if retrieval_time_min > MAX_SNAPSHOT_RETRIEVAL_TIME_IN_MINUTE:
+                        raise IBDataRetrievalTimeoutError(f'Snapshot retrieval timeout, incompleted snapshot responst list: {incomplete_snapshot_response_list}')
+                    
+                    logger.log_debug_msg(f'Incomplete data found, incompleted snapshot response list: {incomplete_snapshot_response_list}, full snapshot response list: {snapshot_response_list}')
                     logger.log_debug_msg('Re-fetch snapshot after 0.5 second', with_std_out=True)
                     time.sleep(0.5)
                 else:

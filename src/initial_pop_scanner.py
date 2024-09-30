@@ -14,6 +14,7 @@ from datasource.ib_connector import IBConnector
 
 from module.discord_chatbot_client import DiscordChatBotClient
 
+from utils.string_util import split_long_paragraph_into_chunks
 from utils.config_util import get_config
 from utils.filter_util import get_ib_scanner_filter
 from utils.datetime_util import is_within_trading_day_and_hours
@@ -35,7 +36,7 @@ logger = Logger()
 CHATBOT_TOKEN = os.environ['DISCORD_INITIAL_POP_SCANNER_CHATBOT_TOKEN']
 
 # Top gainer filter parameter
-MAX_NO_OF_DAY_TRADE_SCANNER_RESULT = get_config('TOP_GAINER_SCANNER', 'MAX_NO_OF_DAY_TRADE_SCANNER_RESULT')
+MAX_NO_OF_SCANNER_RESULT = get_config('TOP_GAINER_SCANNER', 'MAX_NO_OF_SCANNER_RESULT')
 MIN_PRICE = get_config('TOP_GAINER_SCANNER', 'MIN_PRICE')
 PERCENT_CHANGE_PARAM = get_config('TOP_GAINER_SCANNER', 'PERCENT_CHANGE_PARAM')
 MIN_USD_VOLUME = get_config('TOP_GAINER_SCANNER', 'MIN_USD_VOLUME')
@@ -61,14 +62,14 @@ def reauthenticate(ib_connector: IBConnector, discord_client: DiscordChatBotClie
     while True:
         try:
             if reauthentication_retry_times < MAX_REAUTHENTICATION_RETRY_CONNECTION_TIMES:
-                ##logger.log_debug_msg('Send reauthenticate requests', with_std_out=True)
+                logger.log_debug_msg('Send reauthenticate requests', with_std_out=True)
                 ib_connector.reauthenticate()
             else:
                 raise RequestException("Reauthentication failed")
         except (RequestException, ClientError, HTTPError)  as reauthenticate_exception:
             if reauthentication_retry_times < MAX_REAUTHENTICATION_RETRY_CONNECTION_TIMES:
                 discord_client.send_message_by_list_with_response([DiscordMessage(content=f'Failed to re-authenticate session for initial pop scanner, retry after {SCANNER_REAUTHENTICATION_RETRY_INTERVAL} seconds')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
-                ##logger.log_error_msg(f'Session re-authentication error, {reauthenticate_exception}', with_std_out=True)
+                logger.log_error_msg(f'Session re-authentication error, {reauthenticate_exception}', with_std_out=True)
                 reauthentication_retry_times += 1
                 time.sleep(SCANNER_REAUTHENTICATION_RETRY_INTERVAL)
                 continue
@@ -82,11 +83,12 @@ def reauthenticate(ib_connector: IBConnector, discord_client: DiscordChatBotClie
             os._exit(1)
 
         discord_client.send_message_by_list_with_response([DiscordMessage(content='Initial pop scanner reauthentication succeed')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
-        ##logger.log_debug_msg('Reauthentication succeed', with_std_out=True)
+        logger.log_debug_msg('Initial pop scanner reauthentication succeed', with_std_out=True)
         break 
 
 def scan():  
     idle_message = None
+    reauthentication_retry_times = 0
     discord_client.run_chatbot(CHATBOT_TOKEN)
     
     while True: 
@@ -104,16 +106,41 @@ def scan():
             
     while True:    
         try:
-            ib_connector.control_api_endpoint_rate_limit(ClientPortalApiEndpoint.RUN_SCANNER, 1)
-            logger.log_debug_msg('start sending testing message')
+            pop_scan_start_time = time.time()
+            
+            logger.log_debug_msg('Initial pop scanner starts')
             discord_client.send_message_by_list_with_response([DiscordMessage(content='Initial Pop Scanner Starts')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
-            logger.log_debug_msg('pop scan completed')
+            
+            # Get contract list from IB screener
+            contract_list = ib_connector.get_screener_results(MAX_NO_OF_SCANNER_RESULT, IB_TOP_GAINER_FILTER)
+            
+            logger.log_debug_msg(f'Fetch top gainer snapshot')
+            ib_connector.update_contract_info(contract_list)
+            ticker_to_contract_dict = ib_connector.get_ticker_to_contract_dict()
+            
+            reauthentication_retry_times = 0
+            logger.log_debug_msg(f'Initial pop scan completed, completed in {time.time() - pop_scan_start_time}')
         except (RequestException, ClientError, HTTPError) as connection_exception:
             logger.log_error_msg(f'Client portal API connection error, {connection_exception}', with_std_out=True)
-            #reauthenticate(ib_connector, discord_client, reauthentication_retry_times)
+            reauthenticate(ib_connector, discord_client, reauthentication_retry_times)
         except oracledb.Error as oracle_connection_exception:
             logger.log_error_msg(f'Oracle connection error, {oracle_connection_exception}', with_std_out=True)
             discord_client.send_message(DiscordMessage(content='Database connection error'), channel_type=DiscordChannel.CHATBOT_ERROR_LOG, with_text_to_speech=True)
-
+        except Exception as exception:
+            discord_client.send_message_by_list_with_response(DiscordMessage(content='Fatal error'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)   
+            stacktrace = traceback.format_exc()
+                
+            if len(stacktrace) > STACKTRACE_CHUNK_SIZE:
+                send_chunk_list = split_long_paragraph_into_chunks(stacktrace, STACKTRACE_CHUNK_SIZE)
+                
+                for send_chunk in send_chunk_list:
+                    discord_client.send_message_by_list_with_response(DiscordMessage(content=send_chunk), channel_type=DiscordChannel.CHATBOT_ERROR_LOG)    
+            else:
+                discord_client.send_message(DiscordMessage(content=stacktrace), channel_type=DiscordChannel.CHATBOT_ERROR_LOG)
+        
+            logger.log_error_msg(f'Scanner fatal error, {exception}', with_std_out=True)
+            logger.log_debug_msg(f'Retry scanning due to fatal error after: {SCANNER_FATAL_ERROR_REFRESH_INTERVAL} seconds', with_std_out=True)
+            time.sleep(SCANNER_FATAL_ERROR_REFRESH_INTERVAL)
+            
 if __name__ == '__main__':
     scan()

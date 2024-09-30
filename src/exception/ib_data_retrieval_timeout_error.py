@@ -1,0 +1,2 @@
+class IBDataRetrievalTimeoutError(Exception):
+    pass
