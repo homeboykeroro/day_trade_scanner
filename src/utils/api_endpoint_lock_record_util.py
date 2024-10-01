@@ -1,4 +1,5 @@
 import datetime
+import time
 from oracledb import Cursor
 
 from utils.logger import Logger
@@ -26,6 +27,7 @@ def update_api_endpoint_lock(endpoint: str, is_locked: bool, locked_by: str, loc
     execute_in_transaction(exec, params)
 
 def check_api_endpoint_locked(endpoint: str) -> bool:
+    start_time = time.time()
     def execute(cursor: Cursor, params):
         cursor.execute(OracleQuery.GET_API_ENDPOINT_LOCK_QUERY.value, **params)
         result = cursor.fetchone()
@@ -50,7 +52,8 @@ def check_api_endpoint_locked(endpoint: str) -> bool:
         raise Exception(f'Get API endpoint {endpoint} record error, no record found')
     
     logger.log_debug_msg(f'{endpoint} lock status: {is_locked}, locked by: {locked_by}, lock datetime: {lock_datetime}')
-    
+    logger.log_debug_msg(f'Check {endpoint} endpoint lock time: {time.time() - start_time}')
+        
     return is_locked
 
    

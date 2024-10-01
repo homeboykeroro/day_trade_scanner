@@ -246,10 +246,10 @@ class IBMarketData:
     
     
     
-  def __retrieve_yesterday_minute_candle(self, ib_connector: IBConnector,
-                                                 contract_list: list, 
-                                                 bar_size: BarSize, 
-                                                 outside_rth: bool = True):
+    def __retrieve_yesterday_minute_candle(self, ib_connector: IBConnector,
+                                        contract_list: list, 
+                                        bar_size: BarSize, 
+                                        outside_rth: bool = True):
         candle_request_contract_list = []
         contract_ticker_list = [contract['symbol'] for contract in contract_list]
         minute_candle_df = self.__yesterday_top_gainier_minute_candle_df_dict[bar_size]

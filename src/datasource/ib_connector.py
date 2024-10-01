@@ -82,6 +82,18 @@ class IBConnector:
         #self.__snapshot_info_lock = threading.Lock()
         #self.__historical_data_lock = threading.Lock()
     
+    def wait_for_api_endpoint_unlocked(wait_time: int):
+        try:
+            is_locked = check_api_endpoint_locked(ClientPortalApiEndpoint.RUN_SCANNER)   
+        
+            while is_locked:
+                
+                time.sleep(wait_time)
+        except Exception as e:
+            logger.log_error_msg(f'Update {endpoint.value} lock error, {e}', with_std_out=True)
+            raise oracledb.Error(f'Update {endpoint.value} lock error, {e}')
+            
+    
     def update_api_endpoint_lock(self, endpoint: ClientPortalApiEndpoint, lock: bool):
         try:
             update_lock_start_time = time.time()
