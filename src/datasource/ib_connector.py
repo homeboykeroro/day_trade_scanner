@@ -71,28 +71,23 @@ CONCAT_TICKER_CHUNK_SIZE = 300
 #SNAPSHOT_RATE_LIMIT_WAIT_PERIOD = 10
 MAX_SNAPSHOT_RETRIEVAL_TIME_IN_MINUTE = get_config('SYS_PARAM', 'MAX_SNAPSHOT_RETRIEVAL_TIME_IN_MINUTE')
 SNAPSHOT_RATE_LIMIT_WAIT_PERIOD = get_config('SYS_PARAM', 'SNAPSHOT_RATE_LIMIT_WAIT_PERIOD')
+DEFAULT_RATE_LIMIT_WAIT_PERIOD = get_config('SYS_PARAM', 'DEFAULT_RATE_LIMIT_WAIT_PERIOD')
 
 
 class IBConnector:
     def __init__(self, loop: AbstractEventLoop = None) -> None:
         self.__ticker_to_contract_info_dict = {}
         self.__loop = loop
-        
-        #self.__scanner_lock = threading.Lock()
-        #self.__snapshot_info_lock = threading.Lock()
-        #self.__historical_data_lock = threading.Lock()
     
-    def wait_for_api_endpoint_unlocked(wait_time: int):
+    def acquire_api_endpoint_lock(endpoint: ClientPortalApiEndpoint):
         try:
-            is_locked = check_api_endpoint_locked(ClientPortalApiEndpoint.RUN_SCANNER)   
-        
-            while is_locked:
-                
-                time.sleep(wait_time)
+            while check_api_endpoint_locked(endpoint):
+                continue
+            
+            update_api_endpoint_lock(endpoint, True)
         except Exception as e:
             logger.log_error_msg(f'Update {endpoint.value} lock error, {e}', with_std_out=True)
             raise oracledb.Error(f'Update {endpoint.value} lock error, {e}')
-            
     
     def update_api_endpoint_lock(self, endpoint: ClientPortalApiEndpoint, lock: bool):
         try:
@@ -201,38 +196,38 @@ class IBConnector:
         return self.__ticker_to_contract_info_dict
     
     def get_screener_results(self, max_no_of_scanner_result: int, scanner_filter_payload: dict) -> list:
-        #with self.__scanner_lock:
-            try:
-                scanner_type = scanner_filter_payload.get("type")
-                scanner_request_start_time = time.time()
-                
-                is_locked = check_api_endpoint_locked(ClientPortalApiEndpoint.RUN_SCANNER)    
-                scanner_response = session.post(f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.RUN_SCANNER}', json=scanner_filter_payload, verify=False)
-                logger.log_debug_msg(f'{scanner_type} scanner result response time: {time.time() - scanner_request_start_time} seconds')
-                scanner_response.raise_for_status()
-            except requests.exceptions.HTTPError as scanner_request_exception:
-                raise requests.exceptions.HTTPError(f'Error occurred while requesting {scanner_type} scanner result')
-            else:
-                logger.log_debug_msg(f'{scanner_type} scanner full result json: {[contract.get("symbol") for contract in scanner_response.json().get("contracts")]}')
-                logger.log_debug_msg(f'{scanner_type} scanner full result size: {len(scanner_response.json().get("contracts"))}') #bug fix Add 
-                logger.log_debug_msg(f'Maximum {scanner_type} scanner result size: {max_no_of_scanner_result}')
-                scanner_result = scanner_response.json()['contracts']
-                scanner_result_without_otc_stock = []
+        try:
+            scanner_type = scanner_filter_payload.get("type")
+            scanner_request_start_time = time.time()
             
-                for result in scanner_result:
-                    if 'symbol' in result:
-                        symbol = result['symbol']
-    
-                        if re.match('^[A-Z]{1,4}$', symbol): 
-                            scanner_result_without_otc_stock.append(result)
-                        else:
-                            logger.log_debug_msg(f'Exclude {symbol} from scanner result')
+            self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.RUN_SCANNER)
+            
+            scanner_response = session.post(f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.RUN_SCANNER}', json=scanner_filter_payload, verify=False)
+            logger.log_debug_msg(f'{scanner_type} scanner result response time: {time.time() - scanner_request_start_time} seconds')
+            scanner_response.raise_for_status()
+        except requests.exceptions.HTTPError as scanner_request_exception:
+            raise requests.exceptions.HTTPError(f'Error occurred while requesting {scanner_type} scanner result')
+        else:
+            logger.log_debug_msg(f'{scanner_type} scanner full result json: {[contract.get("symbol") for contract in scanner_response.json().get("contracts")]}')
+            logger.log_debug_msg(f'{scanner_type} scanner full result size: {len(scanner_response.json().get("contracts"))}') #bug fix Add 
+            logger.log_debug_msg(f'Maximum {scanner_type} scanner result size: {max_no_of_scanner_result}')
+            scanner_result = scanner_response.json()['contracts']
+            scanner_result_without_otc_stock = []
+        
+            for result in scanner_result:
+                if 'symbol' in result:
+                    symbol = result['symbol']
+
+                    if re.match('^[A-Z]{1,4}$', symbol): 
+                        scanner_result_without_otc_stock.append(result)
                     else:
-                        logger.log_debug_msg(f'Exclude unknown contract from scanner result, {result}', with_std_out=True)
-                
-                #logger.log_debug_msg('Release scanner result retrieval lock')
-                
-                return scanner_result_without_otc_stock[:max_no_of_scanner_result]
+                        logger.log_debug_msg(f'Exclude {symbol} from scanner result')
+                else:
+                    logger.log_debug_msg(f'Exclude unknown contract from scanner result, {result}', with_std_out=True)
+            
+            #logger.log_debug_msg('Release scanner result retrieval lock')
+            
+            return scanner_result_without_otc_stock[:max_no_of_scanner_result]
     
     def get_security_by_tickers(self, ticker_list: list) -> list:
         result_list = []
@@ -251,6 +246,8 @@ class IBConnector:
             get_security_payload_list.append(get_security_payload)
 
         try:
+            self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SECURITY_STOCKS_BY_SYMBOL)
+            
             get_security_by_ticker_start_time = time.time()
             security_response = send_async_request(method='GET', 
                                                    endpoint=f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.SECURITY_STOCKS_BY_SYMBOL}', 
@@ -306,10 +303,8 @@ class IBConnector:
                 snapshot_data_con_id_list.append(con_id)
         
         if snapshot_data_con_id_list:
-            #with self.__snapshot_info_lock:
-                self.update_snapshot(snapshot_data_con_id_list)
-                self.update_sec_def(snapshot_data_con_id_list)
-                #logger.log_debug_msg('Release snapshot retrieval lock')
+            self.update_snapshot(snapshot_data_con_id_list)
+            self.update_sec_def(snapshot_data_con_id_list)
         else:
             logger.log_debug_msg(f'No snapshot data is required to update for the contracts: {contract_list}')
         
@@ -338,6 +333,8 @@ class IBConnector:
             incomplete_response_found = False 
             
             while not snapshot_retrieval_success:
+                self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SNAPSHOT)
+                
                 incomplete_snapshot_response_list = []
                 get_contract_snapshot_start_time = time.time()
                 snapshot_response_list = send_async_request(method='GET', 
@@ -465,6 +462,8 @@ class IBConnector:
             sec_def_payload_list.append(get_sec_def_payload)
 
         try:
+            self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SECURITY_DEFINITIONS)
+            
             get_security_definitions_start_time = time.time()
             sec_def_response_list = send_async_request(method='GET', 
                                                        endpoint=f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.SECURITY_DEFINITIONS}', 
