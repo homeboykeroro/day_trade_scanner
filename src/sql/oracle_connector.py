@@ -2,7 +2,7 @@ import oracledb
 
 from sql.execute_query_impl import ExecuteQueryImpl
 
-from utils.config_util import get_config
+from utils.common.config_util import get_config
 from utils.logger import Logger
 
 logger = Logger()

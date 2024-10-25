@@ -11,10 +11,10 @@ from constant.indicator.scatter_colour import ScatterColour
 from constant.indicator.scatter_symbol import ScatterSymbol
 from constant.indicator.customised_indicator import CustomisedIndicator
 
-from utils.config_util import get_config
-from utils.dataframe_util import get_candle_comments_df, get_scatter_symbol_and_colour_df
-from utils.datetime_util import get_offsetted_hit_scanner_datetime
-from utils.math_util import get_max_round_decimal_places, round_to_nth_digit, get_first_non_zero_decimal_place_position
+from utils.common.config_util import get_config
+from utils.common.dataframe_util import get_candle_comments_df, get_scatter_symbol_and_colour_df
+from utils.common.datetime_util import get_offsetted_hit_scanner_datetime
+from utils.common.math_util import get_max_round_decimal_places, round_to_nth_digit, get_first_non_zero_decimal_place_position
 from utils.logger import Logger
 
 from constant.candle.bar_size import BarSize

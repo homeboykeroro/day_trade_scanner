@@ -11,10 +11,10 @@ from module.discord_chatbot_client import DiscordChatBotClient
 
 from model.discord.discord_message import DiscordMessage
 
-from utils.config_util import get_config
+from utils.common.config_util import get_config
 from utils.shorten_url_util import shorten_url
-from utils.datetime_util import get_current_us_datetime
-from utils.http_util import send_async_request
+from utils.common.datetime_util import get_current_us_datetime
+from utils.common.http_util import send_async_request
 from utils.logger import Logger
 
 from constant.discord.discord_channel import DiscordChannel

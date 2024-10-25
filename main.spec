@@ -1,10 +1,10 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 a1 = Analysis(
-    ['src\\initial_pop_scanner.py'],
+    ['src\\small_cap_initial_pop_scanner.py'],
     pathex=[],
     binaries=[],
-    datas=[('config.ini', '.initial_pop_scanner')],
+    datas=[('config.ini', '.small_cap_initial_pop_scanner')],
     hiddenimports=['cryptography.hazmat.primitives.kdf.pbkdf2'],
     hookspath=[],
     hooksconfig={},
@@ -19,7 +19,7 @@ exe1 = EXE(
     a1.scripts,
     [],
     exclude_binaries=True,
-    name='initial_pop_scanner',
+    name='small_cap_initial_pop_scanner',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -38,15 +38,15 @@ coll1 = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='initial_pop_scanner',
+    name='small_cap_initial_pop_scanner',
     icon='app_icon.png'
 )
 
 a2 = Analysis(
-    ['src\\initial_flush_scanner.py'],
+    ['src\\yesterday_top_gainer_scanner.py'],
     pathex=[],
     binaries=[],
-    datas=[('config.ini', '.initial_flush_scanner')],
+    datas=[('config.ini', '.yesterday_top_gainer_scanner')],
     hiddenimports=['cryptography.hazmat.primitives.kdf.pbkdf2'],
     hookspath=[],
     hooksconfig={},
@@ -61,7 +61,7 @@ exe2 = EXE(
     a2.scripts,
     [],
     exclude_binaries=True,
-    name='initial_flush_scanner',
+    name='yesterday_top_gainer_scanner',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -80,7 +80,7 @@ coll2 = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='initial_flush_scanner',
+    name='yesterday_top_gainer_scanner',
     icon='app_icon.png'
 )
 
@@ -91,12 +91,12 @@ import os
 
 # Define the source and destination paths
 source = 'config.ini'
-dest_initial_pop_scanner = os.path.join('dist', 'initial_pop_scanner', 'config.ini')
-dest_initial_flush_scanner = os.path.join('dist', 'initial_flush_scanner', 'config.ini')
+dest_small_cap_initial_pop_scanner = os.path.join('dist', 'small_cap_initial_pop_scanner', 'config.ini')
+dest_yesterday_top_gainer_scanner = os.path.join('dist', 'yesterday_top_gainer_scanner', 'config.ini')
 
 # Copy the config.ini file to each destination
-shutil.copyfile(source, dest_initial_pop_scanner)
-shutil.copyfile(source, dest_initial_flush_scanner)
+shutil.copyfile(source, dest_small_cap_initial_pop_scanner)
+shutil.copyfile(source, dest_yesterday_top_gainer_scanner)
 
-print(f"Copied {source} to {dest_initial_pop_scanner}")
-print(f"Copied {source} to {dest_initial_flush_scanner}")
+print(f"Copied {source} to {dest_small_cap_initial_pop_scanner}")
+print(f"Copied {source} to {dest_yesterday_top_gainer_scanner}")

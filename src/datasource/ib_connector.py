@@ -1,4 +1,5 @@
 from asyncio import AbstractEventLoop
+import math
 import re
 import threading
 import time
@@ -18,11 +19,12 @@ import urllib3
 from model.ib.contract_info import ContractInfo
 from model.ib.snapshot import Snapshot
 
-from utils.config_util import get_config
-from utils.http_util import send_async_request
-from utils.collection_util import get_chunk_list
-from utils.api_endpoint_lock_record_util import check_api_endpoint_locked, update_api_endpoint_lock
-from utils.datetime_util import  US_BUSINESS_DAY, get_us_business_day, get_current_us_datetime
+from utils.common.config_util import get_config
+from utils.common.http_util import send_async_request
+from utils.common.collection_util import get_chunk_list
+from utils.sql.api_endpoint_lock_record_util import check_api_endpoint_locked, update_api_endpoint_lock
+from utils.common.dataframe_util import append_customised_indicator
+from utils.common.datetime_util import  PRE_MARKET_START_DATETIME, US_BUSINESS_DAY, get_us_business_day, get_current_us_datetime
 from utils.logger import Logger
 
 from constant.endpoint.ib.client_portal_api_endpoint import ClientPortalApiEndpoint
@@ -65,44 +67,109 @@ idx = pd.IndexSlice
 # 7284	    string	      Historic Volume (30d)
 # 7672	    string	      Dividends TTM	- This value is the total of the expected dividend payments over the last twelve months per share.
 SNAPSHOT_FIELD_LIST_STR = '55,7221,7051,7289,7644,7636,7637,6509,31,7741'
-CONCAT_TICKER_CHUNK_SIZE = 300
 
-#SCANNER_RATE_LIMIT_WAIT_PERIOD = 1
-#SNAPSHOT_RATE_LIMIT_WAIT_PERIOD = 10
-MAX_SNAPSHOT_RETRIEVAL_TIME_IN_MINUTE = get_config('SYS_PARAM', 'MAX_SNAPSHOT_RETRIEVAL_TIME_IN_MINUTE')
-SNAPSHOT_RATE_LIMIT_WAIT_PERIOD = get_config('SYS_PARAM', 'SNAPSHOT_RATE_LIMIT_WAIT_PERIOD')
-DEFAULT_RATE_LIMIT_WAIT_PERIOD = get_config('SYS_PARAM', 'DEFAULT_RATE_LIMIT_WAIT_PERIOD')
+# Snapshot API Endpoint Limit
+SNAPSHOT_RETRIEVAL_TIMEOUT_PERIOD = get_config('SYS_PARAM', 'SNAPSHOT_RETRIEVAL_TIMEOUT_PERIOD')
+MAX_SNAPSHOT_REQUEST_PER_SECOND = get_config('SYS_PARAM', 'MAX_SNAPSHOT_REQUEST_PER_SECOND')
+MAX_CONCURRENT_SNAPSHOT_REQUEST = get_config('SYS_PARAM', 'MAX_CONCURRENT_SNAPSHOT_REQUEST')
 
+# Default API Endpoint Limit
+DEFAULT_MAX_REQUEST_PER_SECOND = get_config('SYS_PARAM', 'DEFAULT_MAX_REQUEST_PER_SECOND')
+DEFAULT_MAX_CONCURRENT_REQUEST = get_config('SYS_PARAM', 'DEFAULT_MAX_CONCURRENT_REQUEST')
+DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL = get_config('SYS_PARAM', 'DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL')
 
+CON_ID_CONCAT_CHUNK_SIZE = get_config('SYS_PARAM', 'CON_ID_CONCAT_CHUNK_SIZE')
 class IBConnector:
     def __init__(self, loop: AbstractEventLoop = None) -> None:
         self.__ticker_to_contract_info_dict = {}
         self.__loop = loop
+        
+        self.__daily_canlde_df = pd.DataFrame()
+        
+    def get_daily_candle(self, contract_list: list, 
+                               offset_day: int, 
+                               outside_rth: bool = False, 
+                               candle_retrieval_end_datetime: datetime.datetime = None) -> pd.DataFrame:
+        candle_request_contract_list = []
+        contract_ticker_list = [contract['symbol'] for contract in contract_list]
+        daily_candle_df_ticker_list = list(self.__daily_canlde_df.columns.get_level_values(0).unique())
+
+        for contract in contract_list:
+            if contract['symbol'] not in daily_candle_df_ticker_list:
+                candle_request_contract_list.append(contract)
+
+        if candle_request_contract_list:    
+            if outside_rth:
+                outside_rth_str = 'true' 
+            else:
+                outside_rth_str = 'false'
+            
+            candle_df = self.get_historical_candle_df(contract_list=candle_request_contract_list, 
+                                                      period=f'{offset_day}d', 
+                                                      bar_size=BarSize.ONE_DAY, 
+                                                      outside_rth=outside_rth_str, 
+                                                      candle_retrieval_end_datetime=candle_retrieval_end_datetime)
+            if candle_df is not None and not candle_df.empty:
+                complete_df = append_customised_indicator(candle_df)
+
+                self.__daily_canlde_df = pd.concat([self.__daily_canlde_df,
+                                                    complete_df], axis=1)
+
+        result_df_ticker_list = self.__daily_canlde_df.columns.get_level_values(0).unique()
+        select_contract_ticker_list = []
+        
+        for ticker in contract_ticker_list:
+            if ticker in result_df_ticker_list:
+                select_contract_ticker_list.append(ticker)
+            else:
+                logger.log_debug_msg(f'Exclude ticker {ticker} from daily_df, no historical data found', with_std_out=True)
+
+        start_date_range = get_us_business_day(-offset_day, candle_retrieval_end_datetime).date()
+        return self.__daily_canlde_df.loc[start_date_range:, idx[select_contract_ticker_list, :]]
+        
+    def retrieve_intra_day_minute_candle(self, contract_list: list, bar_size: BarSize) -> pd.DataFrame:
+        us_current_datetime = get_current_us_datetime().replace(microsecond=0, second=0)
+        historical_data_interval_in_minute = (us_current_datetime - PRE_MARKET_START_DATETIME).total_seconds() / 60
+        logger.log_debug_msg(f'Historical candle data retrieval period: {historical_data_interval_in_minute} minutes')
+
+        if historical_data_interval_in_minute < 1:
+            logger.log_debug_msg('Historical candle data retrieval retrieval period is less than 1 minute', with_std_out=True)
+            return None
+        else:
+            candle_df = self.get_historical_candle_df(contract_list=contract_list, 
+                                                      period=f'{math.floor(historical_data_interval_in_minute)}min', 
+                                                      bar_size=bar_size, 
+                                                      outside_rth='true')
+            
+            if candle_df is not None and not candle_df.empty:
+                return append_customised_indicator(candle_df)
+            else:
+                return pd.DataFrame()
     
-    def acquire_api_endpoint_lock(endpoint: ClientPortalApiEndpoint):
+    def acquire_api_endpoint_lock(self, endpoint: ClientPortalApiEndpoint, check_interval: int = DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL):
+        logger.log_debug_msg(f'Acquiring lock for {endpoint}')
+        
         try:
             while check_api_endpoint_locked(endpoint):
+                time.sleep(check_interval)
                 continue
             
-            update_api_endpoint_lock(endpoint, True)
+            self.lock_api_endpoint(endpoint, True)
         except Exception as e:
-            logger.log_error_msg(f'Update {endpoint.value} lock error, {e}', with_std_out=True)
-            raise oracledb.Error(f'Update {endpoint.value} lock error, {e}')
+            logger.log_error_msg(f'Failed to acquire lock for {endpoint}, {e}', with_std_out=True)
+            raise oracledb.Error(f'Failed to acquire lock for {endpoint}, {e}')
     
-    def update_api_endpoint_lock(self, endpoint: ClientPortalApiEndpoint, lock: bool):
+    def lock_api_endpoint(self, endpoint: ClientPortalApiEndpoint, lock: bool):
         try:
             update_lock_start_time = time.time()
 
             thread_name = threading.current_thread().name
-            update_api_endpoint_lock(endpoint=endpoint, 
-                                     is_locked=lock, 
-                                     locked_by=thread_name, 
-                                     lock_datetime=get_current_us_datetime())
+            update_api_endpoint_lock([endpoint, lock, thread_name, get_current_us_datetime()])
             
             logger.log_debug_msg(f'Update lock time: {time.time() - update_lock_start_time} seconds')
         except Exception as e:
-            logger.log_error_msg(f'Update {endpoint.value} lock error, {e}', with_std_out=True)
-            raise oracledb.Error(f'Update {endpoint.value} lock error, {e}')
+            logger.log_error_msg(f'Update {endpoint} lock error, {e}', with_std_out=True)
+            raise oracledb.Error(f'Update {endpoint} lock error, {e}')
     
     def receive_brokerage_account(self):
         try:
@@ -200,8 +267,6 @@ class IBConnector:
             scanner_type = scanner_filter_payload.get("type")
             scanner_request_start_time = time.time()
             
-            self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.RUN_SCANNER)
-            
             scanner_response = session.post(f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.RUN_SCANNER}', json=scanner_filter_payload, verify=False)
             logger.log_debug_msg(f'{scanner_type} scanner result response time: {time.time() - scanner_request_start_time} seconds')
             scanner_response.raise_for_status()
@@ -225,15 +290,13 @@ class IBConnector:
                 else:
                     logger.log_debug_msg(f'Exclude unknown contract from scanner result, {result}', with_std_out=True)
             
-            #logger.log_debug_msg('Release scanner result retrieval lock')
-            
             return scanner_result_without_otc_stock[:max_no_of_scanner_result]
     
     def get_security_by_tickers(self, ticker_list: list) -> list:
         result_list = []
         get_security_payload_list = []
         temp_list = []
-        ticker_chunk_list = get_chunk_list(ticker_list, CONCAT_TICKER_CHUNK_SIZE)
+        ticker_chunk_list = get_chunk_list(ticker_list, CON_ID_CONCAT_CHUNK_SIZE)
 
         for ticker_chunk in ticker_chunk_list:
             symbol_list = []
@@ -246,13 +309,12 @@ class IBConnector:
             get_security_payload_list.append(get_security_payload)
 
         try:
-            self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SECURITY_STOCKS_BY_SYMBOL)
-            
             get_security_by_ticker_start_time = time.time()
             security_response = send_async_request(method='GET', 
                                                    endpoint=f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.SECURITY_STOCKS_BY_SYMBOL}', 
                                                    payload_list=get_security_payload_list, 
-                                                   chunk_size=10,
+                                                   chunk_size=DEFAULT_MAX_CONCURRENT_REQUEST,
+                                                   no_of_request_per_sec=DEFAULT_MAX_REQUEST_PER_SECOND,
                                                    loop=self.__loop)
             logger.log_debug_msg(f'Get security by ticker response time: {time.time() - get_security_by_ticker_start_time}')
         except Exception as security_request_exception:
@@ -295,7 +357,7 @@ class IBConnector:
         update_contract_info_start_time = time.time()
         snapshot_data_con_id_list = []
         
-        for contract in contract_list:
+        for contract in contract_list:   ########### need to extract this method
             con_id = contract['con_id']
             ticker_symbol = contract['symbol']
 
@@ -317,7 +379,7 @@ class IBConnector:
         logger.log_debug_msg(f'Getting market cap, is shortable, shortable shares, and rebate rate data, conId list: {con_id_list}')
         snapshot_payload_list = []
 
-        chunk_list = get_chunk_list(con_id_list, CONCAT_TICKER_CHUNK_SIZE)
+        chunk_list = get_chunk_list(con_id_list, CON_ID_CONCAT_CHUNK_SIZE)
         
         for chunk in chunk_list:
             get_snapshot_payload = {
@@ -333,15 +395,13 @@ class IBConnector:
             incomplete_response_found = False 
             
             while not snapshot_retrieval_success:
-                self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SNAPSHOT)
-                
                 incomplete_snapshot_response_list = []
                 get_contract_snapshot_start_time = time.time()
                 snapshot_response_list = send_async_request(method='GET', 
                                                             endpoint=f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.SNAPSHOT}', 
                                                             payload_list=snapshot_payload_list, 
-                                                            chunk_size=10,
-                                                            no_of_request_per_sec=SNAPSHOT_RATE_LIMIT_WAIT_PERIOD,
+                                                            chunk_size=MAX_CONCURRENT_SNAPSHOT_REQUEST,
+                                                            no_of_request_per_sec=MAX_SNAPSHOT_REQUEST_PER_SECOND,
                                                             loop=self.__loop)
                 logger.log_debug_msg(f'Get market cap, is shortable, shortable shares, and rebate rate data response time: {time.time() - get_contract_snapshot_start_time}')
                 
@@ -356,7 +416,7 @@ class IBConnector:
                 retrieval_time_min = (time.time() - snapshot_retrieval_start_time) / 60
                 
                 if incomplete_response_found:
-                    if retrieval_time_min > MAX_SNAPSHOT_RETRIEVAL_TIME_IN_MINUTE:
+                    if retrieval_time_min > SNAPSHOT_RETRIEVAL_TIMEOUT_PERIOD:
                         raise IBDataRetrievalTimeoutError(f'Snapshot retrieval timeout, incompleted snapshot responst list: {incomplete_snapshot_response_list}')
                     
                     logger.log_debug_msg(f'Incomplete data found, incompleted snapshot response list: {incomplete_snapshot_response_list}, full snapshot response list: {snapshot_response_list}')
@@ -453,7 +513,7 @@ class IBConnector:
         logger.log_debug_msg(f'Getting sector data, conId list: {con_id_list}')
         sec_def_payload_list = []
         
-        chunk_list = get_chunk_list(con_id_list, CONCAT_TICKER_CHUNK_SIZE)
+        chunk_list = get_chunk_list(con_id_list, CON_ID_CONCAT_CHUNK_SIZE)
         
         for chunk in chunk_list:
             get_sec_def_payload = {
@@ -462,8 +522,6 @@ class IBConnector:
             sec_def_payload_list.append(get_sec_def_payload)
 
         try:
-            self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SECURITY_DEFINITIONS)
-            
             get_security_definitions_start_time = time.time()
             sec_def_response_list = send_async_request(method='GET', 
                                                        endpoint=f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.SECURITY_DEFINITIONS}', 
@@ -562,16 +620,14 @@ class IBConnector:
             candle_payload_list.append(candle_payload)
 
         try:
-            #with self.__historical_data_lock:
-                logger.log_debug_msg(f'Getting {bar_size.value} historical candle data, paylaod list: {candle_payload_list}')
-                get_one_minute_candle_start_time = time.time()
-                candle_response_list = send_async_request(method='GET', 
-                                                          endpoint=f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.MARKET_DATA_HISTORY}', 
-                                                          payload_list=candle_payload_list, 
-                                                          chunk_size=5,
-                                                          loop=self.__loop)
-                logger.log_debug_msg(f'Get {bar_size.value} historical candle data time: {time.time() - get_one_minute_candle_start_time}')
-                #logger.log_debug_msg('Release historical data retrieval lock')
+            logger.log_debug_msg(f'Getting {bar_size.value} historical candle data, paylaod list: {candle_payload_list}')
+            get_one_minute_candle_start_time = time.time()
+            candle_response_list = send_async_request(method='GET', 
+                                                      endpoint=f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.MARKET_DATA_HISTORY}', 
+                                                      payload_list=candle_payload_list, 
+                                                      chunk_size=5,
+                                                      loop=self.__loop)
+            logger.log_debug_msg(f'Get {bar_size.value} historical candle data time: {time.time() - get_one_minute_candle_start_time}')
         except Exception as historical_data_request_exception:
             logger.log_error_msg(f'An error occurred while requesting {bar_size.value} historical data, Cause: {historical_data_request_exception}')
             raise historical_data_request_exception

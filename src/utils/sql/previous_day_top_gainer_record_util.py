@@ -6,14 +6,14 @@ from sql.execute_query_impl import ExecuteQueryImpl
 
 from constant.query.oracle_query import OracleQuery
 
-def get_previous_day_top_gainer_list(pct_change: float, start_datetime: datetime.datetime, end_datetime: datetime.datetime) -> bool:
+def get_previous_day_top_gainer_list(pct_change: float, start_datetime: datetime.datetime, end_datetime: datetime.datetime) -> list:
     def execute(cursor: Cursor, params):
         cursor.execute(OracleQuery.GET_TOP_GAINER_QUERY.value, **params)
         result = cursor.fetchall()
         return result
 
     exec = type(
-        "CountTopGainerMessage", # the name
+        "GetPreviousDayTopGainerList", # the name
         (ExecuteQueryImpl,), # base classess
         {
             "execute": execute

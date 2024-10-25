@@ -17,7 +17,7 @@ from sql.sqlite_connector import SqliteConnector
 
 from model.discord.discord_message import DiscordMessage
 
-from utils.discord_message_record_util import add_imported_pl_file_record, check_if_imported_pl_file_message_sent
+from utils.sql.discord_message_record_util import add_imported_pl_file_record, check_if_imported_pl_file_message_sent
 from utils.logger import Logger
 
 from constant.discord.discord_channel import DiscordChannel

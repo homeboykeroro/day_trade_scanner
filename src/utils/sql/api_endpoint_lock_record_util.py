@@ -11,7 +11,7 @@ from constant.query.oracle_query import OracleQuery
 
 logger = Logger()
 
-def update_api_endpoint_lock(endpoint: str, is_locked: bool, locked_by: str, lock_datetime: datetime.datetime):
+def update_api_endpoint_lock(params: list):
     def execute(cursor: Cursor, params):
         cursor.executemany(OracleQuery.UPDATE_API_ENDPOINT_LOCK_QUERY.value, params)
 
@@ -23,8 +23,26 @@ def update_api_endpoint_lock(endpoint: str, is_locked: bool, locked_by: str, loc
         }
     )
     
-    params = dict(endpoint=endpoint, is_locked=is_locked, locked_by=locked_by, lock_datetime=lock_datetime)
     execute_in_transaction(exec, params)
+
+def get_locked_api_endpoint(locked_by: str) -> list:
+    def execute(cursor: Cursor, params):
+        cursor.execute(OracleQuery.GET_API_ENDPOINT_LOCK_BY_LOCKED_BY_QUERY.value, **params)
+        result = cursor.fetchall()
+        return result
+
+    exec = type(
+        "GetLockedApiEndpoint", # the name
+        (ExecuteQueryImpl,), # base classess
+        {
+            "execute": execute
+        }
+    )
+    
+    params = dict(locked_by=locked_by)
+    result = execute_in_transaction(exec, params)
+    
+    return result
 
 def check_api_endpoint_locked(endpoint: str) -> bool:
     start_time = time.time()

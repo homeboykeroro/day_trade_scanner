@@ -29,6 +29,7 @@ PREVIOUS_DAY_TOP_GAINER_CONTINUATION_ALERT_LOG_CHANNEL_ID = int(os.environ['DISC
 TOP_GAINER_SCANNER_LIST_CHANNEL_ID = int(os.environ['DISCORD_TOP_GAINER_SCANNER_LIST_CHANNEL_ID'])
 TOP_LOSER_SCANNER_LIST_CHANNEL_ID = int(os.environ['DISCORD_TOP_LOSER_SCANNER_LIST_CHANNEL_ID'])
 YESTERDAY_TOP_GAINER_SCANNER_LIST_CHANNEL_ID = int(os.environ['DISCORD_YESTERDAY_TOP_GAINER_SCANNER_LIST_CHANNEL_ID'])
+YESTERDAY_TOP_GAINER_SCRAPER_HISTORY_LOG_CHANNEL_ID = int(os.environ['DISCORD_YESTERDAY_TOP_GAINER_SCRAPER_HISTORY_LOG_CHANNEL_ID'])
 OFFERING_NEWS_LOG_CHANNEL_ID = int(os.environ['DISCORD_OFFERING_NEWS_LOG_CHANNEL_ID'])
 
 # Error Log
@@ -135,6 +136,7 @@ class DiscordChatBotClient(discord.Client):
         self.__top_gainer_scanner_list_channel = self.get_channel(TOP_GAINER_SCANNER_LIST_CHANNEL_ID)
         self.__top_loser_scanner_list_channel = self.get_channel(TOP_LOSER_SCANNER_LIST_CHANNEL_ID)
         self.__yesterday_top_scanner_list_channel = self.get_channel(YESTERDAY_TOP_GAINER_SCANNER_LIST_CHANNEL_ID)
+        self.__yesterday_top_gainer_scraper_history_log_channel = self.__get_channel(YESTERDAY_TOP_GAINER_SCRAPER_HISTORY_LOG_CHANNEL_ID)
         
         self.__serp_api_account_info_log_channel = self.get_channel(SERP_API_ACCOUNT_INFO_LOG)
         self.__serp_api_search_query_log_channel = self.get_channel(SERP_API_SEARCH_QUERY_LOG)
@@ -292,6 +294,8 @@ class DiscordChatBotClient(discord.Client):
             channel = self.__top_loser_scanner_list_channel
         elif channel_type == DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST:
             channel = self.__yesterday_top_scanner_list_channel
+        elif channel_type == DiscordChannel.YESTERDAY_TOP_GAINER_SCRAPER_HISTORY_LOG:
+            channel = self.__yesterday_top_gainer_scraper_history_log_channel
         elif channel_type == DiscordChannel.SERP_API_ACCOUNT_INFO_LOG:
             channel = self.__serp_api_account_info_log_channel 
         elif channel_type == DiscordChannel.SERP_API_SEARCH_QUERY_LOG:
@@ -377,8 +381,8 @@ class DiscordChatBotClient(discord.Client):
             
         return channel
 
-    def run_chatbot(self, chatbot_token: str = None) -> threading.Thread:
-        bot_thread = threading.Thread(target=self.run, name="discord_chatbot_thread", args=(chatbot_token,))
+    def run_chatbot(self, chatbot_thread_name: str = 'discord_chatbot_thread', chatbot_token: str = None) -> threading.Thread:
+        bot_thread = threading.Thread(target=self.run, name=chatbot_thread_name, args=(chatbot_token,))
         bot_thread.start()
         
         while True:

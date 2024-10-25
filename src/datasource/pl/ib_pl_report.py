@@ -15,7 +15,7 @@ from model.pl.trade_profit_and_loss import TradeProfitAndLoss
 from model.pl.interest_profit import InterestProfit
 
 from constant.discord.discord_channel import DiscordChannel
-from utils.datetime_util import get_current_us_datetime, get_last_us_business_day
+from utils.common.datetime_util import get_current_us_datetime, get_last_us_business_day
 from utils.logger import Logger
 
 from constant.broker import Broker

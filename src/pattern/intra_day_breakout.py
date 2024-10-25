@@ -17,23 +17,23 @@ from constant.candle.bar_size import BarSize
 from constant.discord.discord_channel import DiscordChannel
 
 from utils.chart_util import get_candlestick_chart
-from utils.dataframe_util import concat_daily_df_and_minute_df, derive_idx_df
-from utils.datetime_util import convert_into_human_readable_time, convert_into_read_out_time
+from utils.common.dataframe_util import concat_daily_df_and_minute_df, derive_idx_df
+from utils.common.datetime_util import convert_into_human_readable_time, convert_into_read_out_time
 from utils.logger import Logger
-from utils.config_util import get_config
+from utils.common.config_util import get_config
 
 idx = pd.IndexSlice
 logger = Logger()
 
 PATTERN_NAME = 'INTRA_DAY_BREAKOUT'
 
-SHOW_DISCORD_DEBUG_LOG = get_config('INTRA_DAY_BREAKOUT_PARAM', 'SHOW_DISCORD_DEBUG_LOG')
+SHOW_DISCORD_DEBUG_LOG = get_config('INTRA_DAY_BREAKOUT', 'SHOW_DISCORD_DEBUG_LOG')
 
-MIN_OBSERVE_PERIOD = get_config('INTRA_DAY_BREAKOUT_PARAM', 'MIN_OBSERVE_PERIOD')
-TOP_N_VOLUME = get_config('INTRA_DAY_BREAKOUT_PARAM', 'TOP_N_VOLUME')
-MIN_BREAKOUT_TRADING_VOLUME_IN_USD = get_config('INTRA_DAY_BREAKOUT_PARAM', 'MIN_BREAKOUT_TRADING_VOLUME_IN_USD')
-DAILY_AND_MINUTE_CANDLE_GAP = get_config('INTRA_DAY_BREAKOUT_PARAM', 'DAILY_AND_MINUTE_CANDLE_GAP')
-MIN_VALID_CANDLESTICK_CHART_DISPLAY_VOLUME = get_config('INTRA_DAY_BREAKOUT_PARAM', 'MIN_VALID_CANDLESTICK_CHART_DISPLAY_VOLUME')
+MIN_OBSERVE_PERIOD = get_config('INTRA_DAY_BREAKOUT', 'MIN_OBSERVE_PERIOD')
+TOP_N_VOLUME = get_config('INTRA_DAY_BREAKOUT', 'TOP_N_VOLUME')
+MIN_BREAKOUT_TRADING_VOLUME_IN_USD = get_config('INTRA_DAY_BREAKOUT', 'MIN_BREAKOUT_TRADING_VOLUME_IN_USD')
+DAILY_AND_MINUTE_CANDLE_GAP = get_config('INTRA_DAY_BREAKOUT', 'DAILY_AND_MINUTE_CANDLE_GAP')
+MIN_VALID_CANDLESTICK_CHART_DISPLAY_VOLUME = get_config('INTRA_DAY_BREAKOUT', 'MIN_VALID_CANDLESTICK_CHART_DISPLAY_VOLUME')
 
 class IntraDayBreakout(PatternAnalyser):    
     def __init__(self, bar_size: BarSize, historical_data_df: DataFrame, daily_df: DataFrame, ticker_to_contract_info_dict: dict, discord_client):

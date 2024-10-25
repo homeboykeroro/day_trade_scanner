@@ -3,7 +3,7 @@ import datetime
 
 from model.discord.discord_message import DiscordMessage
 
-from utils.discord_message_record_util import check_if_pattern_analysis_message_sent, add_sent_pattern_analysis_message_record
+from utils.sql.discord_message_record_util import check_if_pattern_analysis_message_sent, add_sent_pattern_analysis_message_record
 from utils.logger import Logger
 
 from constant.discord.discord_channel import DiscordChannel

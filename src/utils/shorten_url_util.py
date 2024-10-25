@@ -1,7 +1,7 @@
 import os
 import time
 
-from utils.http_util import send_async_request
+from utils.common.http_util import send_async_request
 from utils.logger import Logger
 
 from constant.endpoint.tinyurl.tinyurl_api_endpoint import TinyUrlApiEndpoint

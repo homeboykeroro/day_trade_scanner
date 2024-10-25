@@ -4,7 +4,7 @@ import threading
 import os
 import pandas as pd
 
-from utils.config_util import get_config
+from utils.common.config_util import get_config
 
 LOGGER_DIR = get_config('LOGGER', 'PATH')
 LOG_DATAFRAME = get_config('LOGGER', 'LOG_DATAFRAME')
@@ -39,11 +39,7 @@ class Logger:
         log_date = datetime.now().strftime('%Y%m%d')
         
         thread_name = threading.current_thread().name
-        
-        if thread_name == 'InitialPopScannerThread':
-            log_filename = 'initial_pop_scanner_' + log_date + '.txt'
-        elif thread_name == 'InitialFlushScannerThread':
-            log_filename = 'initial_flush_scanner_' + log_date + '.txt'
+        log_filename = f'{thread_name}_{log_date}.txt'
             
         log_dir = log_parent_directory + "/" + log_filename
         if not os.path.exists(os.path.dirname(log_dir)) and os.path.dirname(log_dir):

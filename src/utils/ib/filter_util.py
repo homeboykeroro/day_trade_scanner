@@ -18,7 +18,12 @@ def get_finviz_scanner_filter(scan_target: ScannerTarget):
 
   return scanner_filter
 
-def get_ib_scanner_filter(scan_target: ScannerTarget = ScannerTarget.TOP_GAINER, min_price: float = 0.3, percent_change_param: float = 10, min_usd_volume: int = 20000, max_market_cap: int = 1e6 * 500, additional_filter_list: list = []) -> dict:
+def get_ib_scanner_filter(scan_target: ScannerTarget = ScannerTarget.TOP_GAINER, 
+                          min_price: float = 0.3, 
+                          percent_change_param: float = 10, 
+                          min_usd_volume: int = 20000, 
+                          max_market_cap: int = 1e6 * 500, 
+                          additional_filter_list: list = []) -> dict:
     # Get current datetime in HK time
     hk_datetime = datetime.datetime.now()
     

@@ -36,29 +36,25 @@ async def process_async_request(method: str, endpoint: str, payload_list: list, 
     result_dict = {'response_list': [], 'error_response_list': []}
     
     async with aiohttp.ClientSession() as session:
-        tasks = []
-        
-        all_chunk_start_time = time.time()
-        
-        for i, payload in enumerate(payload_list):
-            task = asyncio.create_task(fetch(session, method, endpoint, payload, semaphore, headers))
-            tasks.append(task)
+        for i in range(0, len(payload_list), chunk_size):
+            chunk = payload_list[i:i + chunk_size]
+            tasks = [asyncio.create_task(fetch(session, method, endpoint, payload, semaphore, headers)) for payload in chunk]
             
-            # If we've hit the rate limit, sleep for a second
+            all_chunk_start_time = time.time()
+            response_list = await asyncio.gather(*tasks, return_exceptions=True)
+            logger.log_debug_msg(f'Completion of chunk time: {time.time() - all_chunk_start_time} seconds')
+            
+            for response in response_list:
+                if 'errorMsg' in response:
+                    result_dict['error_response_list'].append(response)
+                else:
+                    result_dict['response_list'].append(response)
+            
+            # Wait after processing each chunk
             if no_of_request_per_sec:
-                if (i + 1) % chunk_size == 0:
-                    logger.log_debug_msg(f'Wait {no_of_request_per_sec} to process next chunk')
-                    await asyncio.sleep(no_of_request_per_sec)
-        
-        response_list = await asyncio.gather(*tasks, return_exceptions=True)
-        logger.log_debug_msg(f'Completion of all async requests time: {time.time() - all_chunk_start_time} seconds')
-        
-        for response in response_list:
-            if 'errorMsg' in response:
-                result_dict['error_response_list'].append(response)
-            else:
-                result_dict['response_list'].append(response)
-        
+                logger.log_debug_msg(f'Waiting {no_of_request_per_sec} seconds before processing next chunk')
+                await asyncio.sleep(no_of_request_per_sec)
+    
     return result_dict
         
 def send_async_request(method: str, endpoint: str, payload_list: list, chunk_size: int, no_of_request_per_sec: float = None, headers: dict = None, loop = None):

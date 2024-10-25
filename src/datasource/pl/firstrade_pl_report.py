@@ -19,7 +19,7 @@ from constant.broker import Broker
 from constant.discord.discord_channel import DiscordChannel
 
 from utils.logger import Logger
-from utils.datetime_util import get_current_us_datetime, get_last_us_business_day
+from utils.common.datetime_util import get_current_us_datetime, get_last_us_business_day
 
 logger = Logger()
 idx = pd.IndexSlice

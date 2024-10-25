@@ -26,18 +26,11 @@
  <br />
 
 ### Local Debug Setup
-
-1. Pull `previous_day_top_gainer_scraper` project
-2. Access `previous_day_top_gainer_scraper` root directory
-3. Run `py -m venv VENV_NAME` to create project virtual environment for `previous_day_top_gainer_scraper`
-4. Access `previous_day_top_gainer_scraper` venv directory, then execute `activate`
-5. Run `pip install -r requirements.txt` to install dependencies for `previous_day_top_gainer_scraper`
-6. Access `stock_scanner` root directory
-7. Run `py -m venv VENV_NAME` to create project virtual environment for `stock_scanner`
-8. Access `stock_scanner` venv directory, then execute `activate`
-9. Run `pip install -r requirements.txt` to install dependencies for `stock_scanner`
-10. Execute `pip install -e ../previous_day_top_gainer_scraper`
-11. Debug in your IDE
+1. Access `stock_scanner` root directory
+2. Run `py -m venv VENV_NAME` to create project virtual environment for `stock_scanner`
+3. Access `stock_scanner` venv directory, then execute `activate`
+4. Run `pip install -r requirements.txt` to install dependencies for `stock_scanner`
+5. Launch debugger in IDE
 
  <br />
 
