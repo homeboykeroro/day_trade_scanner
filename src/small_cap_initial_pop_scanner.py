@@ -85,9 +85,11 @@ def scan():
     logger.log_debug_msg(f'Fetch small cap top gainer screener result')
     contract_list = ib_connector.get_screener_results(MAX_NO_OF_SCANNER_RESULT, IB_TOP_GAINER_FILTER)
     
-    ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SNAPSHOT, SNAPSHOT_API_ENDPOINT_CHECK_INTERVAL)
-    logger.log_debug_msg(f'Fetch small cap top gainer snapshot')
-    ib_connector.update_contract_info(contract_list)
+    if (ib_connector.check_if_contract_update_required(contract_list)):
+        ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SNAPSHOT, SNAPSHOT_API_ENDPOINT_CHECK_INTERVAL)
+        logger.log_debug_msg(f'Fetch small cap top gainer snapshot')
+        ib_connector.update_contract_info(contract_list)
+    
     ticker_to_contract_dict = ib_connector.get_ticker_to_contract_dict()
     
     ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY, MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL)

@@ -353,11 +353,22 @@ class IBConnector:
 
             return result_list
     
+    def check_if_contract_update_required(self, contract_list: list):
+        need_update = False
+        
+        for contract in contract_list:   ########### need to extract this method
+            ticker_symbol = contract['symbol']
+
+            if ticker_symbol not in self.__ticker_to_contract_info_dict:
+                need_update = True
+        
+        return need_update
+    
     def update_contract_info(self, contract_list: list) -> None:
         update_contract_info_start_time = time.time()
         snapshot_data_con_id_list = []
         
-        for contract in contract_list:   ########### need to extract this method
+        for contract in contract_list:
             con_id = contract['con_id']
             ticker_symbol = contract['symbol']
 

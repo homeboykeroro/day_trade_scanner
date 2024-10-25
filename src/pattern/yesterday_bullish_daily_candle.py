@@ -33,7 +33,7 @@ SHOW_DISCORD_DEBUG_LOG = get_config('YESTERDAY_TOP_GAINER', 'SHOW_DISCORD_DEBUG_
 
 class YesterdayBullishDailyCandle(PatternAnalyser):
     
-    def __init__(self, hit_scanner_date: datetime.date, yesterday_top_gainer_contract_list: list, daily_df: pd.DataFrame, 
+    def __init__(self, hit_scanner_date: datetime.date,  daily_df: pd.DataFrame, 
                        ticker_to_contract_info_dict: dict, 
                        discord_client,
                        min_close_pct, 
@@ -41,7 +41,6 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
                        pattern_name):
         super().__init__(discord_client)
         self.__hit_scanner_date = hit_scanner_date
-        self.__yesterday_top_gainer_contract_list = yesterday_top_gainer_contract_list
         self.__daily_df = daily_df
         self.__ticker_to_contract_info_dict = ticker_to_contract_info_dict
         
@@ -94,9 +93,8 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
             logger.log_debug_msg(f'Check if {ticker} pattern analysis exists in db finish time: {time.time() - check_start_time} seconds')
             
             if not is_yesterday_bullish_candle_analysis_msg_sent:
-                for contract in self.__yesterday_top_gainer_contract_list:
-                    if ticker == contract.symbol:
-                        filtered_contract_list.append(dict(symbol=contract.symbol, con_id=contract.con_id, company_name=contract.company_name))
+                #filtered_contract_list.append(dict(symbol=contract.symbol, con_id=contract.con_id, company_name=contract.company_name))
+                filtered_contract_list.append(dict(symbol=contract.symbol, con_id=contract.con_id, company_name=contract.company_name))
         
         if not filtered_contract_list:
             return
