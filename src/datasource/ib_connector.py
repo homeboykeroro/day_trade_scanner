@@ -3,8 +3,7 @@ import math
 import re
 import threading
 import time
-from datetime import datetime, timedelta
-from datetime import time as dt_time
+from datetime import time as dt_time, datetime, timedelta
 import html
 import oracledb
 import pytz
@@ -89,7 +88,7 @@ class IBConnector:
     def get_daily_candle(self, contract_list: list, 
                                offset_day: int, 
                                outside_rth: bool = False, 
-                               candle_retrieval_end_datetime: datetime.datetime = None) -> pd.DataFrame:
+                               candle_retrieval_end_datetime: datetime = None) -> pd.DataFrame:
         candle_request_contract_list = []
         contract_ticker_list = [contract['symbol'] for contract in contract_list]
         daily_candle_df_ticker_list = list(self.__daily_canlde_df.columns.get_level_values(0).unique())
@@ -164,7 +163,8 @@ class IBConnector:
             update_lock_start_time = time.time()
 
             thread_name = threading.current_thread().name
-            update_api_endpoint_lock([endpoint, lock, thread_name, get_current_us_datetime()])
+            is_locked = 'Y' if lock else 'Y'
+            update_api_endpoint_lock([dict(is_locked=is_locked, locked_by=thread_name, lock_datetime=get_current_us_datetime(), endpoint=endpoint.value)])
             
             logger.log_debug_msg(f'Update lock time: {time.time() - update_lock_start_time} seconds')
         except Exception as e:

@@ -42,7 +42,9 @@ def get_locked_api_endpoint(locked_by: str) -> list:
     params = dict(locked_by=locked_by)
     result = execute_in_transaction(exec, params)
     
-    return result
+    result_dict_list = [row[0] for row in result]
+    
+    return result_dict_list
 
 def check_api_endpoint_locked(endpoint: str) -> bool:
     start_time = time.time()
