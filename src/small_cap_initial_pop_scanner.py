@@ -2,7 +2,7 @@ import threading
 
 from constant.scanner.scanner_thread_name import ScannerThreadName
 
-threading.current_thread().name = ScannerThreadName.SMALL_CAP_INITIAL_POP_SCANNER
+threading.current_thread().name = ScannerThreadName.SMALL_CAP_INITIAL_POP_SCANNER.value
 
 import os
 import time
@@ -36,7 +36,7 @@ SCAN_PATTERN_NAME = 'SMALL_CAP_INITIAL_POP'
 SCREENER_NAME = 'SMALL_CAP_TOP_GAINER_SCREENER'
 
 # Chatbot Token
-INITIAL_POP_CHATBOT_TOKEN = os.environ['DISCORD_SMALL_CAP_INITIAL_POP_CHATBOT_TOKEN']
+SMALL_CAP_INITIAL_POP_CHATBOT_TOKEN = os.environ['DISCORD_SMALL_CAP_INITIAL_POP_CHATBOT_TOKEN']
 CHATBOT_THREAD_NAME = 'small_cap_initial_pop_chatbot_thread'
 
 # Log
@@ -63,9 +63,9 @@ MAX_MARKET_CAP = get_config(SCREENER_NAME, 'MAX_MARKET_CAP')
 SCANNER_IDLE_REFRESH_INTERVAL = get_config('SYS_PARAM', 'SCANNER_IDLE_REFRESH_INTERVAL')
 
 # API Endpoint Check Interval
-SCANNER_API_ENDPOINT_CHECK_INTERVAL = get_config(SCREENER_NAME, 'SCANNER_API_ENDPOINT_CHECK_INTERVAL')
-SNAPSHOT_API_ENDPOINT_CHECK_INTERVAL = get_config(SCREENER_NAME, 'SNAPSHOT_API_ENDPOINT_CHECK_INTERVAL')
-MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL = get_config(SCREENER_NAME, 'MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL')
+SCANNER_API_ENDPOINT_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'SCANNER_API_ENDPOINT_CHECK_INTERVAL')
+SNAPSHOT_API_ENDPOINT_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'SNAPSHOT_API_ENDPOINT_CHECK_INTERVAL')
+MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL')
 
 IB_TOP_GAINER_FILTER = get_ib_scanner_filter(scan_target=ScannerTarget.TOP_GAINER,
                                              min_price = MIN_PRICE, 
@@ -75,10 +75,10 @@ IB_TOP_GAINER_FILTER = get_ib_scanner_filter(scan_target=ScannerTarget.TOP_GAINE
                                              additional_filter_list = [])
 
 def scan():  
-    small_cap_initial_pop_chatbot.run_chatbot(CHATBOT_THREAD_NAME, INITIAL_POP_CHATBOT_TOKEN)
+    small_cap_initial_pop_chatbot.run_chatbot(CHATBOT_THREAD_NAME, SMALL_CAP_INITIAL_POP_CHATBOT_TOKEN)
            
     logger.log_debug_msg('Small cap initial pop scanner starts')
-    small_cap_initial_pop_chatbot.send_message_by_list_with_response([DiscordMessage(content='Initial Pop Scanner Starts')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+    small_cap_initial_pop_chatbot.send_message_by_list_with_response([DiscordMessage(content='Small cap initial pop scanner starts')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
     
     # Get contract list from IB screener
     ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.RUN_SCANNER, SCANNER_API_ENDPOINT_CHECK_INTERVAL)

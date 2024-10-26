@@ -7,7 +7,7 @@ import sys
 if getattr(sys, 'frozen', False):
     ROOT_DIR = os.path.dirname(sys.executable)
 else:
-    ROOT_DIR = Path(__file__).parent.parent.parent
+    ROOT_DIR = Path(__file__).parent.parent.parent.parent
 
 filename = os.path.join(ROOT_DIR, 'config.ini')
 

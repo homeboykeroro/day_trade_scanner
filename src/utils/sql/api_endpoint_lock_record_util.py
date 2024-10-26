@@ -71,7 +71,9 @@ def check_api_endpoint_locked(endpoint: str) -> bool:
     
     logger.log_debug_msg(f'{endpoint} lock status: {is_locked}, locked by: {locked_by}, lock datetime: {lock_datetime}')
     logger.log_debug_msg(f'Check {endpoint} endpoint lock time: {time.time() - start_time}')
-        
-    return is_locked
+    
+    result = True if is_locked == 'Y' else False
+    
+    return result
 
    

@@ -136,7 +136,7 @@ class DiscordChatBotClient(discord.Client):
         self.__top_gainer_scanner_list_channel = self.get_channel(TOP_GAINER_SCANNER_LIST_CHANNEL_ID)
         self.__top_loser_scanner_list_channel = self.get_channel(TOP_LOSER_SCANNER_LIST_CHANNEL_ID)
         self.__yesterday_top_scanner_list_channel = self.get_channel(YESTERDAY_TOP_GAINER_SCANNER_LIST_CHANNEL_ID)
-        self.__yesterday_top_gainer_scraper_history_log_channel = self.__get_channel(YESTERDAY_TOP_GAINER_SCRAPER_HISTORY_LOG_CHANNEL_ID)
+        self.__yesterday_top_gainer_scraper_history_log_channel = self.get_channel(YESTERDAY_TOP_GAINER_SCRAPER_HISTORY_LOG_CHANNEL_ID)
         
         self.__serp_api_account_info_log_channel = self.get_channel(SERP_API_ACCOUNT_INFO_LOG)
         self.__serp_api_search_query_log_channel = self.get_channel(SERP_API_SEARCH_QUERY_LOG)

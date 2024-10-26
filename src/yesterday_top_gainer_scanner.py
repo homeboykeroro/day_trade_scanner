@@ -2,7 +2,7 @@ import threading
 
 from constant.scanner.scanner_thread_name import ScannerThreadName
 
-threading.current_thread().name = ScannerThreadName.YESTERDAY_TOP_GAINER
+threading.current_thread().name = ScannerThreadName.YESTERDAY_TOP_GAINER.value
 
 import os
 import time

@@ -1,7 +1,5 @@
 import threading
 
-threading.current_thread().name = "TopGainerScannerThread"
-
 import os
 import time
 import oracledb
@@ -23,9 +21,6 @@ from utils.logger import Logger
 from model.discord.discord_message import DiscordMessage
 
 from constant.discord.discord_channel import DiscordChannel
-
-# Chatbot
-top_gainer_scanner_chatbot = DiscordChatBotClient()
 
 ib_connector = IBConnector()
 logger = Logger()
@@ -53,7 +48,8 @@ class ScannerWrapper():
             update_api_endpoint_lock(locked_api_endpoint_list)
         except Exception as e:
             logger.log_error_msg(f'API endpoint release error, {e}', with_std_out=True)
-            top_gainer_scanner_chatbot.send_message(DiscordMessage(content='Database connection error'), channel_type=DiscordChannel.CHATBOT_ERROR_LOG, with_text_to_speech=True)
+            self.__discord_client.send_message(DiscordMessage(content=f'Database connection error, please restart'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+            self.__discord_client.send_message(DiscordMessage(content=f'Database connection error, {e}'), channel_type=DiscordChannel.CHATBOT_ERROR_LOG, with_text_to_speech=False)
             time.sleep(30)
             os._exit(1)
 
@@ -115,22 +111,22 @@ class ScannerWrapper():
                 self.reauthenticate(ib_connector, reauthentication_retry_times)
             except oracledb.Error as oracle_connection_exception:
                 logger.log_error_msg(f'Oracle connection error, {oracle_connection_exception}', with_std_out=True)
-                top_gainer_scanner_chatbot.send_message(DiscordMessage(content='Database connection error'), channel_type=DiscordChannel.CHATBOT_ERROR_LOG, with_text_to_speech=True)
+                self.__discord_client.send_message(DiscordMessage(content='Database connection error'), channel_type=DiscordChannel.CHATBOT_ERROR_LOG, with_text_to_speech=True)
                 time.sleep(30)
                 os._exit(1)
             except Exception as exception:
                 self.release_all_api_endpoint_lock()
                 
-                top_gainer_scanner_chatbot.send_message_by_list_with_response(DiscordMessage(content='Fatal error'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)   
+                self.__discord_client.send_message_by_list_with_response(DiscordMessage(content='Fatal error'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)   
                 stacktrace = traceback.format_exc()
 
                 if len(stacktrace) > STACKTRACE_CHUNK_SIZE:
                     send_chunk_list = split_long_paragraph_into_chunks(stacktrace, STACKTRACE_CHUNK_SIZE)
 
                     for send_chunk in send_chunk_list:
-                        top_gainer_scanner_chatbot.send_message_by_list_with_response(DiscordMessage(content=send_chunk), channel_type=DiscordChannel.CHATBOT_ERROR_LOG)    
+                        self.__discord_client.send_message_by_list_with_response(DiscordMessage(content=send_chunk), channel_type=DiscordChannel.CHATBOT_ERROR_LOG)    
                 else:
-                    top_gainer_scanner_chatbot.send_message(DiscordMessage(content=stacktrace), channel_type=DiscordChannel.CHATBOT_ERROR_LOG)
+                    self.__discord_client.send_message(DiscordMessage(content=stacktrace), channel_type=DiscordChannel.CHATBOT_ERROR_LOG)
 
                 logger.log_error_msg(f'Scanner fatal error, {exception}', with_std_out=True)
                 logger.log_debug_msg(f'Retry scanning due to fatal error after: {SCANNER_FATAL_ERROR_REFRESH_INTERVAL} seconds', with_std_out=True)
