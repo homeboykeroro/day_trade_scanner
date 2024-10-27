@@ -29,10 +29,10 @@ def scrap(discord_client: DiscordChatBotClient):
     scan_date = get_current_us_datetime()
     is_business_day = check_if_us_business_day(scan_date)
 
-    # if not is_business_day:
-    #     discord_client.send_message_by_list_with_response([DiscordMessage(content='No data is retrieved, current datetime is not U S business day')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
-    #     logger.log_error_msg(f'No data is fetched, current datetime is not US business day', with_std_out=True)
-    #     return
+    if not is_business_day:
+        discord_client.send_message_by_list_with_response([DiscordMessage(content='No data is retrieved, current datetime is not U S business day')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+        logger.log_error_msg(f'No data is fetched, current datetime is not US business day', with_std_out=True)
+        return
     
     try:
         scrap_star_time = time.time()
