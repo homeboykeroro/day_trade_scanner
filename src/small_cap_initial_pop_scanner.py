@@ -75,10 +75,8 @@ IB_TOP_GAINER_FILTER = get_ib_scanner_filter(scan_target=ScannerTarget.TOP_GAINE
                                              additional_filter_list = [])
 
 def scan():  
-    small_cap_initial_pop_chatbot.run_chatbot(CHATBOT_THREAD_NAME, SMALL_CAP_INITIAL_POP_CHATBOT_TOKEN)
-           
     logger.log_debug_msg('Small cap initial pop scanner starts')
-    small_cap_initial_pop_chatbot.send_message_by_list_with_response([DiscordMessage(content='Small cap initial pop scanner starts')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+    small_cap_initial_pop_chatbot.send_message_by_list_with_response([DiscordMessage(content='Starts scanner')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
     
     # Get contract list from IB screener
     ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.RUN_SCANNER, SCANNER_API_ENDPOINT_CHECK_INTERVAL)
@@ -120,6 +118,8 @@ def scan():
     small_cap_initial_pop_analyser.analyse()
 
 def run():
+    small_cap_initial_pop_chatbot.run_chatbot(CHATBOT_THREAD_NAME, SMALL_CAP_INITIAL_POP_CHATBOT_TOKEN)
+    
     small_cap_initial_pop_scanner = ScannerWrapper(scanner_name='Small cap initial pop', 
                                                    scan=scan, 
                                                    discord_client=small_cap_initial_pop_chatbot)

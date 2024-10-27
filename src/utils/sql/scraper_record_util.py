@@ -4,7 +4,7 @@ from oracledb import Cursor
 from sql.execute_query_impl import ExecuteQueryImpl
 from sql.oracle_connector import execute_in_transaction
 
-from constant.sql.oracle_query import OracleQuery
+from constant.query.oracle_query import OracleQuery
 
 from utils.logger import Logger
 

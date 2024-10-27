@@ -46,7 +46,9 @@ class ScannerWrapper():
             locked_api_endpoint_list = get_locked_api_endpoint(locked_by=thread_name)
             logger.log_debug_msg(f'Releasing API endpoint locked by {thread_name}, locked API endpoint list: {locked_api_endpoint_list}')
             release_api_endpoint_list = [dict(endpoint=endpoint, locked_by=None, is_locked='N', lock_datetime=None) for endpoint in locked_api_endpoint_list]
-            update_api_endpoint_lock(release_api_endpoint_list)
+            
+            if release_api_endpoint_list:
+                update_api_endpoint_lock(release_api_endpoint_list)
         except Exception as e:
             logger.log_error_msg(f'API endpoint release error, {e}', with_std_out=True)
             self.__discord_client.send_message(DiscordMessage(content=f'Database connection error, please restart'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)

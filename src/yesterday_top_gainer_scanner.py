@@ -23,8 +23,11 @@ from utils.sql.previous_day_top_gainer_record_util import get_previous_day_top_g
 from utils.sql.discord_message_record_util import check_if_pattern_analysis_message_sent
 from utils.logger import Logger
 
+from model.discord.discord_message import DiscordMessage
+
 from constant.endpoint.ib.client_portal_api_endpoint import ClientPortalApiEndpoint
 from constant.candle.bar_size import BarSize
+from constant.discord.discord_channel import DiscordChannel
 
 # Chatbot
 yesterday_top_gainer_chatbot = DiscordChatBotClient()
@@ -51,17 +54,13 @@ DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL = get_config('SYS_PARAM', 'SNAPSHOT_API
 SNAPSHOT_API_ENDPOINT_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'SNAPSHOT_API_ENDPOINT_CHECK_INTERVAL')
 MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL')
 
-def scrap_yesterday_top_gainer():
-    scrap()
-
 def scan():
-    yesterday_top_gainer_chatbot.run_chatbot(CHATBOT_THREAD_NAME, YESTERDAY_TOP_GAINER_SCANNER_CHATBOT_TOKEN)
-    
     logger.log_debug_msg('Yesterday top gainer scanner starts')
+    yesterday_top_gainer_chatbot.send_message_by_list_with_response([DiscordMessage(content='Starts scanner')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
     
     us_current_datetime = get_current_us_datetime()
     day_offset = 0 if us_current_datetime.time() > datetime.time(16, 0, 0) else -1
-
+    
     yesterday_top_gainer_retrieval_datetime = get_us_business_day(offset_day=day_offset, 
                                                                   us_date=us_current_datetime)
 
@@ -70,7 +69,7 @@ def scan():
                                                                  end_datetime=yesterday_top_gainer_retrieval_datetime)
     
     if not yesterday_top_gainer_list:
-        scrap_yesterday_top_gainer()
+        scrap(yesterday_top_gainer_chatbot)
         yesterday_top_gainer_list = get_previous_day_top_gainer_list(pct_change=MIN_CLOSE_PCT, 
                                                                      start_datetime=yesterday_top_gainer_retrieval_datetime, 
                                                                      end_datetime=yesterday_top_gainer_retrieval_datetime)
@@ -121,6 +120,8 @@ def scan():
     time.sleep(5)
             
 def run():
+    yesterday_top_gainer_chatbot.run_chatbot(CHATBOT_THREAD_NAME, YESTERDAY_TOP_GAINER_SCANNER_CHATBOT_TOKEN)
+    
     yesterday_top_gainer_scanner = ScannerWrapper(scanner_name='Yesterday top gainer', 
                                                   scan=scan,
                                                   discord_client=yesterday_top_gainer_chatbot)
