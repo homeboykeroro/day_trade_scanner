@@ -104,8 +104,7 @@ def scan():
         ticker_to_contract_dict = ib_connector.get_ticker_to_contract_dict()
 
         ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY, MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL)
-        yesterday_top_gainer_df = ib_connector.get_daily_candle(ib_connector=ib_connector,
-                                                                contract_list=yesterday_top_gainer_contract_list, 
+        yesterday_top_gainer_df = ib_connector.get_daily_candle(contract_list=yesterday_top_gainer_contract_list, 
                                                                 offset_day=DAILY_CANDLE_DAYS,
                                                                 outside_rth=False,
                                                                 candle_retrieval_end_datetime=yesterday_top_gainer_retrieval_datetime)

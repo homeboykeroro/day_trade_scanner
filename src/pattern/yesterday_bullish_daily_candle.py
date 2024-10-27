@@ -81,7 +81,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
             close_pct = close_pct_df.loc[:, (ticker, RuntimeIndicator.COMPARE.value)].values[0]
             ticker_to_close_pct_dict[ticker] = close_pct
         
-        sorted_ticker_to_close_pct_dict =  {k: v for k, v in sorted(ticker_to_close_pct_dict.items(), key=lambda item: item[1])}
+        sorted_ticker_to_close_pct_dict = {k: v for k, v in sorted(ticker_to_close_pct_dict.items(), key=lambda item: item[1], reverse=True)}
         filtered_contract_list = []
         
         for ticker in sorted_ticker_to_close_pct_dict:
@@ -93,10 +93,14 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
             logger.log_debug_msg(f'Check if {ticker} pattern analysis exists in db finish time: {time.time() - check_start_time} seconds')
             
             if not is_yesterday_bullish_candle_analysis_msg_sent:
-                #filtered_contract_list.append(dict(symbol=contract.symbol, con_id=contract.con_id, company_name=contract.company_name))
-                filtered_contract_list.append(dict(symbol=contract.symbol, con_id=contract.con_id, company_name=contract.company_name))
+                contract = self.__ticker_to_contract_info_dict.get(ticker)
+                symbol = contract.symbol if hasattr(contract, 'symbol') else None
+                con_id = contract.con_id if hasattr(contract, 'con_id') else None
+                company_name = contract.company_name if hasattr(contract, 'company_name') else None
+                filtered_contract_list.append(dict(symbol=symbol, con_id=con_id, company_name=company_name))
         
         if not filtered_contract_list:
+            logger.log_debug_msg('None of yesterday top gainer meeting filter criterion', with_std_out=True)
             return
         
         ticker_to_financial_data_dict = get_financial_data(filtered_contract_list)

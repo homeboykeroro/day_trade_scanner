@@ -162,6 +162,7 @@ class IBConnector:
     def release_api_endpoint_lock(self, endpoint: ClientPortalApiEndpoint):
         try:
             self.set_api_endpoint_lock(endpoint, False)
+            logger.log_debug_msg(f'{endpoint.value} lock released', with_std_out=True)
         except Exception as e:
             logger.log_error_msg(f'Failed to release lock for {endpoint}, {e}', with_std_out=True)
             raise oracledb.Error(f'Failed to release lock for {endpoint}, {e}')
