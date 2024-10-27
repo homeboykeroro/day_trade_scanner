@@ -83,6 +83,8 @@ class GoogleSearchUtil:
     
     #https://serpapi.com/integrations/python#pagination-using-iterator      
     def search_offering_news(self, contract_list: list, discord_client: DiscordChatBotClient) -> dict:
+        start_time = time.time()
+        
         if not contract_list:
             return {}
         
@@ -108,7 +110,7 @@ class GoogleSearchUtil:
             
         self.sync_search(contract_list, ticker_to_datetime_to_news_dict, search, discord_client)
         
-        logger.log_debug_msg('search completed')
+        logger.log_debug_msg(f'Offering news retrieval time: {time.time() - start_time} seconds')
         return ticker_to_datetime_to_news_dict            
     
     def get_datetime_from_str_expression(self, date_str: str) -> datetime:

@@ -76,28 +76,31 @@ IB_TOP_GAINER_FILTER = get_ib_scanner_filter(scan_target=ScannerTarget.TOP_GAINE
 
 def scan():  
     logger.log_debug_msg('Small cap initial pop scanner starts')
-    small_cap_initial_pop_chatbot.send_message_by_list_with_response([DiscordMessage(content='Starts scanner')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
     
     # Get contract list from IB screener
     ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.RUN_SCANNER, SCANNER_API_ENDPOINT_CHECK_INTERVAL)
     logger.log_debug_msg(f'Fetch small cap top gainer screener result')
     contract_list = ib_connector.get_screener_results(MAX_NO_OF_SCANNER_RESULT, IB_TOP_GAINER_FILTER)
+    ib_connector.release_api_endpoint_lock(ClientPortalApiEndpoint.RUN_SCANNER)
     
     if (ib_connector.check_if_contract_update_required(contract_list)):
         ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SNAPSHOT, SNAPSHOT_API_ENDPOINT_CHECK_INTERVAL)
         logger.log_debug_msg(f'Fetch small cap top gainer snapshot')
         ib_connector.update_contract_info(contract_list)
+        ib_connector.release_api_endpoint_lock(ClientPortalApiEndpoint.SNAPSHOT)
     
     ticker_to_contract_dict = ib_connector.get_ticker_to_contract_dict()
     
     ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY, MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL)
     one_minute_candle_df = ib_connector.retrieve_intra_day_minute_candle(contract_list=contract_list, bar_size=BarSize.ONE_MINUTE)
+    ib_connector.release_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY)
     
     ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY, MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL)
     daily_df = ib_connector.get_daily_candle(ib_connector=ib_connector,
                                              contract_list=contract_list, 
                                              offset_day=INITIAL_POP_DAILY_CANDLE_DAYS, 
                                              outside_rth=False)
+    ib_connector.release_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY)
             
     if SHOW_DISCORD_DEBUG_LOG:
         send_msg_start_time = time.time()
@@ -119,6 +122,7 @@ def scan():
 
 def run():
     small_cap_initial_pop_chatbot.run_chatbot(CHATBOT_THREAD_NAME, SMALL_CAP_INITIAL_POP_CHATBOT_TOKEN)
+    small_cap_initial_pop_chatbot.send_message_by_list_with_response([DiscordMessage(content='Starts scanner')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
     
     small_cap_initial_pop_scanner = ScannerWrapper(scanner_name='Small cap initial pop', 
                                                    scan=scan, 

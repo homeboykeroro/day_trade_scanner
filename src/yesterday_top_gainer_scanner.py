@@ -56,7 +56,6 @@ MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'MARKET_
 
 def scan():
     logger.log_debug_msg('Yesterday top gainer scanner starts')
-    yesterday_top_gainer_chatbot.send_message_by_list_with_response([DiscordMessage(content='Starts scanner')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
     
     us_current_datetime = get_current_us_datetime()
     day_offset = 0 if us_current_datetime.time() > datetime.time(16, 0, 0) else -1
@@ -123,6 +122,7 @@ def scan():
             
 def run():
     yesterday_top_gainer_chatbot.run_chatbot(CHATBOT_THREAD_NAME, YESTERDAY_TOP_GAINER_SCANNER_CHATBOT_TOKEN)
+    yesterday_top_gainer_chatbot.send_message_by_list_with_response([DiscordMessage(content='Starts scanner')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
     
     yesterday_top_gainer_scanner = ScannerWrapper(scanner_name='Yesterday top gainer', 
                                                   scan=scan,

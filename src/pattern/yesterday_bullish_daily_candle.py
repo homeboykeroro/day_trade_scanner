@@ -148,7 +148,12 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
             message_list.append(message)
         
         if message_list:
-            send_msg_start_time = time.time()
-            self.send_notification(message_list, DiscordChannel.YESTERDAY_BULLISH_DAILY_CANDLE, False)
-            logger.log_debug_msg(f'{self.__pattern_name} send message time: {time.time() - send_msg_start_time} seconds')
+            total_send_msg_start_time = time.time()
+            
+            for msg in message_list:
+                send_msg_time = time.time()
+                self.send_notification([msg], DiscordChannel.YESTERDAY_BULLISH_DAILY_CANDLE, False)
+                logger.log_debug_msg(f'Send {msg.ticker} {msg.pattern} message time: {time.time() - send_msg_time} seconds', with_std_out=True)
+            
+            logger.log_debug_msg(f'{self.__pattern_name} send message time: {time.time() - total_send_msg_start_time} seconds', with_std_out=True)
         
