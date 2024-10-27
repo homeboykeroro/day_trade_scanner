@@ -53,3 +53,7 @@ Stock scanner for day trade and swing trade. When specific stock's price action 
 - Previous days' top gainer support (for intra-day/ swing trade, buy at support level looking for bounce)
 - Previous days' top gainer continuation (for intra-day/ swing trade continuation trade, looking for strong momentum after breaking new high)
 <br />
+
+
+### Reference
+[Bot Permissions](https://github.com/therealOri/noter/issues/1)

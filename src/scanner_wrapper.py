@@ -114,13 +114,13 @@ class ScannerWrapper():
                 self.reauthenticate(ib_connector, reauthentication_retry_times)
             except oracledb.Error as oracle_connection_exception:
                 logger.log_error_msg(f'Oracle connection error, {oracle_connection_exception}', with_std_out=True)
-                self.__discord_client.send_message(DiscordMessage(content='Database connection error'), channel_type=DiscordChannel.CHATBOT_ERROR_LOG, with_text_to_speech=True)
+                self.__discord_client.send_message(DiscordMessage(content=f'Database connection error, {oracle_connection_exception}'), channel_type=DiscordChannel.CHATBOT_ERROR_LOG, with_text_to_speech=True)
                 time.sleep(30)
                 os._exit(1)
             except Exception as exception:
                 self.release_all_api_endpoint_lock()
                 
-                self.__discord_client.send_message_by_list_with_response(DiscordMessage(content='Fatal error'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)   
+                self.__discord_client.send_message_by_list_with_response([DiscordMessage(content='Fatal error')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)   
                 stacktrace = traceback.format_exc()
 
                 if len(stacktrace) > STACKTRACE_CHUNK_SIZE:

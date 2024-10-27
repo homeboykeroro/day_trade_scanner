@@ -146,25 +146,43 @@ class IBConnector:
                 return pd.DataFrame()
     
     def acquire_api_endpoint_lock(self, endpoint: ClientPortalApiEndpoint, check_interval: int = DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL):
-        logger.log_debug_msg(f'Acquiring lock for {endpoint}')
+        logger.log_debug_msg(f'Acquiring lock for {endpoint}', with_std_out=True)
         
         try:
             while check_api_endpoint_locked(endpoint):
                 time.sleep(check_interval)
+                logger.log_debug_msg(f'{endpoint.value} is locking', with_std_out=True)
                 continue
             
-            self.lock_api_endpoint(endpoint, True)
+            self.set_api_endpoint_lock(endpoint, True)
         except Exception as e:
             logger.log_error_msg(f'Failed to acquire lock for {endpoint}, {e}', with_std_out=True)
             raise oracledb.Error(f'Failed to acquire lock for {endpoint}, {e}')
     
-    def lock_api_endpoint(self, endpoint: ClientPortalApiEndpoint, lock: bool):
+    def release_api_endpoint_lock(self, endpoint: ClientPortalApiEndpoint):
+        try:
+            self.set_api_endpoint_lock(endpoint, False)
+        except Exception as e:
+            logger.log_error_msg(f'Failed to release lock for {endpoint}, {e}', with_std_out=True)
+            raise oracledb.Error(f'Failed to release lock for {endpoint}, {e}')
+    
+    def set_api_endpoint_lock(self, endpoint: ClientPortalApiEndpoint, lock: bool):
         try:
             update_lock_start_time = time.time()
 
-            thread_name = threading.current_thread().name
-            is_locked = 'Y' if lock else 'Y'
-            update_api_endpoint_lock([dict(is_locked=is_locked, locked_by=thread_name, lock_datetime=get_current_us_datetime(), endpoint=endpoint.value)])
+            locked_by = None
+            lock_datetime = None
+            is_locked = 'N'
+            
+            if lock:
+                locked_by = threading.current_thread().name
+                lock_datetime = get_current_us_datetime()
+                is_locked = 'Y'
+                
+            update_api_endpoint_lock([dict(is_locked=is_locked, 
+                                           locked_by=locked_by, 
+                                           lock_datetime=lock_datetime, 
+                                           endpoint=endpoint.value)])
             
             logger.log_debug_msg(f'Update lock time: {time.time() - update_lock_start_time} seconds')
         except Exception as e:
@@ -361,6 +379,7 @@ class IBConnector:
 
             if ticker_symbol not in self.__ticker_to_contract_info_dict:
                 need_update = True
+                break
         
         return need_update
     
@@ -403,7 +422,6 @@ class IBConnector:
         
         try:
             snapshot_retrieval_success = False
-            incomplete_response_found = False 
             
             while not snapshot_retrieval_success:
                 incomplete_snapshot_response_list = []
@@ -421,12 +439,11 @@ class IBConnector:
                         if '_updated' not in snapshot_data:
                             logger.log_debug_msg(f'Incomplete snapshot response found: {snapshot_data}')
                             logger.log_debug_msg(f'Full snapshot response list: {snapshot_response_list}')
-                            incomplete_response_found = True
                             incomplete_snapshot_response_list.append(snapshot_data)
                 
                 retrieval_time_min = (time.time() - snapshot_retrieval_start_time) / 60
                 
-                if incomplete_response_found:
+                if incomplete_snapshot_response_list:
                     if retrieval_time_min > SNAPSHOT_RETRIEVAL_TIMEOUT_PERIOD:
                         raise IBDataRetrievalTimeoutError(f'Snapshot retrieval timeout, incompleted snapshot responst list: {incomplete_snapshot_response_list}')
                     
@@ -434,6 +451,7 @@ class IBConnector:
                     logger.log_debug_msg('Re-fetch snapshot after 0.5 second', with_std_out=True)
                     time.sleep(0.5)
                 else:
+                    logger.log_debug_msg('No incompleted snapshot response found', with_std_out=True)
                     snapshot_retrieval_success = True
                           
         except Exception as snapshot_request_exception:

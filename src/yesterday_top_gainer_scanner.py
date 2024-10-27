@@ -50,7 +50,7 @@ MAX_OFFERING_NEWS_SIZE = get_config(SCAN_PATTERN_NAME, 'MAX_OFFERING_NEWS_SIZE')
 REFRESH_INTERVAL = get_config(SCAN_PATTERN_NAME, 'REFRESH_INTERVAL')
 
 # API Endpoint Check Interval
-DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL = get_config('SYS_PARAM', 'SNAPSHOT_API_ENDPOINT_CHECK_INTERVAL')
+DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL = get_config('SYS_PARAM', 'DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL')
 SNAPSHOT_API_ENDPOINT_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'SNAPSHOT_API_ENDPOINT_CHECK_INTERVAL')
 MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL')
 
@@ -93,11 +93,13 @@ def scan():
         ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SECURITY_STOCKS_BY_SYMBOL, DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL)
         logger.log_debug_msg(f'Fetch yesterday top gainer secuity information')
         yesterday_top_gainer_contract_list = ib_connector.get_security_by_tickers(new_yesterday_top_gainer_ticker_list)
+        ib_connector.release_api_endpoint_lock(ClientPortalApiEndpoint.SECURITY_STOCKS_BY_SYMBOL)
 
         if (ib_connector.check_if_contract_update_required(yesterday_top_gainer_contract_list)):
             ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SNAPSHOT, SNAPSHOT_API_ENDPOINT_CHECK_INTERVAL)
             logger.log_debug_msg(f'Fetch small cap top gainer snapshot')
             ib_connector.update_contract_info(yesterday_top_gainer_contract_list)
+            ib_connector.release_api_endpoint_lock(ClientPortalApiEndpoint.SNAPSHOT)
 
         ticker_to_contract_dict = ib_connector.get_ticker_to_contract_dict()
 
@@ -107,6 +109,7 @@ def scan():
                                                                 offset_day=DAILY_CANDLE_DAYS,
                                                                 outside_rth=False,
                                                                 candle_retrieval_end_datetime=yesterday_top_gainer_retrieval_datetime)
+        ib_connector.release_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY)
 
         yesterday_bullish_daily_candle_analyser = YesterdayBullishDailyCandle(hit_scanner_date=yesterday_top_gainer_retrieval_datetime.date(),
                                                                               daily_df=yesterday_top_gainer_df,

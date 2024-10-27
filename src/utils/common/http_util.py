@@ -10,6 +10,8 @@ loop = asyncio.new_event_loop()
 
 async def fetch(session: aiohttp.ClientSession(), method: str, endpoint: str, payload: dict, semaphore, headers: dict = None):
     async with semaphore:
+        json_response = None
+        
         try:
             if method == 'GET':
                 logger.log_debug_msg(f"GET request with payload: {payload} send")
@@ -28,8 +30,9 @@ async def fetch(session: aiohttp.ClientSession(), method: str, endpoint: str, pa
                     logger.log_debug_msg(f"POST request with payload: {payload} response: {json_response}")
                     return await response.json()
         except Exception as e:
-            logger.log_error_msg(f'Error during {method} request to {endpoint}, payload: {payload}, Cause: {e}, Status code: {response.status}')
-            return {'status': 'FAILED', 'statusCode:': {response.status}, 'errorMsg': str(e), 'payload': payload}
+            status_code = 500 if not hasattr(json_response, 'status') else json_response.status
+            logger.log_error_msg(f'Error during {method} request to {endpoint}, payload: {payload}, Cause: {e}, Status code: {status_code}')
+            return {'status': 'FAILED', 'statusCode:': {status_code}, 'errorMsg': str(e), 'payload': payload}
 
 async def process_async_request(method: str, endpoint: str, payload_list: list, chunk_size: int, no_of_request_per_sec: int, headers: dict = None) -> dict:
     semaphore = asyncio.Semaphore(chunk_size)  # Limit to chunk_size concurrent requests
@@ -45,7 +48,8 @@ async def process_async_request(method: str, endpoint: str, payload_list: list, 
             logger.log_debug_msg(f'Completion of chunk time: {time.time() - all_chunk_start_time} seconds')
             
             for response in response_list:
-                if 'errorMsg' in response:
+                isError = isinstance(response, Exception)
+                if isError or 'errorMsg' in response:
                     result_dict['error_response_list'].append(response)
                 else:
                     result_dict['response_list'].append(response)
@@ -76,5 +80,7 @@ def send_async_request(method: str, endpoint: str, payload_list: list, chunk_siz
             status_code = error_response.get('statusCode')
             if status_code == 401:
                 raise aiohttp.ClientError(f'Client Portal Connection Error, response: {error_response}')
+            else:
+                raise Exception(f'HTTP Request Fatal Error, response: {error_response}')
     
     return response_list
