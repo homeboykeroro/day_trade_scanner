@@ -8,6 +8,8 @@ from utils.logger import Logger
 logger = Logger()
 loop = asyncio.new_event_loop()
 
+asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 async def fetch(session: aiohttp.ClientSession(), method: str, endpoint: str, payload: dict, semaphore, headers: dict = None):
     async with semaphore:
         json_response = None

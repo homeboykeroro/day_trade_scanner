@@ -21,6 +21,8 @@ logger = Logger()
 # session.headers['User-agent'] = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:95.0) Gecko/20100101 Firefox/95.0'
 
 def get_financial_data(contract_list: list) -> dict:
+    start_time = time.time()
+    
     if not contract_list:
         return {}
     
@@ -73,4 +75,5 @@ def get_financial_data(contract_list: list) -> dict:
                                    major_holders_df=major_holders_df,
                                    institutional_holders_df=institutional_holders_df)
     
+    logger.log_debug_msg(f'Financial data retrieval time: {time.time() - start_time} seconds', with_std_out=True)
     return result_dict

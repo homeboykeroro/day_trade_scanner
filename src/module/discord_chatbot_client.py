@@ -11,6 +11,8 @@ from utils.logger import Logger
 
 from constant.discord.discord_channel import DiscordChannel
 
+asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
+
 # Text to Speech
 TEXT_TO_SPEECH_CHANNEL_ID = int(os.environ['DISCORD_TEXT_TO_SPEECH_CHANNEL_ID'])
 
