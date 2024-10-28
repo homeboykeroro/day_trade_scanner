@@ -54,6 +54,8 @@ DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL = get_config('SYS_PARAM', 'DEFAULT_API_
 SNAPSHOT_API_ENDPOINT_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'SNAPSHOT_API_ENDPOINT_CHECK_INTERVAL')
 MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL')
 
+date_to_filtered_top_gainer_list_dict = {}
+
 def scan():
     logger.log_debug_msg('Yesterday top gainer scanner starts')
     
@@ -74,19 +76,37 @@ def scan():
                                                                      end_datetime=yesterday_top_gainer_retrieval_datetime)
     
     ticker_list = list(set([top_gainer[0] for top_gainer in yesterday_top_gainer_list]))
-    logger.log_debug_msg(f'Retrieve yesterday top gainer ({yesterday_top_gainer_retrieval_datetime})')
-    logger.log_debug_msg(f'Yesterday top gainer list size: {len(yesterday_top_gainer_list)}, top gainers: {yesterday_top_gainer_list}')
+    logger.log_debug_msg(f'Retrieving yesterday top gainer ({yesterday_top_gainer_retrieval_datetime})', with_std_out=True)
+    logger.log_debug_msg(f'Yesterday top gainer list size: {len(yesterday_top_gainer_list)}, top gainers: {yesterday_top_gainer_list}', with_std_out=True)
 
     new_yesterday_top_gainer_ticker_list = []
 
-    for ticker in ticker_list:
-        is_yesterday_bullish_candle_analysis_msg_sent = check_if_pattern_analysis_message_sent(ticker=ticker, 
-                                                                                               hit_scanner_datetime=yesterday_top_gainer_retrieval_datetime.date(), 
-                                                                                               pattern=SCAN_PATTERN_NAME, 
-                                                                                               bar_size=BarSize.ONE_DAY.value)
+    filtered_yesterday_top_gainer_ticker_list = date_to_filtered_top_gainer_list_dict.get(yesterday_top_gainer_retrieval_datetime.date())
         
-        if not is_yesterday_bullish_candle_analysis_msg_sent:
-            new_yesterday_top_gainer_ticker_list.append(ticker)
+    # Check if message sent & meet filtered criterion
+    if not filtered_yesterday_top_gainer_ticker_list:
+        for ticker in ticker_list:
+            is_yesterday_bullish_candle_analysis_msg_sent = check_if_pattern_analysis_message_sent(ticker=ticker, 
+                                                                                                   hit_scanner_datetime=yesterday_top_gainer_retrieval_datetime.date(), 
+                                                                                                   pattern=SCAN_PATTERN_NAME, 
+                                                                                                   bar_size=BarSize.ONE_DAY.value)
+            
+            if not is_yesterday_bullish_candle_analysis_msg_sent:
+                new_yesterday_top_gainer_ticker_list.append(ticker)
+        
+        logger.log_debug_msg(f'Analysing new top gainer: {new_yesterday_top_gainer_ticker_list}', with_std_out=True)
+    else:
+        # In case of failed message (not sent)
+        for ticker in ticker_list:
+            is_yesterday_bullish_candle_analysis_msg_sent = check_if_pattern_analysis_message_sent(ticker=ticker, 
+                                                                                                   hit_scanner_datetime=yesterday_top_gainer_retrieval_datetime.date(), 
+                                                                                                   pattern=SCAN_PATTERN_NAME, 
+                                                                                                   bar_size=BarSize.ONE_DAY.value)
+            meet_filter_criterion = ticker in filtered_yesterday_top_gainer_ticker_list
+            if not is_yesterday_bullish_candle_analysis_msg_sent and meet_filter_criterion:
+                new_yesterday_top_gainer_ticker_list.append(ticker)
+        
+        logger.log_debug_msg(f'Retry analysing top gainer: {new_yesterday_top_gainer_ticker_list}', with_std_out=True)
 
     if new_yesterday_top_gainer_ticker_list:
         ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SECURITY_STOCKS_BY_SYMBOL, DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL)
@@ -117,8 +137,10 @@ def scan():
                                                                               max_offering_news_size=MAX_OFFERING_NEWS_SIZE,
                                                                               pattern_name=SCAN_PATTERN_NAME)
         yesterday_bullish_daily_candle_analyser.analyse()
-    #time.sleep(REFRESH_INTERVAL)
-    time.sleep(5)
+        date_to_filtered_top_gainer_list_dict[yesterday_top_gainer_retrieval_datetime.date()] = yesterday_bullish_daily_candle_analyser.filtered_ticker_list
+        logger.log_debug_msg(f'List of yesterday top ganier with bullish daily candle: {date_to_filtered_top_gainer_list_dict[yesterday_top_gainer_retrieval_datetime.date()]}', with_std_out=True)
+    
+    time.sleep(REFRESH_INTERVAL)
             
 def run():
     yesterday_top_gainer_chatbot.run_chatbot(CHATBOT_THREAD_NAME, YESTERDAY_TOP_GAINER_SCANNER_CHATBOT_TOKEN)

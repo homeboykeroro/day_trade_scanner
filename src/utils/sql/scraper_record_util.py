@@ -28,7 +28,7 @@ def check_if_top_gainer_added(ticker: str, scan_date: datetime.datetime) -> bool
     
     no_of_result = execute_in_transaction(exec, dict(ticker=ticker, scan_date=scan_date))
     
-    if no_of_result == 1:
+    if no_of_result >= 1:
         return True
     else:
         return False

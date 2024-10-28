@@ -47,14 +47,16 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
         self.__min_close_pct = min_close_pct
         self.__max_offering_news_size = max_offering_news_size
         self.__pattern_name = pattern_name
+        
+        self.__filtered_ticker_list = []
 
     @property
-    def filtered_contract_list(self):
-        return self.__filtered_contract_list
+    def filtered_ticker_list(self):
+        return self.__filtered_ticker_list
     
-    @filtered_contract_list.setter
-    def filtered_contract_list(self, filtered_contract_list):
-        self.__filtered_contract_list = filtered_contract_list
+    @filtered_ticker_list.setter
+    def filtered_ticker_list(self, filtered_ticker_list):
+        self.__filtered_ticker_list = filtered_ticker_list
     
     def analyse(self) -> None:
         message_list = []
@@ -83,6 +85,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
         
         sorted_ticker_to_close_pct_dict = {k: v for k, v in sorted(ticker_to_close_pct_dict.items(), key=lambda item: item[1], reverse=True)}
         filtered_contract_list = []
+        self.__filtered_ticker_list = [ticker for ticker in result_list]
         
         for ticker in sorted_ticker_to_close_pct_dict:
             check_start_time = time.time()
