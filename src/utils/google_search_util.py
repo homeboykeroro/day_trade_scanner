@@ -241,7 +241,7 @@ class GoogleSearchUtil:
                         if (parsed_date 
                                 and parsed_date not in filtered_result 
                                 and (
-                                        ('offering' in checking_title or 'announces' in checking_title or 'pricing' in checking_title)
+                                        ('offering' in checking_title or 'pricing' in checking_title)
                                         #or ('offering' in checking_snippet or 'announces' in checking_snippet)
                                         )
                                 and not is_title_included_filtered_words):
