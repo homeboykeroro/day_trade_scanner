@@ -76,25 +76,28 @@ IB_TOP_GAINER_FILTER = get_ib_scanner_filter(scan_target=ScannerTarget.TOP_GAINE
 
 def scan():  
     logger.log_debug_msg('Small cap initial pop scanner starts')
+    start_time = time.time()
     
     # Get contract list from IB screener
     ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.RUN_SCANNER, SCANNER_API_ENDPOINT_CHECK_INTERVAL)
-    logger.log_debug_msg(f'Fetch small cap top gainer screener result')
+    logger.log_debug_msg(f'Fetch small cap top gainer screener result', with_std_out=True)
     contract_list = ib_connector.get_screener_results(MAX_NO_OF_SCANNER_RESULT, IB_TOP_GAINER_FILTER)
     ib_connector.release_api_endpoint_lock(ClientPortalApiEndpoint.RUN_SCANNER)
     
     if (ib_connector.check_if_contract_update_required(contract_list)):
         ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SNAPSHOT, SNAPSHOT_API_ENDPOINT_CHECK_INTERVAL)
-        logger.log_debug_msg(f'Fetch small cap top gainer snapshot')
+        logger.log_debug_msg(f'Fetch small cap top gainer snapshot', with_std_out=True)
         ib_connector.update_contract_info(contract_list)
         ib_connector.release_api_endpoint_lock(ClientPortalApiEndpoint.SNAPSHOT)
     
     ticker_to_contract_dict = ib_connector.get_ticker_to_contract_dict()
     
+    logger.log_debug_msg(f'Fetch top gainer one minute candle', with_std_out=True)
     ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY, MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL)
     one_minute_candle_df = ib_connector.retrieve_intra_day_minute_candle(contract_list=contract_list, bar_size=BarSize.ONE_MINUTE)
     ib_connector.release_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY)
     
+    logger.log_debug_msg(f'Fetch top gainer daily candle', with_std_out=True)
     ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY, MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL)
     daily_df = ib_connector.get_daily_candle(ib_connector=ib_connector,
                                              contract_list=contract_list, 
@@ -119,6 +122,7 @@ def scan():
                                                 daily_and_minute_candle_gap=DAILY_AND_MINUTE_CANDLE_GAP,
                                                 pattern_name=SCAN_PATTERN_NAME)
     small_cap_initial_pop_analyser.analyse()
+    logger.log_debug_msg(f'Small cap initial pop scan time: {time.time() - start_time}', with_std_out=True)
 
 def run():
     small_cap_initial_pop_chatbot.run_chatbot(CHATBOT_THREAD_NAME, SMALL_CAP_INITIAL_POP_CHATBOT_TOKEN)

@@ -58,6 +58,7 @@ date_to_filtered_top_gainer_list_dict = {}
 
 def scan():
     logger.log_debug_msg('Yesterday top gainer scanner starts')
+    start_time = time.time()
     
     us_current_datetime = get_current_us_datetime()
     day_offset = 0 if us_current_datetime.time() > datetime.time(16, 0, 0) else -1
@@ -140,6 +141,7 @@ def scan():
         date_to_filtered_top_gainer_list_dict[yesterday_top_gainer_retrieval_datetime.date()] = yesterday_bullish_daily_candle_analyser.filtered_ticker_list
         logger.log_debug_msg(f'List of yesterday top ganier with bullish daily candle: {date_to_filtered_top_gainer_list_dict[yesterday_top_gainer_retrieval_datetime.date()]}', with_std_out=True)
     
+    logger.log_debug_msg(f'Yesterday top gainer scan time: {time.time() - start_time} seconds', with_std_out=True)
     time.sleep(REFRESH_INTERVAL)
             
 def run():

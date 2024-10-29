@@ -1,6 +1,6 @@
 @echo off
-start wt new-tab -p "Command Prompt"  -d . --title "Flush Scanner"^
-            cmd /k "C:\Users\John\Downloads\test-workspace\stock_scanner\dist\initial_flush_scanner\initial_flush_scanner.exe";^
-        new-tab -p "Command Prompt" -d . --title "Pop Scanner"^
-             cmd /k "C:\Users\John\Downloads\test-workspace\stock_scanner\dist\initial_pop_scanner\initial_pop_scanner.exe"
+start wt new-tab -p "Command Prompt"  -d . --title "SmallCapInitialPop"^
+            cmd /k "C:\Users\John\Downloads\test-workspace\stock_scanner\dist\small_cap_initial_pop_scanner\small_cap_initial_pop_scanner.exe";^
+        new-tab -p "Command Prompt" -d . --title "YesterdayTopGainer"^
+             cmd /k "C:\Users\John\Downloads\test-workspace\stock_scanner\dist\yesterday_top_gainer_scanner\yesterday_top_gainer_scanner.exe"
 exit
