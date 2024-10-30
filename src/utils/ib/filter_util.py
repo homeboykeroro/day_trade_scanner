@@ -18,7 +18,8 @@ def get_finviz_scanner_filter(scan_target: ScannerTarget):
 
   return scanner_filter
 
-def get_ib_scanner_filter(scan_target: ScannerTarget = ScannerTarget.TOP_GAINER, 
+def get_ib_scanner_filter(instrument: Instrument = Instrument.STOCKS,
+                          scan_target: ScannerTarget = ScannerTarget.TOP_GAINER, 
                           min_price: float = 0.3, 
                           percent_change_param: float = 10, 
                           min_usd_volume: int = 20000, 
@@ -54,7 +55,7 @@ def get_ib_scanner_filter(scan_target: ScannerTarget = ScannerTarget.TOP_GAINER,
       
     scanner_filter = {
         # afterHoursChangePercAbove
-        'instrument': Instrument.STOCKS.value,
+        'instrument': instrument.value,
         'type': scan_code_param,
         'location': 'STK.US.MAJOR',
         'filter': [

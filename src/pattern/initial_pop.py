@@ -20,7 +20,6 @@ from utils.chart_util import get_candlestick_chart
 from utils.common.dataframe_util import concat_daily_df_and_minute_df, derive_idx_df, get_ticker_to_occurrence_idx_list
 from utils.common.datetime_util import convert_into_human_readable_time, convert_into_read_out_time, get_current_us_datetime
 from utils.logger import Logger
-from utils.common.config_util import get_config
 
 idx = pd.IndexSlice
 logger = Logger()
@@ -58,7 +57,7 @@ class InitialPop(PatternAnalyser):
 
     def analyse(self) -> None:
         message_list = []
-        logger.log_debug_msg('Initial pop scan')
+        logger.log_debug_msg('Analyse initial pop', with_std_out=True)
         start_time = time.time()
         
         yesterday_daily_candle_df = self.__daily_candle_df.iloc[[-1]]

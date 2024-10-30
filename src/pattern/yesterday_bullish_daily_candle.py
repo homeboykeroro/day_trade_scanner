@@ -60,7 +60,8 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
     
     def analyse(self) -> None:
         message_list = []
-        logger.log_debug_msg('Yesterday top gainer bullish daily candle scan')
+        logger.log_debug_msg('Analyse yesterday bullish daily candle', with_std_out=True)
+        start_time = time.time()
         
         close_pct_df = self.__daily_df.iloc[[-1]].loc[:, idx[:, CustomisedIndicator.CLOSE_CHANGE.value]].rename(columns={CustomisedIndicator.CLOSE_CHANGE.value: RuntimeIndicator.COMPARE.value})
         green_candle_df = self.__daily_df.iloc[[-1]].loc[:, idx[:, CustomisedIndicator.CANDLE_COLOUR.value]].rename(columns={CustomisedIndicator.CANDLE_COLOUR.value: RuntimeIndicator.COMPARE.value})
@@ -101,6 +102,8 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
                 con_id = contract.con_id if hasattr(contract, 'con_id') else None
                 company_name = contract.company_name if hasattr(contract, 'company_name') else None
                 filtered_contract_list.append(dict(symbol=symbol, con_id=con_id, company_name=company_name))
+        
+        logger.log_debug_msg(f'Yesterday bullish daily candle analysis time: {time.time() - start_time} seconds', with_std_out=True)
         
         if not filtered_contract_list:
             logger.log_debug_msg('None of yesterday top gainer meeting filter criterion', with_std_out=True)

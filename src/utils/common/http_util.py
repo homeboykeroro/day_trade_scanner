@@ -3,7 +3,10 @@ import threading
 import aiohttp
 import time
 
+from utils.common.config_util import get_config
 from utils.logger import Logger
+
+SHOW_HTTP_LOG = get_config('SYS_PARAM', 'SHOW_HTTP_LOG')
 
 logger = Logger()
 loop = asyncio.new_event_loop()
@@ -16,20 +19,20 @@ async def fetch(session: aiohttp.ClientSession(), method: str, endpoint: str, pa
         
         try:
             if method == 'GET':
-                logger.log_debug_msg(f"GET request with payload: {payload} send")
+                logger.log_debug_msg(f"GET request with payload: {payload} send", with_log_file=SHOW_HTTP_LOG)
                 async with session.get(endpoint, params=payload, ssl=False, headers=headers) as response:
                     json_response = await response.json()
-                    logger.log_debug_msg(f"GET request with payload: {payload} response: {json_response}")
+                    logger.log_debug_msg(f"GET request with payload: {payload} response: {json_response}", with_log_file=SHOW_HTTP_LOG)
                     return json_response
             elif method == 'POST':
                 async with session.post(endpoint, json=payload, ssl=False, headers=headers) as response:
                     json_response = await response.json()
-                    logger.log_debug_msg(f"POST request with payload: {payload} response: {json_response}")
+                    logger.log_debug_msg(f"POST request with payload: {payload} response: {json_response}", with_log_file=SHOW_HTTP_LOG)
                     return await response.json()
             elif method == 'DELETE':
                 async with session.delete(endpoint, json=payload, ssl=False, headers=headers) as response:
                     json_response = await response.json()
-                    logger.log_debug_msg(f"POST request with payload: {payload} response: {json_response}")
+                    logger.log_debug_msg(f"POST request with payload: {payload} response: {json_response}", with_log_file=SHOW_HTTP_LOG)
                     return await response.json()
         except Exception as e:
             status_code = 500 if not hasattr(json_response, 'status') else json_response.status
@@ -47,7 +50,7 @@ async def process_async_request(method: str, endpoint: str, payload_list: list, 
             
             all_chunk_start_time = time.time()
             response_list = await asyncio.gather(*tasks, return_exceptions=True)
-            logger.log_debug_msg(f'Completion of chunk time: {time.time() - all_chunk_start_time} seconds')
+            logger.log_debug_msg(f'Completion of chunk time: {time.time() - all_chunk_start_time} seconds', with_log_file=SHOW_HTTP_LOG)
             
             for response in response_list:
                 isError = isinstance(response, Exception)
@@ -58,18 +61,18 @@ async def process_async_request(method: str, endpoint: str, payload_list: list, 
             
             # Wait after processing each chunk
             if no_of_request_per_sec:
-                logger.log_debug_msg(f'Waiting {no_of_request_per_sec} seconds before processing next chunk')
+                logger.log_debug_msg(f'Waiting {no_of_request_per_sec} seconds before processing next chunk', with_log_file=SHOW_HTTP_LOG)
                 await asyncio.sleep(no_of_request_per_sec)
     
     return result_dict
         
 def send_async_request(method: str, endpoint: str, payload_list: list, chunk_size: int, no_of_request_per_sec: float = None, headers: dict = None, loop = None):
     if loop is None:
-        logger.log_debug_msg(f'No event loop is set for {endpoint}, caller thread: {threading.current_thread().name}')
+        logger.log_debug_msg(f'No event loop is set for {endpoint}, caller thread: {threading.current_thread().name}', with_log_file=SHOW_HTTP_LOG)
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
     else:
-        logger.log_debug_msg(f'Use event loop passed from {threading.current_thread().name}')
+        logger.log_debug_msg(f'Use event loop passed from {threading.current_thread().name}', with_log_file=SHOW_HTTP_LOG)
     
     response_result = loop.run_until_complete(process_async_request(method, endpoint, payload_list, chunk_size, no_of_request_per_sec, headers))
     loop.close()
