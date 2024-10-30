@@ -25,7 +25,6 @@ from utils.logger import Logger
 
 from model.discord.discord_message import DiscordMessage
 
-from constant.endpoint.ib.client_portal_api_endpoint import ClientPortalApiEndpoint
 from constant.candle.bar_size import BarSize
 from constant.discord.discord_channel import DiscordChannel
 
@@ -37,10 +36,6 @@ logger = Logger()
 
 SCAN_PATTERN_NAME = 'YESTERDAY_TOP_GAINER'
 
-# Chatbot Token
-YESTERDAY_TOP_GAINER_SCANNER_CHATBOT_TOKEN = os.environ['DISCORD_YESTERDAY_TOP_GAINER_SCANNER_CHATBOT_TOKEN']
-CHATBOT_THREAD_NAME = 'yesterday_top_gainer_chatbot_thread'
-
 # Filter Criterion
 MIN_CLOSE_PCT = get_config(SCAN_PATTERN_NAME, 'MIN_CLOSE_PCT')
 DAILY_CANDLE_DAYS = get_config(SCAN_PATTERN_NAME, 'DAILY_CANDLE_DAYS')
@@ -51,8 +46,8 @@ REFRESH_INTERVAL = get_config(SCAN_PATTERN_NAME, 'REFRESH_INTERVAL')
 
 # API Endpoint Check Interval
 DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL = get_config('SYS_PARAM', 'DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL')
-SNAPSHOT_API_ENDPOINT_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'SNAPSHOT_API_ENDPOINT_CHECK_INTERVAL')
-MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL')
+SNAPSHOT_API_ENDPOINT_LOCK_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'SNAPSHOT_API_ENDPOINT_LOCK_CHECK_INTERVAL')
+MARKET_DATA_API_ENDPOINT_LOCK_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'MARKET_DATA_API_ENDPOINT_LOCK_CHECK_INTERVAL')
 
 date_to_filtered_top_gainer_list_dict = {}
 
@@ -110,28 +105,16 @@ def scan():
         logger.log_debug_msg(f'Retry analysing top gainer: {new_yesterday_top_gainer_ticker_list}', with_std_out=True)
 
     if new_yesterday_top_gainer_ticker_list:
-        ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SECURITY_STOCKS_BY_SYMBOL, DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL)
-        logger.log_debug_msg(f'Fetch yesterday top gainer secuity information')
-        yesterday_top_gainer_contract_list = ib_connector.get_security_by_tickers(new_yesterday_top_gainer_ticker_list)
-        ib_connector.release_api_endpoint_lock(ClientPortalApiEndpoint.SECURITY_STOCKS_BY_SYMBOL)
+        yesterday_top_gainer_contract_list = ib_connector.fetch_contract_by_ticker_list(new_yesterday_top_gainer_ticker_list)
+        ticker_to_contract_dict = ib_connector.fetch_snapshot(contract_list=yesterday_top_gainer_contract_list, 
+                                                              snapshot_api_endpoint_lock_LOCK_check_interval=SNAPSHOT_API_ENDPOINT_LOCK_CHECK_INTERVAL)
 
-        if (ib_connector.check_if_contract_update_required(yesterday_top_gainer_contract_list)):
-            ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SNAPSHOT, SNAPSHOT_API_ENDPOINT_CHECK_INTERVAL)
-            logger.log_debug_msg(f'Fetch small cap top gainer snapshot')
-            ib_connector.update_contract_info(yesterday_top_gainer_contract_list)
-            ib_connector.release_api_endpoint_lock(ClientPortalApiEndpoint.SNAPSHOT)
-
-        ticker_to_contract_dict = ib_connector.get_ticker_to_contract_dict()
-
-        ib_connector.acquire_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY, MARKET_DATA_API_ENDPOINT_CHECK_INTERVAL)
-        yesterday_top_gainer_df = ib_connector.get_daily_candle(contract_list=yesterday_top_gainer_contract_list, 
-                                                                offset_day=DAILY_CANDLE_DAYS,
-                                                                outside_rth=False,
-                                                                candle_retrieval_end_datetime=yesterday_top_gainer_retrieval_datetime)
-        ib_connector.release_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY)
+        daily_candle_df = ib_connector.fetch_daily_candle(contract_list=yesterday_top_gainer_contract_list, 
+                                                          offset_day=DAILY_CANDLE_DAYS, 
+                                                          market_data_api_endpoint_lock_check_inverval=MARKET_DATA_API_ENDPOINT_LOCK_CHECK_INTERVAL)
 
         yesterday_bullish_daily_candle_analyser = YesterdayBullishDailyCandle(hit_scanner_date=yesterday_top_gainer_retrieval_datetime.date(),
-                                                                              daily_df=yesterday_top_gainer_df,
+                                                                              daily_df=daily_candle_df,
                                                                               ticker_to_contract_info_dict=ticker_to_contract_dict, 
                                                                               discord_client=yesterday_top_gainer_chatbot,
                                                                               min_close_pct=MIN_CLOSE_PCT,
@@ -145,6 +128,10 @@ def scan():
     time.sleep(REFRESH_INTERVAL)
             
 def run():
+    # Chatbot Token
+    YESTERDAY_TOP_GAINER_SCANNER_CHATBOT_TOKEN = os.environ['DISCORD_YESTERDAY_TOP_GAINER_SCANNER_CHATBOT_TOKEN']
+    CHATBOT_THREAD_NAME = 'yesterday_top_gainer_chatbot_thread'
+
     yesterday_top_gainer_chatbot.run_chatbot(CHATBOT_THREAD_NAME, YESTERDAY_TOP_GAINER_SCANNER_CHATBOT_TOKEN)
     yesterday_top_gainer_chatbot.send_message_by_list_with_response([DiscordMessage(content='Starts scanner')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
     

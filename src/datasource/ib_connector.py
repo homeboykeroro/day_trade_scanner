@@ -84,7 +84,52 @@ class IBConnector:
         self.__loop = loop
         
         self.__daily_canlde_df = pd.DataFrame()
+    
+    def fetch_contract_by_ticker_list(self, ticker_list: list, security_api_endpoint_lock_check_interval: int):
+        self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SECURITY_STOCKS_BY_SYMBOL, security_api_endpoint_lock_check_interval)
+        logger.log_debug_msg(f'Fetch secuity for {ticker_list}')
+        contract_list = self.get_security_by_tickers(ticker_list)
+        self.release_api_endpoint_lock(ClientPortalApiEndpoint.SECURITY_STOCKS_BY_SYMBOL)
+
+        return contract_list
+    
+    def fetch_screener_result(self, screener_filter: dict, max_no_of_scanner_result: int, scanner_api_endpoint_lock_check_interval: int) -> list:
+        # Get contract list from IB screener
+        self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.RUN_SCANNER, scanner_api_endpoint_lock_check_interval)
+        logger.log_debug_msg(f'Fetch {screener_filter.get('type')} screener result', with_std_out=True)
+        contract_list = self.get_screener_results(max_no_of_scanner_result, screener_filter)
+        self.release_api_endpoint_lock(ClientPortalApiEndpoint.RUN_SCANNER)
         
+        return contract_list
+    
+    def fetch_snapshot(self, contract_list: list, snapshot_api_endpoint_lock_check_interval: int) -> dict:
+        if (self.check_if_contract_update_required(contract_list)):
+            self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SNAPSHOT, snapshot_api_endpoint_lock_check_interval)
+            logger.log_debug_msg(f'Fetch snapshot for {[contract.get('symbol') for contract in contract_list]}', with_std_out=True)
+            self.update_contract_info(contract_list)
+            self.release_api_endpoint_lock(ClientPortalApiEndpoint.SNAPSHOT)
+        
+        ticker_to_contract_dict = self.get_ticker_to_contract_dict()
+        return ticker_to_contract_dict
+    
+    def fetch_daily_candle(self, contract_list: list, offset_day: int, market_data_api_endpoint_lock_check_inverval: int) -> pd.DataFrame:
+        self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY, market_data_api_endpoint_lock_check_inverval)
+        daily_df = self.get_daily_candle(self=self,
+                                         contract_list=contract_list, 
+                                         offset_day=offset_day, 
+                                         outside_rth=False)
+        self.release_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY)
+        
+        return daily_df
+
+    def fetch_intra_day_minute_candle(self, contract_list: list, market_data_api_endpoint_lock_check_interval: int) -> pd.DataFrame:
+        self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY, market_data_api_endpoint_lock_check_interval)
+        one_minute_candle_df = self.retrieve_intra_day_minute_candle(contract_list=contract_list, 
+                                                                     bar_size=BarSize.ONE_MINUTE)
+        self.release_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY)
+        
+        return one_minute_candle_df
+    
     def get_daily_candle(self, contract_list: list, 
                                offset_day: int, 
                                outside_rth: bool = False, 
@@ -281,12 +326,12 @@ class IBConnector:
     def get_ticker_to_contract_dict(self):
         return self.__ticker_to_contract_info_dict
     
-    def get_screener_results(self, max_no_of_scanner_result: int, scanner_filter_payload: dict) -> list:
+    def get_screener_results(self, scanner_filter: dict, max_no_of_scanner_result: int) -> list:
         try:
-            scanner_type = scanner_filter_payload.get("type")
+            scanner_type = scanner_filter.get("type")
             scanner_request_start_time = time.time()
             
-            scanner_response = session.post(f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.RUN_SCANNER}', json=scanner_filter_payload, verify=False)
+            scanner_response = session.post(f'{ClientPortalApiEndpoint.HOSTNAME + ClientPortalApiEndpoint.RUN_SCANNER}', json=scanner_filter, verify=False)
             logger.log_debug_msg(f'{scanner_type} scanner result response time: {time.time() - scanner_request_start_time} seconds')
             scanner_response.raise_for_status()
         except requests.exceptions.HTTPError as scanner_request_exception:

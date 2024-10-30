@@ -84,6 +84,47 @@ coll2 = COLLECT(
     icon='app_icon.png'
 )
 
+a3 = Analysis(
+    ['src\\small_cap_intra_day_breakout_scanner.py'],
+    pathex=[],
+    binaries=[],
+    datas=[('config.ini', '.small_cap_intra_day_breakout_scanner')],
+    hiddenimports=['cryptography.hazmat.primitives.kdf.pbkdf2'],
+    hookspath=[],
+    hooksconfig={},
+    runtime_hooks=[],
+    excludes=[],
+    noarchive=False,
+)
+pyz3 = PYZ(a3.pure)
+
+exe3 = EXE(
+    pyz3,
+    a3.scripts,
+    [],
+    exclude_binaries=True,
+    name='small_cap_intra_day_breakout_scanner',
+    debug=False,
+    bootloader_ignore_signals=False,
+    strip=False,
+    upx=True,
+    console=True,
+    disable_windowed_traceback=False,
+    argv_emulation=False,
+    target_arch=None,
+    codesign_identity=None,
+    entitlements_file=None,
+)
+coll3 = COLLECT(
+    exe3,
+    a3.binaries,
+    a3.datas,
+    strip=False,
+    upx=True,
+    upx_exclude=[],
+    name='small_cap_intra_day_breakout_scanner',
+    icon='app_icon.png'
+)
 
 
 import shutil
@@ -93,10 +134,13 @@ import os
 source = 'config.ini'
 dest_small_cap_initial_pop_scanner = os.path.join('dist', 'small_cap_initial_pop_scanner', 'config.ini')
 dest_yesterday_top_gainer_scanner = os.path.join('dist', 'yesterday_top_gainer_scanner', 'config.ini')
+dest_small_cap_intra_day_breakout_scanner = os.path.join('dist', 'small_cap_intra_day_breakout_scanner', 'config.ini')
 
 # Copy the config.ini file to each destination
 shutil.copyfile(source, dest_small_cap_initial_pop_scanner)
 shutil.copyfile(source, dest_yesterday_top_gainer_scanner)
+shutil.copyfile(source, dest_small_cap_intra_day_breakout_scanner)
 
 print(f"Copied {source} to {dest_small_cap_initial_pop_scanner}")
 print(f"Copied {source} to {dest_yesterday_top_gainer_scanner}")
+print(f"Copied {source} to {dest_small_cap_intra_day_breakout_scanner}")
