@@ -154,7 +154,7 @@ class InitialPop(PatternAnalyser):
                                                           hit_scanner_datetime=pop_up_time,
                                                           positive_offset=0, negative_offset=candle_chart_negative_offset,
                                                           scatter_symbol=ScatterSymbol.POP, scatter_colour=ScatterColour.CYAN)
-                        logger.log_debug_msg(f'Generate {ticker} initial pop one minute chart finished time: {time.time() - one_minute_chart_start_time} seconds')
+                        logger.log_debug_msg(f'Generate {ticker} initial pop {self.__bar_size.value} chart finished time: {time.time() - one_minute_chart_start_time} seconds')
 
                         hit_scanner_datetime_display = convert_into_human_readable_time(pop_up_time)
                         read_out_pop_up_time = convert_into_read_out_time(pop_up_time)

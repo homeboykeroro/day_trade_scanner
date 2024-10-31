@@ -136,7 +136,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
                                               hit_scanner_datetime=self.__hit_scanner_date,
                                               scatter_symbol=ScatterSymbol.POP, scatter_colour=ScatterColour.CYAN,
                                               candle_comment_list=[CustomisedIndicator.CLOSE_CHANGE, CustomisedIndicator.GAP_PCT_CHANGE, Indicator.CLOSE, Indicator.VOLUME])
-            logger.log_debug_msg(f'Generate {ticker} chart time, {time.time() - chart_start_time} seconds')
+            logger.log_debug_msg(f'Generate {ticker} yesterday bullish daily candle chart time, {time.time() - chart_start_time} seconds')
             
             message = ScannerResultMessage(title=f'{ticker}\'s yesterday\'s bullish daily candle, up {round(close_pct, 2)}% ({self.__hit_scanner_date})',
                                            readout_msg=f'{" ".join(ticker)} yesterday\'s bullish daily candle, up {round(close_pct, 2)}%',
