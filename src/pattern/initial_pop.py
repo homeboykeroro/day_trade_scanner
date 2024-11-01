@@ -34,7 +34,6 @@ class InitialPop(PatternAnalyser):
                        max_tolerance_period_in_minute,
                        daily_and_minute_candle_gap,
                        pattern_name):
-        ticker_list = list(minute_candle_df.columns.get_level_values(0).unique())
         super().__init__(discord_client)
         self.__bar_size = bar_size
         self.__minute_candle_df = minute_candle_df
@@ -46,9 +45,10 @@ class InitialPop(PatternAnalyser):
         self.__daily_and_minute_candle_gap = daily_and_minute_candle_gap
         self.__pattern_name = pattern_name
         
+        minute_candle_ticker_list = list(minute_candle_df.columns.get_level_values(0).unique())
         daily_candle_df_ticker_list = daily_candle_df.columns.get_level_values(0).unique().tolist()
         select_daily_candle_df_ticker_list = []
-        for ticker in ticker_list:
+        for ticker in minute_candle_ticker_list:
             if ticker in daily_candle_df_ticker_list:
                 select_daily_candle_df_ticker_list.append(ticker)
         
