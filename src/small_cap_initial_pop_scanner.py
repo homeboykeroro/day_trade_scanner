@@ -77,7 +77,7 @@ def scan():
                                                        max_no_of_scanner_result=MAX_NO_OF_SCANNER_RESULT, 
                                                        scanner_api_endpoint_lock_check_interval=SCANNER_API_ENDPOINT_LOCK_CHECK_INTERVAL)
     ticker_to_contract_dict = ib_connector.fetch_snapshot(contract_list=contract_list, 
-                                                          snapshot_api_endpoint_lock_LOCK_check_interval=SNAPSHOT_API_ENDPOINT_LOCK_CHECK_INTERVAL)
+                                                          snapshot_api_endpoint_lock_check_interval=SNAPSHOT_API_ENDPOINT_LOCK_CHECK_INTERVAL)
     one_minute_candle_df = ib_connector.fetch_intra_day_minute_candle(contract_list=contract_list, 
                                                                       market_data_api_endpoint_lock_check_interval=MARKET_DATA_API_ENDPOINT_LOCK_CHECK_INTERVAL)
     daily_candle_df = ib_connector.fetch_daily_candle(contract_list=contract_list, 
@@ -86,7 +86,7 @@ def scan():
     
     small_cap_initial_pop_analyser = InitialPop(bar_size=BarSize.ONE_MINUTE,
                                                 minute_candle_df=one_minute_candle_df, 
-                                                daily_df=daily_candle_df, 
+                                                daily_candle_df=daily_candle_df, 
                                                 ticker_to_contract_info_dict=ticker_to_contract_dict, 
                                                 discord_client=small_cap_initial_pop_chatbot,
                                                 min_gap_up_pct=MIN_GAP_UP_PCT,

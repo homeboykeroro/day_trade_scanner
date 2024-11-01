@@ -46,13 +46,13 @@ class InitialPop(PatternAnalyser):
         self.__daily_and_minute_candle_gap = daily_and_minute_candle_gap
         self.__pattern_name = pattern_name
         
-        daily_df_ticker_list = daily_candle_df.columns.get_level_values(0).unique().tolist()
-        select_daily_df_ticker_list = []
+        daily_candle_df_ticker_list = daily_candle_df.columns.get_level_values(0).unique().tolist()
+        select_daily_candle_df_ticker_list = []
         for ticker in ticker_list:
-            if ticker in daily_df_ticker_list:
-                select_daily_df_ticker_list.append(ticker)
+            if ticker in daily_candle_df_ticker_list:
+                select_daily_candle_df_ticker_list.append(ticker)
         
-        self.__daily_df = daily_candle_df.loc[:, idx[select_daily_df_ticker_list, :]]
+        self.__daily_candle_df = daily_candle_df.loc[:, idx[select_daily_candle_df_ticker_list, :]]
         self.__ticker_to_contract_info_dict = ticker_to_contract_info_dict
 
     def analyse(self) -> None:
@@ -101,7 +101,7 @@ class InitialPop(PatternAnalyser):
         if len(top_gainer_ticker_list) > 0:
             for ticker in top_gainer_ticker_list:
                 first_pop_up_datetime = first_pop_up_occurrence_df.loc[first_pop_up_occurrence_df.index[0], (ticker, RuntimeIndicator.INDEX.value)]
-                candle_chart_data_df, daily_date_to_fake_minute_datetime_x_axis_dict = concat_daily_df_and_minute_df(daily_df=self.__daily_df, 
+                candle_chart_data_df, daily_date_to_fake_minute_datetime_x_axis_dict = concat_daily_df_and_minute_df(daily_df=self.__daily_candle_df, 
                                                                                                                      minute_df=self.__minute_candle_df, 
                                                                                                                      hit_scanner_datetime=first_pop_up_datetime, 
                                                                                                                      gap_btw_daily_and_minute=self.__daily_and_minute_candle_gap)

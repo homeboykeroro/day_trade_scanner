@@ -33,7 +33,7 @@ SHOW_DISCORD_DEBUG_LOG = get_config('YESTERDAY_TOP_GAINER', 'SHOW_DISCORD_DEBUG_
 
 class YesterdayBullishDailyCandle(PatternAnalyser):
     
-    def __init__(self, hit_scanner_date: datetime.date,  daily_df: pd.DataFrame, 
+    def __init__(self, hit_scanner_date: datetime.date,  daily_candle_df: pd.DataFrame, 
                        ticker_to_contract_info_dict: dict, 
                        discord_client,
                        min_close_pct, 
@@ -41,7 +41,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
                        pattern_name):
         super().__init__(discord_client)
         self.__hit_scanner_date = hit_scanner_date
-        self.__daily_df = daily_df
+        self.__daily_candle_df = daily_candle_df
         self.__ticker_to_contract_info_dict = ticker_to_contract_info_dict
         
         self.__min_close_pct = min_close_pct
@@ -63,8 +63,8 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
         logger.log_debug_msg('Analyse yesterday bullish daily candle', with_std_out=True)
         start_time = time.time()
         
-        close_pct_df = self.__daily_df.iloc[[-1]].loc[:, idx[:, CustomisedIndicator.CLOSE_CHANGE.value]].rename(columns={CustomisedIndicator.CLOSE_CHANGE.value: RuntimeIndicator.COMPARE.value})
-        green_candle_df = self.__daily_df.iloc[[-1]].loc[:, idx[:, CustomisedIndicator.CANDLE_COLOUR.value]].rename(columns={CustomisedIndicator.CANDLE_COLOUR.value: RuntimeIndicator.COMPARE.value})
+        close_pct_df = self.__daily_candle_df.iloc[[-1]].loc[:, idx[:, CustomisedIndicator.CLOSE_CHANGE.value]].rename(columns={CustomisedIndicator.CLOSE_CHANGE.value: RuntimeIndicator.COMPARE.value})
+        green_candle_df = self.__daily_candle_df.iloc[[-1]].loc[:, idx[:, CustomisedIndicator.CANDLE_COLOUR.value]].rename(columns={CustomisedIndicator.CANDLE_COLOUR.value: RuntimeIndicator.COMPARE.value})
         
         min_close_pct_boolean_df = (close_pct_df >= self.__min_close_pct)
         green_candle_boolean_df = (green_candle_df == CandleColour.GREEN.value)
@@ -126,12 +126,12 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
             if SHOW_DISCORD_DEBUG_LOG:
                 self._discord_client.send_message(DiscordMessage(content=f'{ticker} offering news size: {date_to_news_dict_size}'), DiscordChannel.OFFERING_NEWS_LOG)
                 
-            close = self.__daily_df.loc[self.__hit_scanner_date.strftime('%Y-%m-%d'), (ticker, Indicator.CLOSE.value)]
-            close_pct = self.__daily_df.loc[self.__hit_scanner_date.strftime('%Y-%m-%d'), (ticker, CustomisedIndicator.CLOSE_CHANGE.value)]
-            volume = self.__daily_df.loc[self.__hit_scanner_date.strftime('%Y-%m-%d'), (ticker, Indicator.VOLUME.value)]
+            close = self.__daily_candle_df.loc[self.__hit_scanner_date.strftime('%Y-%m-%d'), (ticker, Indicator.CLOSE.value)]
+            close_pct = self.__daily_candle_df.loc[self.__hit_scanner_date.strftime('%Y-%m-%d'), (ticker, CustomisedIndicator.CLOSE_CHANGE.value)]
+            volume = self.__daily_candle_df.loc[self.__hit_scanner_date.strftime('%Y-%m-%d'), (ticker, Indicator.VOLUME.value)]
             
             chart_start_time = time.time()
-            chart_dir = get_candlestick_chart(candle_data_df=self.__daily_df,
+            chart_dir = get_candlestick_chart(candle_data_df=self.__daily_candle_df,
                                               ticker=ticker, pattern=self.__pattern_name, bar_size=BarSize.ONE_DAY,
                                               hit_scanner_datetime=self.__hit_scanner_date,
                                               scatter_symbol=ScatterSymbol.POP, scatter_colour=ScatterColour.CYAN,

@@ -114,7 +114,7 @@ def scan():
                                                           market_data_api_endpoint_lock_check_inverval=MARKET_DATA_API_ENDPOINT_LOCK_CHECK_INTERVAL)
 
         yesterday_bullish_daily_candle_analyser = YesterdayBullishDailyCandle(hit_scanner_date=yesterday_top_gainer_retrieval_datetime.date(),
-                                                                              daily_df=daily_candle_df,
+                                                                              daily_candle_df=daily_candle_df,
                                                                               ticker_to_contract_info_dict=ticker_to_contract_dict, 
                                                                               discord_client=yesterday_top_gainer_chatbot,
                                                                               min_close_pct=MIN_CLOSE_PCT,
