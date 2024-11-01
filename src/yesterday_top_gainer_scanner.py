@@ -105,7 +105,8 @@ def scan():
         logger.log_debug_msg(f'Retry analysing top gainer: {new_yesterday_top_gainer_ticker_list}', with_std_out=True)
 
     if new_yesterday_top_gainer_ticker_list:
-        yesterday_top_gainer_contract_list = ib_connector.fetch_contract_by_ticker_list(new_yesterday_top_gainer_ticker_list)
+        yesterday_top_gainer_contract_list = ib_connector.fetch_contract_by_ticker_list(ticker_list=new_yesterday_top_gainer_ticker_list,
+                                                                                        security_api_endpoint_lock_check_interval=DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL)
         ticker_to_contract_dict = ib_connector.fetch_snapshot(contract_list=yesterday_top_gainer_contract_list, 
                                                               snapshot_api_endpoint_lock_LOCK_check_interval=SNAPSHOT_API_ENDPOINT_LOCK_CHECK_INTERVAL)
 
