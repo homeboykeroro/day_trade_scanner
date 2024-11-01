@@ -128,7 +128,7 @@ class InitialPop(PatternAnalyser):
                                                                                   bar_size=self.__bar_size)
                     logger.log_debug_msg(f'Check {ticker} pop up pattern message send time: {time.time() - check_message_sent_start_time} seconds')
 
-                    candle_chart_negative_offset = int((pop_up_time - first_pop_up_datetime).total_seconds() / 60) + len(self.__daily_df)
+                    candle_chart_negative_offset = int((pop_up_time - first_pop_up_datetime).total_seconds() / 60) + len(self.__daily_candle_df)
 
                     if not is_message_sent:
                         with pd.option_context('display.max_rows', None,

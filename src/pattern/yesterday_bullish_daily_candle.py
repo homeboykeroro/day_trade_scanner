@@ -112,7 +112,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
         ticker_to_financial_data_dict = get_financial_data(filtered_contract_list)
         ticker_to_offering_news_dict = google_search_util.search_offering_news(filtered_contract_list, self._discord_client)
 
-        filtered_ticker_list = [contract.get('symbol') for contract in filtered_contract_list]
+        filtered_ticker_list = [contract.get("symbol") for contract in filtered_contract_list]
 
         for ticker in filtered_ticker_list:
             contract_info = self.__ticker_to_contract_info_dict.get(ticker)

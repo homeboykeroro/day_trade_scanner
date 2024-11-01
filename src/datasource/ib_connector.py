@@ -96,8 +96,8 @@ class IBConnector:
     def fetch_screener_result(self, screener_filter: dict, max_no_of_scanner_result: int, scanner_api_endpoint_lock_check_interval: int) -> list:
         # Get contract list from IB screener
         self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.RUN_SCANNER, scanner_api_endpoint_lock_check_interval)
-        logger.log_debug_msg(f'Fetch {screener_filter.get('type')} screener result', with_std_out=True)
-        contract_list = self.get_screener_results(max_no_of_scanner_result, screener_filter)
+        logger.log_debug_msg(f'Fetch {screener_filter.get("type")} screener result', with_std_out=True)
+        contract_list = self.get_screener_results(screener_filter, max_no_of_scanner_result)
         self.release_api_endpoint_lock(ClientPortalApiEndpoint.RUN_SCANNER)
         
         return contract_list
@@ -105,7 +105,7 @@ class IBConnector:
     def fetch_snapshot(self, contract_list: list, snapshot_api_endpoint_lock_check_interval: int) -> dict:
         if (self.check_if_contract_update_required(contract_list)):
             self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SNAPSHOT, snapshot_api_endpoint_lock_check_interval)
-            logger.log_debug_msg(f'Fetch snapshot for {[contract.get('symbol') for contract in contract_list]}', with_std_out=True)
+            logger.log_debug_msg(f'Fetch snapshot for {[contract.get("symbol") for contract in contract_list]}', with_std_out=True)
             self.update_contract_info(contract_list)
             self.release_api_endpoint_lock(ClientPortalApiEndpoint.SNAPSHOT)
         
@@ -114,8 +114,7 @@ class IBConnector:
     
     def fetch_daily_candle(self, contract_list: list, offset_day: int, market_data_api_endpoint_lock_check_inverval: int) -> pd.DataFrame:
         self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY, market_data_api_endpoint_lock_check_inverval)
-        daily_df = self.get_daily_candle(self=self,
-                                         contract_list=contract_list, 
+        daily_df = self.get_daily_candle(contract_list=contract_list, 
                                          offset_day=offset_day, 
                                          outside_rth=False)
         self.release_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY)
