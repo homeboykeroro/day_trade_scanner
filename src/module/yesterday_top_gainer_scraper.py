@@ -1,6 +1,7 @@
 
 import re
 import time
+import datetime
 import traceback
 from bs4 import BeautifulSoup
 import requests
@@ -10,7 +11,7 @@ from module.discord_chatbot_client import DiscordChatBotClient
 from model.discord.discord_message import DiscordMessage
 
 from utils.sql.scraper_record_util import check_if_top_gainer_added, add_top_gainer_record
-from utils.common.datetime_util import check_if_us_business_day, get_current_us_datetime
+from utils.common.datetime_util import check_if_us_business_day, get_current_us_datetime, get_us_business_day
 from utils.logger import Logger
 
 from constant.discord.discord_channel import DiscordChannel
@@ -26,7 +27,10 @@ EXIT_WAIT_TIME = 30
 
 def scrap(discord_client: DiscordChatBotClient):
     start_time = time.time() 
-    scan_date = get_current_us_datetime()
+    us_current_datetime = get_current_us_datetime()
+    day_offset = 0 if us_current_datetime.time() > datetime.time(16, 0, 0) else -1
+    scan_date = get_us_business_day(offset_day=day_offset, 
+                                    us_date=us_current_datetime).replace(hour=16, minute=0, second=0, microsecond=0)
     is_business_day = check_if_us_business_day(scan_date)
 
     if not is_business_day:

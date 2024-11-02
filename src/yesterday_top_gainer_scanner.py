@@ -108,7 +108,7 @@ def scan():
         yesterday_top_gainer_contract_list = ib_connector.fetch_contract_by_ticker_list(ticker_list=new_yesterday_top_gainer_ticker_list,
                                                                                         security_api_endpoint_lock_check_interval=DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL)
         ticker_to_contract_dict = ib_connector.fetch_snapshot(contract_list=yesterday_top_gainer_contract_list, 
-                                                              snapshot_api_endpoint_lock_LOCK_check_interval=SNAPSHOT_API_ENDPOINT_LOCK_CHECK_INTERVAL)
+                                                              snapshot_api_endpoint_lock_check_interval=SNAPSHOT_API_ENDPOINT_LOCK_CHECK_INTERVAL)
 
         daily_candle_df = ib_connector.fetch_daily_candle(contract_list=yesterday_top_gainer_contract_list, 
                                                           offset_day=DAILY_CANDLE_DAYS, 
