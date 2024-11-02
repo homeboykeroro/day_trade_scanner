@@ -35,8 +35,8 @@ def execute_in_transaction(execute_query: ExecuteQueryImpl, params):
             connection.rollback()
             logger.log_error_msg(f'Rollback due to error, {e}')
                 
-            logger.log_error_msg(f'Oracle SQL error, {e}')
-            raise e
+        logger.log_error_msg(f'Oracle SQL error, {e}')
+        raise e
     finally:
         if connection is not None:
             if cursor is not None:
