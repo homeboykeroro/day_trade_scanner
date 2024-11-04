@@ -2,7 +2,7 @@ import threading
 
 from constant.scanner.scanner_thread_name import ScannerThreadName
 
-threading.current_thread().name = ScannerThreadName.INTRA_DAY_BREAKOUT.value
+threading.current_thread().name = ScannerThreadName.INTRA_DAY_BREAKOUT_SCANNER.value
 
 import os
 import time
