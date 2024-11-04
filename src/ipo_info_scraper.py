@@ -40,7 +40,7 @@ ipo_info_scraper_chatbot = DiscordChatBotClient()
 # Refresh Time
 REFRESH_INTERVAL = get_config('IPO_INFO_SCRAPER', 'REFRESH_INTERVAL')
 
-async def fetch(session: aiohttp.ClientSession(), link: str):
+async def fetch(session: aiohttp.ClientSession, link: str):
     response = None
     
     try:
@@ -234,7 +234,7 @@ def scrap():
                                       ipo_info_dict.get('address'),
                                       ipo_info_dict.get('number_of_employee')])
 
-                title = f'{ipo_info_dict.get('company_name')} Initial Public Offering at ({ipo_info_dict.get('ipo_datetime').strftime("%m/%d/%Y")})'
+                title = f'{ipo_info_dict.get("company_name")} Initial Public Offering at ({ipo_info_dict.get("ipo_datetime").strftime("%m/%d/%Y")})'
                 readout_msg = title
                 
                 is_sent = check_if_ipo_added(ipo_info_dict.get('ticker'))

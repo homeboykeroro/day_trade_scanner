@@ -70,11 +70,16 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
         green_candle_boolean_df = (green_candle_df == CandleColour.GREEN.value)
         yesterday_bullish_daily_candle_boolean_df = (min_close_pct_boolean_df) & (green_candle_boolean_df)
         
+        daily_candle_df_ticker_list = self.__daily_candle_df.columns.get_level_values(0).unique().tolist()
+        logger.log_debug_msg(f'daily_candle_df_ticker_list: {daily_candle_df_ticker_list}')
+        
         with pd.option_context('display.max_rows', None,
                                'display.max_columns', None,
                                'display.precision', 3):
-            logger.log_debug_msg(f'Bullish daily candle boolean dataframe:')
-            logger.log_debug_msg(yesterday_bullish_daily_candle_boolean_df)
+            logger.log_debug_msg(f'analaysing Full Dataframe: {self.__daily_candle_df}')
+            logger.log_debug_msg(f'Bullish daily candle boolean dataframe: {yesterday_bullish_daily_candle_boolean_df}')
+            logger.log_debug_msg(f'close_pct_df dataframe: {close_pct_df}')
+            logger.log_debug_msg(f'green_candle_df dataframe: {green_candle_df}')
         
         yesterday_bullish_daily_candle_result_series = yesterday_bullish_daily_candle_boolean_df.any()   
         result_list = yesterday_bullish_daily_candle_result_series.index[yesterday_bullish_daily_candle_result_series].get_level_values(0).tolist()
