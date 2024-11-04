@@ -6,4 +6,4 @@ class ScannerThreadName(str, Enum):
     PREVIOUS_DAY_TOP_GAINER_CONTINUATION = 'PreviousDayTopGainerContinuationScanner'
     PREVIOUS_DAY_TOP_GAINER_SUPPORT = 'PreviousDayTopGainerSupportScanner'
     INTRA_DAY_BREAKOUT_SCANNER = 'IntraDayBreakoutScanner'
-    
+    IPO_INFO_SCRAPER = 'IPOInfoScraper'

@@ -20,10 +20,11 @@ TEXT_TO_SPEECH_CHANNEL_ID = int(os.environ['DISCORD_TEXT_TO_SPEECH_CHANNEL_ID'])
 INITIAL_POP_CHANNEL_ID = int(os.environ['DISCORD_INITIAL_POP_CHANNEL_ID'])
 INITIAL_FLUSH_CHANNEL_ID = int(os.environ['DISCORD_INITIAL_FLUSH_CHANNEL_ID'])
 YESTERDAY_BULLISH_DAILY_CANDLE_CHANNEL_ID = int(os.environ['DISCORD_YESTERDAY_BULLISH_DAILY_CANDLE_CHANNEL_ID'])
-DISCORD_SMALL_CAP_INTRA_DAY_BREAKOUT_CHANNEL_ID = int(os.environ['DISCORD_SMALL_CAP_INTRA_DAY_BREAKOUT_CHANNEL_ID'])
+SMALL_CAP_INTRA_DAY_BREAKOUT_CHANNEL_ID = int(os.environ['DISCORD_SMALL_CAP_INTRA_DAY_BREAKOUT_CHANNEL_ID'])
 INTRA_DAY_BREAKOUT_LOG_CHANNEL_ID = int(os.environ['DISCORD_INTRA_DAY_BREAKOUT_LOG_CHANNEL_ID'])
 PREVIOUS_DAY_TOP_GAINER_SUPPORT_CHANNEL_ID = int(os.environ['DISCORD_PREVIOUS_DAY_TOP_GAINER_SUPPORT_CHANNEL_ID'])
 PREVIOUS_DAY_TOP_GAINER_CONTINUATION_CHANNEL_ID = int(os.environ['DISCORD_PREVIOUS_DAY_TOP_GAINER_CONTINUATION_CHANNEL_ID'])
+IPO_LIST_CHANNEL_ID = int(os.environ['DISCORD_IPO_LIST_CHANNEL_ID'])
 PREVIOUS_DAY_TOP_GAINER_SUPPORT_ALERT_LOG_CHANNEL_ID = int(os.environ['DISCORD_PREVIOUS_DAY_TOP_GAINER_SUPPORT_ALERT_LOG_CHANNEL_ID'])
 PREVIOUS_DAY_TOP_GAINER_CONTINUATION_ALERT_LOG_CHANNEL_ID = int(os.environ['DISCORD_PREVIOUS_DAY_TOP_GAINER_CONTINUATION_ALERT_LOG_CHANNEL_ID'])
 
@@ -128,7 +129,8 @@ class DiscordChatBotClient(discord.Client):
         self.__initial_pop_channel = self.get_channel(INITIAL_POP_CHANNEL_ID)
         self.__initial_flush_channel = self.get_channel(INITIAL_FLUSH_CHANNEL_ID)
         self.__yesterday_bullish_daily_candle_channel = self.get_channel(YESTERDAY_BULLISH_DAILY_CANDLE_CHANNEL_ID)
-        self.__intra_day_breakout_channel = self.get_channel(DISCORD_SMALL_CAP_INTRA_DAY_BREAKOUT_CHANNEL_ID)
+        self.__intra_day_breakout_channel = self.get_channel(SMALL_CAP_INTRA_DAY_BREAKOUT_CHANNEL_ID)
+        self.__ipo_list_channel = self.get_channel(IPO_LIST_CHANNEL_ID)
         self.__offering_news_log_channel = self.get_channel(OFFERING_NEWS_LOG_CHANNEL_ID)
         self.__previous_day_top_gainer_support_channel = self.get_channel(PREVIOUS_DAY_TOP_GAINER_SUPPORT_CHANNEL_ID)
         self.__previous_day_top_gainer_continuation_channel = self.get_channel(PREVIOUS_DAY_TOP_GAINER_CONTINUATION_CHANNEL_ID)
@@ -282,6 +284,8 @@ class DiscordChatBotClient(discord.Client):
             channel = self.__previous_day_top_gainer_support_channel
         elif channel_type == DiscordChannel.PREVIOUS_DAYS_TOP_GAINER_CONTINUATION:
             channel = self.__previous_day_top_gainer_continuation_channel
+        elif channel_type == DiscordChannel.IPO_LIST:
+            channel = self.__ipo_list_channel
         elif channel_type == DiscordChannel.PREVIOUS_DAYS_TOP_GAINER_SUPPORT_ALERT_LOG:
             channel = self.__previous_top_gainer_support_alert_log_channel
         elif channel_type == DiscordChannel.PREVIOUS_DAYS_TOP_GAINER_CONTINUATION_ALERT_LOG:
