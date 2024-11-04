@@ -110,13 +110,12 @@ class IntraDayBreakout(PatternAnalyser):
             sorted_breakout_high_np = high_with_min_breakout_volume_df.values[sorted_breakout_high_idx_np, np.arange(high_with_min_breakout_volume_df.shape[1])]
             breakout_high_datetime = high_with_min_breakout_volume_df.index[sorted_breakout_high_idx_np[-1][0]]
             previous_breakout_high_datetime = high_with_min_breakout_volume_df.index[sorted_breakout_high_idx_np[-2][0]]
-            breakout_close = sorted_breakout_close_np[-1][0]
-            previous_breakout_close = sorted_breakout_close_np[-2][0]
-            
             sorted_breakout_close_idx_np = np.argsort(close_with_min_breakout_volume_df.values, axis=0)
             sorted_breakout_close_np = close_with_min_breakout_volume_df.values[sorted_breakout_close_idx_np, np.arange(close_with_min_breakout_volume_df.shape[1])]
             breakout_close_datetime = close_with_min_breakout_volume_df.index[sorted_breakout_close_idx_np[-1][0]]
             previous_breakout_close_datetime = close_with_min_breakout_volume_df.index[sorted_breakout_close_idx_np[-2][0]]
+            breakout_close = sorted_breakout_close_np[-1][0]
+            previous_breakout_close = sorted_breakout_close_np[-2][0]
             breakout_high = sorted_breakout_high_np[-1][0]
             previous_breakout_high = sorted_breakout_high_np[-2][0]
             
@@ -125,7 +124,6 @@ class IntraDayBreakout(PatternAnalyser):
             breakout_value = None
             previous_breakout_datetime = None
             previous_breakout_value = None
-            breakout_volume = volume_df.loc[breakout_datetime, (ticker, RuntimeIndicator.COMPARE.value)]
       
             # Case 1: Pop up candle (2nd high) -> Pullback -> Consolidation -> Curl (increasing volume) -> Breakout with volume)
             # Message precedence, breakout high > breakout close
@@ -145,7 +143,9 @@ class IntraDayBreakout(PatternAnalyser):
         
             if breakout_indicator == None:
                 continue
-        
+            
+            #breakout_volume = volume_df.loc[breakout_datetime, (ticker, RuntimeIndicator.COMPARE.value)]
+            
             normalised_volume_df = (volume_df.where(min_breakout_trading_volume_boolean_df.values)
                                              .replace(np.nan, -1)
                                              .loc[:breakout_datetime, idx[[ticker], :]])

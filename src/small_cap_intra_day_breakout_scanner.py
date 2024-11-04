@@ -53,6 +53,7 @@ MIN_OBSERVE_PERIOD = get_config(SCAN_PATTERN_NAME, 'MIN_OBSERVE_PERIOD')
 FIRST_POP_UP_MIN_CLOSE_PCT = get_config(SCAN_PATTERN_NAME, 'FIRST_POP_UP_MIN_CLOSE_PCT')
 MIN_BREAKOUT_TRADING_VOLUME_IN_USD = get_config(SCAN_PATTERN_NAME, 'MIN_BREAKOUT_TRADING_VOLUME_IN_USD')
 DAILY_CANDLE_DAYS = get_config(SCAN_PATTERN_NAME, 'DAILY_CANDLE_DAYS')
+DAILY_AND_MINUTE_CANDLE_GAP = get_config(SCAN_PATTERN_NAME, 'DAILY_AND_MINUTE_CANDLE_GAP')
 
 # API Endpoint Check Interval
 SCANNER_API_ENDPOINT_LOCK_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'SCANNER_API_ENDPOINT_LOCK_CHECK_INTERVAL')
@@ -84,12 +85,13 @@ def scan():
     
     intra_day_breakout_analyser = IntraDayBreakout(bar_size=BarSize.ONE_MINUTE,
                                                    minute_candle_df=one_minute_candle_df,
-                                                   daily_df=daily_candle_df,
+                                                   daily_candle_df=daily_candle_df,
                                                    ticker_to_contract_info_dict=ticker_to_contract_dict,
                                                    discord_client=small_cap_intra_day_breakout_chatbot,
                                                    min_observe_period=MIN_OBSERVE_PERIOD,
                                                    first_pop_up_min_close_pct=FIRST_POP_UP_MIN_CLOSE_PCT,
                                                    min_breakout_trading_volume_in_usd=MIN_BREAKOUT_TRADING_VOLUME_IN_USD,
+                                                   daily_and_minute_candle_gap=DAILY_AND_MINUTE_CANDLE_GAP,
                                                    pattern_name=SCAN_PATTERN_NAME)
     intra_day_breakout_analyser.analyse()
     logger.log_debug_msg(f'Small cap intra day breakout scan time: {time.time() - start_time}', with_std_out=True)

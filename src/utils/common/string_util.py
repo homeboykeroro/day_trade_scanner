@@ -21,3 +21,5 @@ def split_long_paragraph_into_chunks(stacktrace: str, chunk_size: int):
             chunk_list.append(concat_chunk_str)
             total_no_of_char = 0
             concat_chunk_str = ''
+            
+    return chunk_list
