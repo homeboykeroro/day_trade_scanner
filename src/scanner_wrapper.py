@@ -127,7 +127,7 @@ class ScannerWrapper():
                     send_chunk_list = split_long_paragraph_into_chunks(stacktrace, STACKTRACE_CHUNK_SIZE)
 
                     for send_chunk in send_chunk_list:
-                        self.__discord_client.send_message_by_list_with_response(DiscordMessage(content=send_chunk), channel_type=DiscordChannel.CHATBOT_ERROR_LOG)    
+                        self.__discord_client.send_message_by_list_with_response([DiscordMessage(content=send_chunk)], channel_type=DiscordChannel.CHATBOT_ERROR_LOG)    
                 else:
                     self.__discord_client.send_message(DiscordMessage(content=stacktrace), channel_type=DiscordChannel.CHATBOT_ERROR_LOG)
 
