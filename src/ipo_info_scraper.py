@@ -13,6 +13,10 @@ import os
 import time
 from bs4 import BeautifulSoup
 import requests
+from selenium import webdriver 
+from selenium.webdriver.common.by import By 
+from selenium.webdriver.support.ui import WebDriverWait 
+from selenium.webdriver.support import expected_conditions as EC
 
 from module.discord_chatbot_client import DiscordChatBotClient
 
@@ -148,110 +152,106 @@ def scrap():
     start_time = time.time()
     
     try:
+        driver = webdriver.Chrome(executable_path='path/to/chromedriver') 
         scrap_star_time = time.time()
-        response = session.get(IPO_LIST_LINK, headers=HEADERS)
+        driver.get('https://www.nasdaq.com/market-activity/ipos')
+        WebDriverWait(driver, 30).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+        page_content = driver.page_source
+        driver.quit()
         logger.log_debug_msg(f'Get IPO list response time: {time.time() - scrap_star_time} seconds')
-        # Raises a HTTPError if the response status is 4xx, 5xx
-        response.raise_for_status() 
-    except Exception as e:
-        logger.log_error_msg(f'An error occurred while scarping IPO list: {e}', with_std_out=True)
-    else:
+        
         save_ipo_list = []
         ipo_info_dict = {}
         info_link_list = []
-        
-        try:
-            contents = response.text
-            soup = BeautifulSoup(contents, 'lxml')
-            row_list = soup.select('div[class$="-ipo-calendar__priced_table"] .table-row[part="table-row"][role="row"]')
-            logger.log_debug_msg(f'Number of IPO: {len(row_list)}')
+        soup = BeautifulSoup(page_content, 'lxml')
+        row_list = soup.select('div[class$="-ipo-calendar__priced_table"] .table-row[part="table-row"][role="row"]')
+        logger.log_debug_msg(f'Number of IPO: {len(row_list)}')
             
-            for row in row_list:
-                column_list = row.find_all('div[part="table-cell"][role="cell"]')
+        for row in row_list:
+            column_list = row.find_all('div[part="table-cell"][role="cell"]')
 
-                ticker = column_list[0].text
-                
-                if not re.match('^[A-Z]{1,4}$', ticker): 
-                    logger.log_debug_msg(f'Exclude {ticker} from IPO list', with_std_out=True)
-                    continue
-                
-                company_name = column_list[1].text
-                exchange_name = column_list[2].text
-                offering_price = float(column_list[3].text.replace(',', ''))
-                offering_shares = float(column_list[4].text.replace(',', ''))
-                ipo_date = datetime.strptime(column_list[5].text, "%m/%d/%Y")
-                offering_amount = float(column_list[6].text.replace(',', ''))
-
-                ipo_info_dict[ticker] = dict(company_name=company_name, 
-                                             exchange_name=exchange_name,
-                                             offering_price=offering_price,
-                                             offering_shares=offering_shares,
-                                             offering_amount=offering_amount,
-                                             ipo_date=ipo_date)
-
-                info_link = column_list[0].select_one('a').get('href')
-                info_link_list.append(info_link)
-
-            ipo_details_retrieval_start_time = time.time()
-            ipo_details_response = asyncio.run(get_ipo_info(info_link_list))
-            ipo_details_list = ipo_details_response.get('response_list')
-            ipo_details_error_list = ipo_details_response.get('error_response_list')
-            logger.log_debug_msg(f'Get IPO details time: {time.time() - ipo_details_retrieval_start_time} seconds')
+            ticker = column_list[0].text
             
-            if ipo_details_error_list:
-                logger.log_error_msg(f'IPO details retrieval error response list: {ipo_details_error_list}')
+            if not re.match('^[A-Z]{1,4}$', ticker): 
+                logger.log_debug_msg(f'Exclude {ticker} from IPO list', with_std_out=True)
+                continue
+            
+            company_name = column_list[1].text
+            exchange_name = column_list[2].text
+            offering_price = float(column_list[3].text.replace(',', ''))
+            offering_shares = float(column_list[4].text.replace(',', ''))
+            ipo_date = datetime.strptime(column_list[5].text, "%m/%d/%Y")
+            offering_amount = float(column_list[6].text.replace(',', ''))
 
-            for details_response in ipo_details_list:
-                ipo_details_content = details_response.text
-                ipo_details_soup = BeautifulSoup(ipo_details_content, 'lxml')
-                details_dict = {}
+            ipo_info_dict[ticker] = dict(company_name=company_name, 
+                                         exchange_name=exchange_name,
+                                         offering_price=offering_price,
+                                         offering_shares=offering_shares,
+                                         offering_amount=offering_amount,
+                                         ipo_date=ipo_date)
 
-                details = ipo_details_soup.find_all('div.overview-container div[class="insert-data"] table tr')
-                description = ipo_details_soup.select_one('div.description-data span').get_text()
-                details_dict['description'] = description
+            info_link = column_list[0].select_one('a').get('href')
+            info_link_list.append(info_link)
 
-                for detail in details:
-                    field = detail.select_one('th').get_text()
-                    value = detail.select_one('td').get_text()
+        ipo_details_retrieval_start_time = time.time()
+        ipo_details_response = asyncio.run(get_ipo_info(info_link_list))
+        ipo_details_list = ipo_details_response.get('response_list')
+        ipo_details_error_list = ipo_details_response.get('error_response_list')
+        logger.log_debug_msg(f'Get IPO details time: {time.time() - ipo_details_retrieval_start_time} seconds')
+            
+        if ipo_details_error_list:
+            logger.log_error_msg(f'IPO details retrieval error response list: {ipo_details_error_list}')
 
-                    if field == 'Proposed Symbol':
-                        details_dict['ticker'] = value
-                    elif field == 'Company Address':
-                        details_dict['address'] = value
-                    elif field == 'Company Website':
-                        details_dict['official_website'] = value
-                    elif field == 'Employee':
-                        details_dict['number_of_employee'] = value
+        for details_response in ipo_details_list:
+            ipo_details_content = details_response.text
+            ipo_details_soup = BeautifulSoup(ipo_details_content, 'lxml')
+            details_dict = {}
 
-                ipo_info_dict[details_dict['ticker']].update(details_dict)
-                save_ipo_list.append([ipo_info_dict.get('ticker'),
-                                      ipo_info_dict.get('company_name'),
-                                      ipo_info_dict.get('offering_price'),
-                                      ipo_info_dict.get('offering_shares'),
-                                      ipo_info_dict.get('offering_amount'),
-                                      ipo_info_dict.get('ipo_datetime'),
-                                      ipo_info_dict.get('official_website'),
-                                      ipo_info_dict.get('address'),
-                                      ipo_info_dict.get('number_of_employee')])
+            details = ipo_details_soup.find_all('div.overview-container div[class="insert-data"] table tr')
+            description = ipo_details_soup.select_one('div.description-data span').get_text()
+            details_dict['description'] = description
 
-                title = f'{ipo_info_dict.get("company_name")} Initial Public Offering at ({ipo_info_dict.get("ipo_datetime").strftime("%m/%d/%Y")})'
-                readout_msg = title
+            for detail in details:
+                field = detail.select_one('th').get_text()
+                value = detail.select_one('td').get_text()
+
+                if field == 'Proposed Symbol':
+                    details_dict['ticker'] = value
+                elif field == 'Company Address':
+                    details_dict['address'] = value
+                elif field == 'Company Website':
+                    details_dict['official_website'] = value
+                elif field == 'Employee':
+                    details_dict['number_of_employee'] = value
+
+            ipo_info_dict[details_dict['ticker']].update(details_dict)
+            save_ipo_list.append([ipo_info_dict.get('ticker'),
+                                  ipo_info_dict.get('company_name'),
+                                  ipo_info_dict.get('offering_price'),
+                                  ipo_info_dict.get('offering_shares'),
+                                  ipo_info_dict.get('offering_amount'),
+                                  ipo_info_dict.get('ipo_datetime'),
+                                  ipo_info_dict.get('official_website'),
+                                  ipo_info_dict.get('address'),
+                                  ipo_info_dict.get('number_of_employee')])
+
+            title = f'{ipo_info_dict.get("company_name")} Initial Public Offering at ({ipo_info_dict.get("ipo_datetime").strftime("%m/%d/%Y")})'
+            readout_msg = title
                 
-                is_sent = check_if_ipo_added(ipo_info_dict.get('ticker'))
-                if not is_sent:
-                    message = IPOMessage(title=title,
-                                         readout_msg=readout_msg,
-                                         offering_price=ipo_info_dict.get('offering_price'),
-                                         offering_shares=ipo_info_dict.get('offering_shares'),
-                                         offering_amount=ipo_info_dict.get('offering_amount'),
-                                         description=ipo_info_dict.get('description'),
-                                         company_website=ipo_info_dict.get('official_website'),
-                                         ticker=ipo_info_dict.get('ticker'))
-                    send_message(message)
-                    add_ipo_record(save_ipo_list)
-        except Exception as ex:
-            logger.log_error_msg(f'IPO data retrieval fatal error, {ex}')
-        
+            is_sent = check_if_ipo_added(ipo_info_dict.get('ticker'))
+            if not is_sent:
+                message = IPOMessage(title=title,
+                                     readout_msg=readout_msg,
+                                     offering_price=ipo_info_dict.get('offering_price'),
+                                     offering_shares=ipo_info_dict.get('offering_shares'),
+                                     offering_amount=ipo_info_dict.get('offering_amount'),
+                                     description=ipo_info_dict.get('description'),
+                                     company_website=ipo_info_dict.get('official_website'),
+                                     ticker=ipo_info_dict.get('ticker'))
+                send_message(message)
+                add_ipo_record(save_ipo_list)
+    except Exception as e:
+        logger.log_error_msg(f'An error occurred while scarping IPO list: {e}', with_std_out=True)
     logger.log_debug_msg(f'IPO scraping time: {time.time() - start_time} seconds')
 
 def run():
