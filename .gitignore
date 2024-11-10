@@ -5,3 +5,5 @@
 /dist/
 .vscode
 __pycache__
+*.jks
+**/ib_api_gateway/logs/*.log
