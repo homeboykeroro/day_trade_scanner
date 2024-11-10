@@ -17,7 +17,7 @@
 ### Pre-Requisite
 1. Execute `docker login https://container-registry.oracle.com/`
 2. Input Oracle account user credentials
-3. Execute `docker compose up`
+3. Execute `docker compose up -d`
 4. Create Discord account and channels
 5. Create discord chatbot and invite it to your server
 6. Create Interactive Brokers trading account, and subscribe market data 

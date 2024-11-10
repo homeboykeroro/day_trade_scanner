@@ -32,3 +32,4 @@ services:
     volumes:
       - ~/oracle-data:/opt/oracle/oradata
       - ./script/database:/docker-entrypoint-initdb.d
+    restart: always
