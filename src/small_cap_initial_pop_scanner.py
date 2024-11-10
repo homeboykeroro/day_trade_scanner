@@ -52,6 +52,7 @@ IB_TOP_GAINER_FILTER = get_ib_scanner_filter(scan_target=ScannerTarget.TOP_GAINE
 MAX_TOLERANCE_PERIOD_IN_MINUTE = get_config(SCAN_PATTERN_NAME, 'MAX_TOLERANCE_PERIOD_IN_MINUTE')
 MAX_POP_OCCURRENCE = get_config(SCAN_PATTERN_NAME, 'MAX_POP_OCCURRENCE')
 MIN_GAP_UP_PCT = get_config(SCAN_PATTERN_NAME, 'MIN_GAP_UP_PCT')
+RAMP_UP_CANDLE_PCT = get_config(SCAN_PATTERN_NAME, 'RAMP_UP_CANDLE_PCT')
 MIN_CLOSE_PCT = get_config(SCAN_PATTERN_NAME, 'MIN_CLOSE_PCT')
 DAILY_AND_MINUTE_CANDLE_GAP = get_config(SCAN_PATTERN_NAME, 'DAILY_AND_MINUTE_CANDLE_GAP')
 DAILY_CANDLE_DAYS = get_config(SCAN_PATTERN_NAME, 'DAILY_CANDLE_DAYS')
@@ -90,6 +91,7 @@ def scan():
                                                 ticker_to_contract_info_dict=ticker_to_contract_dict, 
                                                 discord_client=small_cap_initial_pop_chatbot,
                                                 min_gap_up_pct=MIN_GAP_UP_PCT,
+                                                ramp_up_candle_pct=RAMP_UP_CANDLE_PCT,
                                                 min_close_pct=MIN_CLOSE_PCT,
                                                 max_pop_occurrence=MAX_POP_OCCURRENCE,
                                                 max_tolerance_period_in_minute=MAX_TOLERANCE_PERIOD_IN_MINUTE,

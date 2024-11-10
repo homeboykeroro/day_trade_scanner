@@ -15,12 +15,12 @@
  <br />
 
 ### Pre-Requisite
-1. Install Oracle database
-2. Create Discord account and channels
-3. Create discord chatbot and invite it to your server
-4. Create Interactive Brokers trading account, and subscribe market data 
-5. Download IB API Gateway from Interactive Brokers official website
-6. Execute `create.sql`
+1. Execute `docker login https://container-registry.oracle.com/`
+2. Input Oracle account user credentials
+3. Execute `docker compose up`
+4. Create Discord account and channels
+5. Create discord chatbot and invite it to your server
+6. Create Interactive Brokers trading account, and subscribe market data 
 7. Edit `config.ini`, change Oracle login credentials and logger file directory
 
  <br />
@@ -30,13 +30,22 @@
 2. Run `py -m venv VENV_NAME` to create project virtual environment for `stock_scanner`
 3. Access `stock_scanner` venv directory, then execute `activate`
 4. Run `pip install -r requirements.txt` to install dependencies for `stock_scanner`
-5. Launch debugger in IDE
+5. Edit `conf.yaml` in `ip_api_gateway/root` directory
+6. Execute `start.bat` to start IB API Gateway
+7. Launch debugger in IDE
 
  <br />
 
 ### Build Executable File
-1. Run `pip install pyinstaller`
-2. Run `pyinstaller main.spec` to export this project as the executable file in `dist` folder 
+1. Access `stock_scanner` root directory
+2. Run `py -m venv VENV_NAME` to create project virtual environment for `stock_scanner`
+3. Access `stock_scanner` venv directory, then execute `activate`
+4. Run `pip install -r requirements.txt` to install dependencies for `stock_scanner`
+5. Edit `conf.yaml` in `ip_api_gateway/root` directory
+6. Execute `start.bat` to start IB API Gateway
+7. Run `pip install pyinstaller`
+8. Run `pyinstaller main.spec` to export this project as the executable file in `dist` folder 
+9. Execute the packaged executable exe file
 
 <br />
 

@@ -29,6 +29,7 @@ class InitialPop(PatternAnalyser):
                        ticker_to_contract_info_dict: dict, 
                        discord_client,
                        min_gap_up_pct,
+                       ramp_up_candle_pct,
                        min_close_pct,
                        max_pop_occurrence,
                        max_tolerance_period_in_minute,
@@ -37,7 +38,7 @@ class InitialPop(PatternAnalyser):
         super().__init__(discord_client)
         self.__bar_size = bar_size
         self.__minute_candle_df = minute_candle_df
-        
+        self.__ramp_up_candle_pct = ramp_up_candle_pct
         self.__min_gap_up_pct = min_gap_up_pct
         self.__min_close_pct = min_close_pct
         self.__max_pop_occurrence = max_pop_occurrence
@@ -63,6 +64,7 @@ class InitialPop(PatternAnalyser):
         yesterday_daily_candle_df = self.__daily_candle_df.iloc[[-1]]
         candle_colour_df = self.__minute_candle_df.loc[:, idx[:, CustomisedIndicator.CANDLE_COLOUR.value]]
         close_df = self.__minute_candle_df.loc[:, idx[:, Indicator.CLOSE.value]]
+        close_pct_df = self.__minute_candle_df.loc[:, idx[:, CustomisedIndicator.CLOSE_CHANGE.value]]
         
         yesterday_close_df = yesterday_daily_candle_df.loc[:, idx[:, Indicator.CLOSE.value]]
         yesterday_close_to_last_pct_df = (close_df.sub(yesterday_close_df.values)
@@ -83,8 +85,9 @@ class InitialPop(PatternAnalyser):
         min_gap_up_pct_df = (gap_up_pct_df >= self.__min_gap_up_pct).rename(columns={CustomisedIndicator.GAP_PCT_CHANGE.value: RuntimeIndicator.COMPARE.value})
         min_close_pct_boolean_df = (yesterday_close_to_last_pct_df >= self.__min_close_pct).rename(columns={CustomisedIndicator.CLOSE_CHANGE.value: RuntimeIndicator.COMPARE.value})
         non_flat_candle_boolean_df = (candle_colour_df != CandleColour.GREY.value).rename(columns={CustomisedIndicator.CANDLE_COLOUR.value: RuntimeIndicator.COMPARE.value})
+        ramp_up_candle_pct_boolean_df = (close_pct_df >= self.__ramp_up_candle_pct).rename(columns={CustomisedIndicator.CLOSE_CHANGE.value: RuntimeIndicator.COMPARE.value})
         
-        pop_up_boolean_df = (min_gap_up_pct_df) & (min_close_pct_boolean_df) & (non_flat_candle_boolean_df)
+        pop_up_boolean_df = (min_gap_up_pct_df) & (min_close_pct_boolean_df) & (non_flat_candle_boolean_df) & (ramp_up_candle_pct_boolean_df)
         
         datetime_idx_df = derive_idx_df(pop_up_boolean_df, False)
         first_pop_up_occurrence_df = datetime_idx_df.where(pop_up_boolean_df.values).bfill().iloc[[0]]
@@ -109,6 +112,7 @@ class InitialPop(PatternAnalyser):
                 occurrence_idx_list = ticker_to_occurrence_idx_list_dict[ticker]
                 logger.log_debug_msg(f'{ticker}\'s occurrence idx list: {occurrence_idx_list}', with_std_out=True)
                 
+                filtered_occurence_idx_list = []
                 for occurrence_idx in occurrence_idx_list:   
                     if not occurrence_idx:
                         continue
@@ -119,7 +123,11 @@ class InitialPop(PatternAnalyser):
                         if current_datetime_and_pop_up_time_diff > self.__max_tolerance_period_in_minute:
                             logger.log_debug_msg(f'Exclude {ticker} initial pop at {occurrence_idx}, analysis datetime: {us_current_datetime}, out of tolerance period')
                             continue
-                    
+                        else:
+                            filtered_occurence_idx_list.append(occurrence_idx)
+                
+                logger.log_debug_msg(f'{ticker}\'s filtered occurrence idx list: {filtered_occurence_idx_list}')
+                for occurrence_idx in filtered_occurence_idx_list:
                     pop_up_time = occurrence_idx
                     check_message_sent_start_time = time.time()
                     is_message_sent = self.check_if_pattern_analysis_message_sent(ticker=ticker, 
@@ -174,6 +182,6 @@ class InitialPop(PatternAnalyser):
         
         if message_list:
             send_msg_start_time = time.time()
-            self.send_notification(message_list, DiscordChannel.INITIAL_POP)
+            self.send_notification(message_list, DiscordChannel.INITIAL_POP, False)
             logger.log_debug_msg(f'{self.__pattern_name} send message time: {time.time() - send_msg_start_time} seconds')
     

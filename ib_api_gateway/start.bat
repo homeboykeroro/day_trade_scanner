@@ -1,0 +1,1 @@
+<IB_API_GATEWAY_PATH>/bin/run.bat <IB_API_GATEWAY_PATH>\root\conf.yaml

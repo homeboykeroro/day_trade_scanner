@@ -43,6 +43,7 @@ ipo_info_scraper_chatbot = DiscordChatBotClient()
 
 # Refresh Time
 REFRESH_INTERVAL = get_config('IPO_INFO_SCRAPER', 'REFRESH_INTERVAL')
+SELENIUM_DRIVER_PATH = get_config('SYS_PARAM', 'SELENIUM_DRIVER_PATH')
 
 async def fetch(session: aiohttp.ClientSession, link: str):
     response = None
@@ -152,7 +153,7 @@ def scrap():
     start_time = time.time()
     
     try:
-        driver = webdriver.Chrome(executable_path='path/to/chromedriver') 
+        driver = webdriver.Chrome(SELENIUM_DRIVER_PATH) 
         scrap_star_time = time.time()
         driver.get('https://www.nasdaq.com/market-activity/ipos')
         WebDriverWait(driver, 30).until(lambda d: d.execute_script('return document.readyState') == 'complete')
