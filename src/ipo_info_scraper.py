@@ -14,9 +14,9 @@ import time
 from bs4 import BeautifulSoup
 import requests
 from selenium import webdriver 
-from selenium.webdriver.common.by import By 
 from selenium.webdriver.support.ui import WebDriverWait 
-from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.chrome.service import Service
+from selenium.webdriver.common.by import By 
 
 from module.discord_chatbot_client import DiscordChatBotClient
 
@@ -153,10 +153,18 @@ def scrap():
     start_time = time.time()
     
     try:
-        driver = webdriver.Chrome(SELENIUM_DRIVER_PATH) 
+        chromeService = webdriver.ChromeService(executable_path=SELENIUM_DRIVER_PATH)
+        options = webdriver.ChromeOptions()
+        options.add_argument('--ignore-certificate-errors')
+        options.add_argument('--ignore-ssl-errors')
+        driver = webdriver.Chrome(service=chromeService, options=options) 
+        
+
+
         scrap_star_time = time.time()
         driver.get('https://www.nasdaq.com/market-activity/ipos')
-        WebDriverWait(driver, 30).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+        WebDriverWait(driver, 20).until(lambda d: d.execute_script('return document.readyState') == 'complete')
+        rows = driver.find_elements(By.CLASS_NAME, "jupiter22-ipo-calendar-wrapper") # get all of the rows in the table
         page_content = driver.page_source
         driver.quit()
         logger.log_debug_msg(f'Get IPO list response time: {time.time() - scrap_star_time} seconds')
