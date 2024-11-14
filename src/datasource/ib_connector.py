@@ -659,7 +659,7 @@ class IBConnector:
             datetime_idx_range_start_datetime = get_us_business_day(offset_day=-subtract_day, us_date=candle_retrieval_end_datetime).date()
             request_start_time = get_us_business_day(1, candle_retrieval_end_datetime)
             period = f'{subtract_day + 1}d'
-            interval = US_BUSINESS_DAY
+            interval = 'D'
         else:
             if not candle_retrieval_end_datetime:
                 datetime_idx_range_end_datetime = get_current_us_datetime().replace(second=0, microsecond=0, tzinfo=None)
