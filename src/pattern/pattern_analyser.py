@@ -3,7 +3,7 @@ import datetime
 
 from model.discord.discord_message import DiscordMessage
 
-from utils.sql.discord_message_record_util import check_if_pattern_analysis_message_sent, add_sent_pattern_analysis_message_record
+from utils.sql.discord_message_record_util import check_if_pattern_analysis_message_sent, check_if_pattern_analysis_message_sent_by_daily_basis ,add_sent_pattern_analysis_message_record
 from utils.logger import Logger
 
 from constant.discord.discord_channel import DiscordChannel
@@ -19,6 +19,9 @@ class PatternAnalyser(ABC):
     
     def analyse(self) -> None:
         return NotImplemented
+    
+    def check_if_pattern_analysis_message_sent_by_daily_basis(self, ticker: str, hit_scanner_datetime: datetime.datetime, pattern: str, bar_size: BarSize, max_occurrence: int):
+        return check_if_pattern_analysis_message_sent_by_daily_basis(ticker, hit_scanner_datetime, pattern, bar_size.value, max_occurrence)
     
     def check_if_pattern_analysis_message_sent(self, ticker: str, hit_scanner_datetime: datetime.datetime, pattern: str, bar_size: BarSize):
         return check_if_pattern_analysis_message_sent(ticker, hit_scanner_datetime, pattern, bar_size.value)

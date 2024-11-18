@@ -8,6 +8,35 @@ from sql.execute_query_impl import ExecuteQueryImpl
 from constant.query.oracle_query import OracleQuery
 from constant.broker import Broker
 
+def check_if_pattern_analysis_message_sent_by_daily_basis(ticker: str, hit_scanner_datetime: datetime, pattern: str, bar_size: str, max_occurrence: int) -> bool:
+    def execute(cursor: Cursor, params):
+        cursor.execute(OracleQuery.COUNT_PATTERN_ANALYSIS_MESSAGE_BY_DAILY_BASIS_QUERY.value, **params)
+        result = cursor.fetchall()
+        return result
+
+    exec = type(
+        "CountPatternAnalysisMessageByDailyBasis",
+        (ExecuteQueryImpl,),
+        {
+            "execute": execute
+        }
+    )
+    
+    params = dict(ticker=ticker, hit_scanner_datetime=hit_scanner_datetime, scan_pattern=pattern, bar_size=bar_size)
+    result = execute_in_transaction(exec, params)
+    
+    is_added = False
+    
+    if len(result) >= max_occurrence:
+        is_added = True
+    else:
+        for row in result:
+            if row[1] == hit_scanner_datetime:
+                is_added = True
+                break
+    
+    return is_added
+
 def check_if_pattern_analysis_message_sent(ticker: str, hit_scanner_datetime: datetime, pattern: str, bar_size: str) -> bool:
     def execute(cursor: Cursor, params):
         cursor.execute(OracleQuery.COUNT_PATTERN_ANALYSIS_MESSAGE_QUERY.value, **params)

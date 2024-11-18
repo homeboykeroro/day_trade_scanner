@@ -95,7 +95,7 @@ class InitialPop(PatternAnalyser):
         top_gainer_result_series = pop_up_boolean_df.any()   
         top_gainer_ticker_list = top_gainer_result_series.index[top_gainer_result_series].get_level_values(0).tolist()
         
-        ticker_to_occurrence_idx_list_dict = get_ticker_to_occurrence_idx_list(pop_up_boolean_df, self.__max_pop_occurrence)
+        ticker_to_occurrence_idx_list_dict = get_ticker_to_occurrence_idx_list(pop_up_boolean_df)
         logger.log_debug_msg(f'Initial pop ticker to occurrence idx list: {ticker_to_occurrence_idx_list_dict}')
         logger.log_debug_msg(f'Initial pop analysis time: {time.time() - start_time} seconds')
 
@@ -126,14 +126,18 @@ class InitialPop(PatternAnalyser):
                         else:
                             filtered_occurence_idx_list.append(occurrence_idx)
                 
-                logger.log_debug_msg(f'{ticker}\'s filtered occurrence idx list: {filtered_occurence_idx_list}')
+                filtered_occurence_idx_list.reverse()
+                logger.log_debug_msg(f'{ticker}\'s filtered occurrence idx list: {filtered_occurence_idx_list}', with_std_out=True)
+                filtered_occurence_idx_list = filtered_occurence_idx_list[:-1]
+                logger.log_debug_msg(f'{ticker} sliced  filtered occurrence idx list: {filtered_occurence_idx_list}', with_std_out=True)
                 for occurrence_idx in filtered_occurence_idx_list:
                     pop_up_time = occurrence_idx
                     check_message_sent_start_time = time.time()
-                    is_message_sent = self.check_if_pattern_analysis_message_sent(ticker=ticker, 
-                                                                                  hit_scanner_datetime=pop_up_time.replace(second=0, microsecond=0), 
-                                                                                  pattern=self.__pattern_name, 
-                                                                                  bar_size=self.__bar_size)
+                    is_message_sent = self.check_if_pattern_analysis_message_sent_by_daily_basis(ticker=ticker, 
+                                                                                                 hit_scanner_datetime=pop_up_time.replace(second=0, microsecond=0), 
+                                                                                                 pattern=self.__pattern_name, 
+                                                                                                 bar_size=self.__bar_size,
+                                                                                                 max_occurrence=self.__max_pop_occurrence)
                     logger.log_debug_msg(f'Check {ticker} pop up pattern message send time: {time.time() - check_message_sent_start_time} seconds')
 
                     candle_chart_negative_offset = int((pop_up_time - first_pop_up_datetime).total_seconds() / 60) + len(self.__daily_candle_df)
@@ -182,6 +186,6 @@ class InitialPop(PatternAnalyser):
         
         if message_list:
             send_msg_start_time = time.time()
-            self.send_notification(message_list, DiscordChannel.INITIAL_POP, False)
+            self.send_notification(message_list, DiscordChannel.INITIAL_POP)
             logger.log_debug_msg(f'{self.__pattern_name} send message time: {time.time() - send_msg_start_time} seconds')
     
