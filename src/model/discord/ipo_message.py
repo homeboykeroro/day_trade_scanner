@@ -15,14 +15,13 @@ class IPOMessage(DiscordMessage):
         super().__init__(ticker=ticker)
         embed = discord.Embed(title=f'{title}')
         
-        embed.add_field(name = 'Ticker:', value= f'{ticker}', inline = True)
-        embed.add_field(name = 'Offering Price:', value=f'{"{:,}".format(float(offering_price))}', inline = True)
-        embed.add_field(name = 'Number of Shares:', value= f'{"{:,}".format(int(offering_shares))}', inline = True)
-        embed.add_field(name = 'Offering Amount:', value= f'{"{:,}".format(int(offering_amount))}', inline = True)
-        embed.add_field(name = 'Description:', value = f'{description}', inline = True)
-        embed.add_field(name = 'Official Website:', value = f"[{company_website}]({company_website})", inline = True)
-        embed.add_field(name = chr(173), value = chr(173), inline = True)
-
+        embed.add_field(name = 'Ticker:', value= f'{ticker}', inline = False)
+        embed.add_field(name = 'Offering Price:', value=f'${"{:,}".format(float(offering_price))}', inline = False)
+        embed.add_field(name = 'Number of Shares:', value= f'{"{:,}".format(int(offering_shares))}', inline = False)
+        embed.add_field(name = 'Offering Amount:', value= f'${"{:,}".format(int(offering_amount))}', inline = False)
+        embed.add_field(name = 'Official Website:', value = f"[{company_website.replace('https://', '')}]({company_website})", inline = False)
+        embed.add_field(name = 'Description:', value = f'{description}', inline = False)
+        
         self.__ticker = ticker
         self.embed = embed
         self.__readout_msg = readout_msg
