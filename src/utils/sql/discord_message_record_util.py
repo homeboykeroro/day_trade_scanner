@@ -5,8 +5,12 @@ from oracledb import Cursor
 from sql.oracle_connector import execute_in_transaction
 from sql.execute_query_impl import ExecuteQueryImpl
 
+from utils.logger import Logger
+
 from constant.query.oracle_query import OracleQuery
 from constant.broker import Broker
+
+logger = Logger()
 
 def check_if_pattern_analysis_message_sent_by_daily_basis(ticker: str, hit_scanner_datetime: datetime, pattern: str, bar_size: str, max_occurrence: int) -> bool:
     def execute(cursor: Cursor, params):
@@ -27,12 +31,15 @@ def check_if_pattern_analysis_message_sent_by_daily_basis(ticker: str, hit_scann
     
     is_added = False
     
+    logger.log_debug_msg(f'Check pattern analysis by daily basis, length: {len(result)}, maximum occurrence: {max_occurrence}, result: {result}')
+    
     if len(result) >= max_occurrence:
         is_added = True
     else:
         for row in result:
             if row[1] == hit_scanner_datetime:
                 is_added = True
+                logger.log_debug_msg(f'{ticker} {hit_scanner_datetime} has already been added')
                 break
     
     return is_added
