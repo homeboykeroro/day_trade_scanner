@@ -99,9 +99,7 @@ def scan():
 def run():
     # Chatbot Token
     SMALL_CAP_INTRA_DAY_BREAKOUT_CHATBOT_TOKEN = os.environ['DISCORD_SMALL_CAP_INTRA_DAY_BREAKOUT_CHATBOT_TOKEN']
-    CHATBOT_THREAD_NAME = 'small_cap_intra_day_breakout_chatbot_thread'
-
-    small_cap_intra_day_breakout_chatbot.run_chatbot(CHATBOT_THREAD_NAME, SMALL_CAP_INTRA_DAY_BREAKOUT_CHATBOT_TOKEN)
+    small_cap_intra_day_breakout_chatbot.run_chatbot(SMALL_CAP_INTRA_DAY_BREAKOUT_CHATBOT_TOKEN)
     small_cap_intra_day_breakout_chatbot.send_message_by_list_with_response([DiscordMessage(content='Starts scanner')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
     
     small_cap_intra_day_breakout_scanner = ScannerWrapper(scanner_name='Small cap intra day breakout', 

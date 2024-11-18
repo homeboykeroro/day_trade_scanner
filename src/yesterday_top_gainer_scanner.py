@@ -131,9 +131,7 @@ def scan():
 def run():
     # Chatbot Token
     YESTERDAY_TOP_GAINER_SCANNER_CHATBOT_TOKEN = os.environ['DISCORD_YESTERDAY_TOP_GAINER_SCANNER_CHATBOT_TOKEN']
-    CHATBOT_THREAD_NAME = 'yesterday_top_gainer_chatbot_thread'
-
-    yesterday_top_gainer_chatbot.run_chatbot(CHATBOT_THREAD_NAME, YESTERDAY_TOP_GAINER_SCANNER_CHATBOT_TOKEN)
+    yesterday_top_gainer_chatbot.run_chatbot(YESTERDAY_TOP_GAINER_SCANNER_CHATBOT_TOKEN)
     yesterday_top_gainer_chatbot.send_message_by_list_with_response([DiscordMessage(content='Starts scanner')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
     
     yesterday_top_gainer_scanner = ScannerWrapper(scanner_name='Yesterday top gainer', 

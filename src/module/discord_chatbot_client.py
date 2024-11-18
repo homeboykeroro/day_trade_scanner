@@ -387,13 +387,11 @@ class DiscordChatBotClient(discord.Client):
             
         return channel
 
-    def run_chatbot(self, chatbot_thread_name: str = 'discord_chatbot_thread', chatbot_token: str = None) -> threading.Thread:
-        bot_thread = threading.Thread(target=self.run, name=chatbot_thread_name, args=(chatbot_token,))
-        bot_thread.start()
-        
+    def run_chatbot(self, chatbot_token: str = None) -> threading.Thread:
+        self.run(chatbot_token)
+         
         while True:
             if self.__is_chatbot_ready:
                 logger.log_debug_msg('Chatbot is ready', with_std_out=True)
                 break
         
-        return bot_thread
