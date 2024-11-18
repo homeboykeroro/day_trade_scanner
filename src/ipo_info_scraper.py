@@ -230,6 +230,7 @@ def scrap():
             else: 
                 number_str = price_str
             
+            number_str = number_str if number_str else '0.0'
             price = float(number_str)
             
             number_of_share = int(details_dict.get('Shares Offered'))
