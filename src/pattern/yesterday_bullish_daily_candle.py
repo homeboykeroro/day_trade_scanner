@@ -38,7 +38,8 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
                        discord_client,
                        min_close_pct, 
                        max_offering_news_size,
-                       pattern_name):
+                       pattern_name,
+                       discord_channel: DiscordChannel):
         super().__init__(discord_client)
         self.__hit_scanner_date = hit_scanner_date
         self.__daily_candle_df = daily_candle_df
@@ -47,6 +48,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
         self.__min_close_pct = min_close_pct
         self.__max_offering_news_size = max_offering_news_size
         self.__pattern_name = pattern_name
+        self.__discord_channel = discord_channel
         
         self.__filtered_ticker_list = []
 
@@ -163,7 +165,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
             
             for msg in message_list:
                 send_msg_time = time.time()
-                self.send_notification([msg], DiscordChannel.YESTERDAY_BULLISH_DAILY_CANDLE, False)
+                self.send_notification([msg], self.__discord_channel, False)
                 logger.log_debug_msg(f'Send {msg.ticker} {msg.pattern} message time: {time.time() - send_msg_time} seconds', with_std_out=True)
             
             logger.log_debug_msg(f'{self.__pattern_name} send message time: {time.time() - total_send_msg_start_time} seconds', with_std_out=True)

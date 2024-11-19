@@ -96,7 +96,8 @@ def scan():
                                                 max_pop_occurrence=MAX_POP_OCCURRENCE,
                                                 max_tolerance_period_in_minute=MAX_TOLERANCE_PERIOD_IN_MINUTE,
                                                 daily_and_minute_candle_gap=DAILY_AND_MINUTE_CANDLE_GAP,
-                                                pattern_name=SCAN_PATTERN_NAME)
+                                                pattern_name=SCAN_PATTERN_NAME,
+                                                discord_channel=DiscordChannel.INITIAL_POP)
     small_cap_initial_pop_analyser.analyse()
     logger.log_debug_msg(f'Small cap initial pop scan time: {time.time() - start_time}', with_std_out=True)
 

@@ -34,7 +34,8 @@ class InitialPop(PatternAnalyser):
                        max_pop_occurrence,
                        max_tolerance_period_in_minute,
                        daily_and_minute_candle_gap,
-                       pattern_name):
+                       pattern_name,
+                       discord_channel: DiscordChannel):
         super().__init__(discord_client)
         self.__bar_size = bar_size
         self.__minute_candle_df = minute_candle_df
@@ -45,6 +46,7 @@ class InitialPop(PatternAnalyser):
         self.__max_tolerance_period_in_minute = max_tolerance_period_in_minute
         self.__daily_and_minute_candle_gap = daily_and_minute_candle_gap
         self.__pattern_name = pattern_name
+        self.__discord_channel = discord_channel
         
         minute_candle_ticker_list = list(minute_candle_df.columns.get_level_values(0).unique())
         daily_candle_df_ticker_list = daily_candle_df.columns.get_level_values(0).unique().tolist()
@@ -186,6 +188,6 @@ class InitialPop(PatternAnalyser):
         
         if message_list:
             send_msg_start_time = time.time()
-            self.send_notification(message_list, DiscordChannel.INITIAL_POP)
+            self.send_notification(message_list, self.__discord_channel)
             logger.log_debug_msg(f'{self.__pattern_name} send message time: {time.time() - send_msg_start_time} seconds')
     

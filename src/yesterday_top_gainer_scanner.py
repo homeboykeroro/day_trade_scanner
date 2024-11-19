@@ -120,7 +120,8 @@ def scan():
                                                                               discord_client=yesterday_top_gainer_chatbot,
                                                                               min_close_pct=MIN_CLOSE_PCT,
                                                                               max_offering_news_size=MAX_OFFERING_NEWS_SIZE,
-                                                                              pattern_name=SCAN_PATTERN_NAME)
+                                                                              pattern_name=SCAN_PATTERN_NAME,
+                                                                              discord_channel=DiscordChannel.YESTERDAY_BULLISH_DAILY_CANDLE)
         yesterday_bullish_daily_candle_analyser.analyse()
         date_to_filtered_top_gainer_list_dict[yesterday_top_gainer_retrieval_datetime.date()] = yesterday_bullish_daily_candle_analyser.filtered_ticker_list
         logger.log_debug_msg(f'List of yesterday top ganier with bullish daily candle: {date_to_filtered_top_gainer_list_dict[yesterday_top_gainer_retrieval_datetime.date()]}', with_std_out=True)
