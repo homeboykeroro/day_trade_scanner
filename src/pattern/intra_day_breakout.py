@@ -110,10 +110,12 @@ class IntraDayBreakout(PatternAnalyser):
             sorted_breakout_high_np = high_with_min_breakout_volume_df.values[sorted_breakout_high_idx_np, np.arange(high_with_min_breakout_volume_df.shape[1])]
             breakout_high_datetime = high_with_min_breakout_volume_df.index[sorted_breakout_high_idx_np[-1][0]]
             previous_breakout_high_datetime = high_with_min_breakout_volume_df.index[sorted_breakout_high_idx_np[-2][0]]
+            
             sorted_breakout_close_idx_np = np.argsort(close_with_min_breakout_volume_df.values, axis=0)
             sorted_breakout_close_np = close_with_min_breakout_volume_df.values[sorted_breakout_close_idx_np, np.arange(close_with_min_breakout_volume_df.shape[1])]
             breakout_close_datetime = close_with_min_breakout_volume_df.index[sorted_breakout_close_idx_np[-1][0]]
             previous_breakout_close_datetime = close_with_min_breakout_volume_df.index[sorted_breakout_close_idx_np[-2][0]]
+            
             breakout_close = sorted_breakout_close_np[-1][0]
             previous_breakout_close = sorted_breakout_close_np[-2][0]
             breakout_high = sorted_breakout_high_np[-1][0]
@@ -141,17 +143,16 @@ class IntraDayBreakout(PatternAnalyser):
                 previous_breakout_value = previous_breakout_high
                 previous_breakout_datetime = previous_breakout_high_datetime
         
-            if breakout_indicator == None:
+            first_pop_up_datetime = first_pop_up_occurrence_df.loc[first_pop_up_occurrence_df.index[0], (ticker, RuntimeIndicator.INDEX.value)]
+        
+            # Previous breakout datetime, first pop up datetime could be later than breakout datetime (in case of no breakout)
+            if (breakout_indicator == None 
+                    or breakout_datetime <= previous_breakout_datetime
+                    or breakout_datetime <= first_pop_up_datetime):
+                logger.log_debug_msg(f'Invalid intra day breakout indicator or datetime, indicator: {breakout_indicator}, first pop up datetime: {first_pop_up_datetime}, breakout datetime: {breakout_datetime}, previous breakout datetime: {previous_breakout_datetime}')
                 continue
             
-            #breakout_volume = volume_df.loc[breakout_datetime, (ticker, RuntimeIndicator.COMPARE.value)]
-            
-            normalised_volume_df = (volume_df.where(min_breakout_trading_volume_boolean_df.values)
-                                             .replace(np.nan, -1)
-                                             .loc[:breakout_datetime, idx[[ticker], :]])
-            breakout_volume = normalised_volume_df.loc[breakout_datetime, (ticker, RuntimeIndicator.COMPARE.value)]
-            
-            first_pop_up_datetime = first_pop_up_occurrence_df.loc[first_pop_up_occurrence_df.index[0], (ticker, RuntimeIndicator.INDEX.value)]
+            breakout_volume = volume_df.loc[breakout_datetime, (ticker, RuntimeIndicator.COMPARE.value)]
             
             check_message_sent_start_time = time.time()
             is_message_sent = self.check_if_pattern_analysis_message_sent(ticker=ticker, 
