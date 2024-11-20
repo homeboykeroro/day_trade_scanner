@@ -1,5 +1,6 @@
 import os
 import asyncio
+import threading
 from discord.ext import commands
 import discord
 
@@ -9,6 +10,8 @@ from model.discord.view.redirect_button import RedirectButton
 from utils.logger import Logger
 
 from constant.discord.discord_message_channel import DiscordMessageChannel
+
+asyncio.set_event_loop_policy(asyncio.WindowsSelectorEventLoopPolicy())
 
 # Text to Speech
 TEXT_TO_SPEECH_CHANNEL_ID = int(os.environ['DISCORD_TEXT_TO_SPEECH_CHANNEL_ID'])
@@ -28,21 +31,23 @@ SERP_API_ACCOUNT_INFO_LOG_CHANNEL_ID = int(os.environ['DISCORD_SERP_API_ACCOUNT_
 SERP_API_SEARCH_QUERY_LOG_CHANNEL_ID = int(os.environ['DISCORD_SERP_API_SEARCH_QUERY_LOG_CHANNEL_ID'])
 SERP_API_SEARCH_RESULT_LOG_CHANNEL_ID = int(os.environ['DISCORD_SERP_API_SEARCH_RESULT_LOG_CHANNEL_ID'])
 
-# "debugpy.debugJustMyCode": false
 logger = Logger()
 
+# https://hackmd.io/@kangjw/Discordpy%E6%A9%9F%E5%99%A8%E4%BA%BA%E5%BE%9E0%E5%88%B01%E8%B6%85%E8%A9%B3%E7%B4%B0%E6%95%99%E5%AD%B8
 intents = discord.Intents.default()
 intents.reactions = True
 intents.members = True
 intents.guilds = True
 intents.message_content = True
 
-bot = commands.Bot(command_prefix='!', intents=intents)
+# try:
+# reset token
 
-class DiscordChatBot():
-    def __init__(self):
+class DiscordChatBot(discord.Client):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs, intents=intents)
         self.__is_chatbot_ready = False
-    
+        
     @property
     def is_chatbot_ready(self):
         return self.__is_chatbot_ready
@@ -51,15 +56,17 @@ class DiscordChatBot():
     def is_chatbot_ready(self, is_chatbot_ready):
         self.__is_chatbot_ready = is_chatbot_ready
            
-    @bot.event
     async def on_ready(self):
+        logger.log_debug_msg(f'Chatbot ', with_std_out=True)
         self.__is_chatbot_ready = True
+    
+    async def on_message(self, message):
+        if message.author == self.user:
+            return
+        
+        await message.channel.send(message.content)
 
-    # https://discordpy.readthedocs.io/en/stable/ext/commands/commands.html#parameters
-    async def send_message_to_channel(self,
-                                      message: DiscordMessage, 
-                                      channel_type: DiscordMessageChannel, 
-                                      with_text_to_speech: bool = False): 
+    def get_discord_channel(self, channel_type: DiscordMessageChannel):
         channel_id = None
         
         if channel_type == DiscordMessageChannel.TEXT_TO_SPEECH:
@@ -84,9 +91,17 @@ class DiscordChatBot():
         if not channel_id:
             raise Exception(f"Channel ID not found for: {channel_type}")
         
-        channel = bot.get_channel(channel_id) 
+        channel = self.get_channel(channel_id)
+        return channel
+
+    # https://discordpy.readthedocs.io/en/stable/ext/commands/commands.html#parameters
+    async def send_message_to_channel(self,
+                                      message: DiscordMessage, 
+                                      channel_type: DiscordMessageChannel, 
+                                      with_text_to_speech: bool = False): 
+        channel = self.get_discord_channel(channel_type)
         
-        if channel: 
+        try:
             msg_param = dict(content=message.content, 
                              embed=message.embed, 
                              view=message.view, 
@@ -97,25 +112,47 @@ class DiscordChatBot():
                 view=RedirectButton(ticker=message.ticker, jump_url=message.jump_url)
                 msg_param.update(dict(view=view))
             
-            await channel.send(**msg_param)
+            result = await channel.send(**msg_param)
+            return result
+        except Exception as e:
+            logger.log_error_msg(f'Failed to send message to channel {channel_type.value}, {e}')
+            return dict(exception=e)
     
     async def add_message_list_to_task(self, message_list: list, channel_type: DiscordMessageChannel, with_text_to_speech: bool = False):
         tasks = [self.send_message_to_channel(message=message, channel_type=channel_type, with_text_to_speech=with_text_to_speech) for message in message_list] 
-        result_message_list = await asyncio.gather(*tasks)
+        result_message_list = await asyncio.gather(*tasks, return_exceptions=True)
         
         return result_message_list
     
+    def send_message(self, message: DiscordMessage, channel_type: DiscordMessageChannel, with_text_to_speech: bool = False):
+        # response does not matter when using this method
+        try:
+            channel = self.get_discord_channel(channel_type)
+            loop = self.loop
+            msg_param = dict(content=message.content, 
+                             embed=message.embed, 
+                             view=message.view, 
+                             files=message.files, 
+                             tts=with_text_to_speech)
+
+            loop.create_task(channel.send(**msg_param))
+        except Exception as e:
+            logger.log_error_msg(f'Add message to discord event loop error, {e}')
+    
     def send_message_by_list_with_response(self, message_list: list, channel_type: DiscordMessageChannel):
         try:
-            asyncio.run(self.add_message_list_to_task(message_list=message_list, channel_type=channel_type))
+            result_message_list = asyncio.run(self.add_message_list_to_task(message_list=message_list, channel_type=channel_type))
+            return result_message_list
         except Exception as e:
             logger.log_error_msg(f'Send message by list with response failed, {e}', with_std_out = True)
     
-    def run_chatbot(self, chatbot_token: str):
-        # such high level api asyncio should handle event loop itself
-        asyncio.run(bot.start(chatbot_token))
+    def run_chatbot(self, chatbot_thread_name: str, chatbot_token: str):
+        bot_thread = threading.Thread(target=self.run, name=chatbot_thread_name, args=(chatbot_token,))
+        bot_thread.start()
         
         while True:
             if self.__is_chatbot_ready:
                 logger.log_debug_msg('Chatbot is ready', with_std_out=True)
                 break
+        
+        return bot_thread
