@@ -14,7 +14,7 @@ from scanner_wrapper import ScannerWrapper
 
 from pattern.yesterday_bullish_daily_candle import YesterdayBullishDailyCandle
 
-from module.discord_chatbot_client import DiscordChatBotClient
+from module.discord_chatbot import DiscordChatBot
 from module.yesterday_top_gainer_scraper import scrap
 
 from utils.common.config_util import get_config
@@ -26,13 +26,27 @@ from utils.logger import Logger
 from model.discord.discord_message import DiscordMessage
 
 from constant.candle.bar_size import BarSize
-from constant.discord.discord_channel import DiscordChannel
-
-# Chatbot
-yesterday_top_gainer_chatbot = DiscordChatBotClient()
+from constant.discord.discord_message_channel import DiscordMessageChannel
 
 ib_connector = IBConnector()
 logger = Logger()
+
+# Chatbot Token
+YESTERDAY_TOP_GAINER_SCANNER_CHATBOT_TOKEN = os.environ['DISCORD_YESTERDAY_TOP_GAINER_BULLISH_DAILY_CANDLE_CHATBOT_TOKEN']
+CHATBOT_THREAD_NAME = 'yesterday_top_gainer_chatbot_thread'
+yesterday_top_gainer_chatbot = DiscordChatBot(YESTERDAY_TOP_GAINER_SCANNER_CHATBOT_TOKEN)
+
+def create_bot():
+    global yesterday_top_gainer_chatbot
+    yesterday_top_gainer_chatbot.run_chatbot()
+    
+bot_thread = threading.Thread(target=create_bot, name=CHATBOT_THREAD_NAME)
+bot_thread.start()
+
+while not yesterday_top_gainer_chatbot.is_chatbot_ready:
+    continue
+
+logger.log_debug_msg(f'Chatbot starts', with_std_out=True)
 
 SCAN_PATTERN_NAME = 'YESTERDAY_TOP_GAINER'
 
@@ -121,7 +135,7 @@ def scan():
                                                                               min_close_pct=MIN_CLOSE_PCT,
                                                                               max_offering_news_size=MAX_OFFERING_NEWS_SIZE,
                                                                               pattern_name=SCAN_PATTERN_NAME,
-                                                                              discord_channel=DiscordChannel.YESTERDAY_BULLISH_DAILY_CANDLE)
+                                                                              discord_channel=DiscordMessageChannel.YESTERDAY_TOP_GAINER_BULLISH_DAILY_CANDLE)
         yesterday_bullish_daily_candle_analyser.analyse()
         date_to_filtered_top_gainer_list_dict[yesterday_top_gainer_retrieval_datetime.date()] = yesterday_bullish_daily_candle_analyser.filtered_ticker_list
         logger.log_debug_msg(f'List of yesterday top ganier with bullish daily candle: {date_to_filtered_top_gainer_list_dict[yesterday_top_gainer_retrieval_datetime.date()]}', with_std_out=True)
@@ -130,12 +144,7 @@ def scan():
     time.sleep(REFRESH_INTERVAL)
             
 def run():
-    # Chatbot Token
-    YESTERDAY_TOP_GAINER_SCANNER_CHATBOT_TOKEN = os.environ['DISCORD_YESTERDAY_TOP_GAINER_SCANNER_CHATBOT_TOKEN']
-    CHATBOT_THREAD_NAME = 'yesterday_top_gainer_chatbot_thread'
-
-    yesterday_top_gainer_chatbot.run_chatbot(CHATBOT_THREAD_NAME, YESTERDAY_TOP_GAINER_SCANNER_CHATBOT_TOKEN)
-    yesterday_top_gainer_chatbot.send_message_by_list_with_response([DiscordMessage(content='Starts scanner')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+    yesterday_top_gainer_chatbot.send_message_by_list_with_response([DiscordMessage(content='Starts scanner')], channel_type=DiscordMessageChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
     
     yesterday_top_gainer_scanner = ScannerWrapper(scanner_name='Yesterday top gainer', 
                                                   scan=scan,

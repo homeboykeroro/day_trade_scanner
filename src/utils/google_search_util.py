@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 from queue import Queue
 from serpapi import GoogleSearch
 
-from module.discord_chatbot_client import DiscordChatBotClient
+from module.discord_chatbot import DiscordChatBot
 
 from model.discord.discord_message import DiscordMessage
 
@@ -17,7 +17,7 @@ from utils.common.datetime_util import get_current_us_datetime
 from utils.common.http_util import send_async_request
 from utils.logger import Logger
 
-from constant.discord.discord_channel import DiscordChannel
+from constant.discord.discord_message_channel import DiscordMessageChannel
 
 ACCOUNT_QUERY_ENDPOINT = 'https://serpapi.com/account.json'
 MAX_NO_OF_RESULTS_PER_PAGE = 200
@@ -82,7 +82,7 @@ class GoogleSearchUtil:
                 API_KEYS_TO_LIMIT_DICT[api_key] = result_dict[api_key]
     
     #https://serpapi.com/integrations/python#pagination-using-iterator      
-    def search_offering_news(self, contract_list: list, discord_client: DiscordChatBotClient) -> dict:
+    def search_offering_news(self, contract_list: list, discord_client: DiscordChatBot) -> dict:
         start_time = time.time()
         
         if not contract_list:
@@ -131,7 +131,7 @@ class GoogleSearchUtil:
         
         return result_date
 
-    def sync_search(self, contract_list: list, ticker_to_datetime_to_news_dict: dict, search: GoogleSearch, discord_client: DiscordChatBotClient):
+    def sync_search(self, contract_list: list, ticker_to_datetime_to_news_dict: dict, search: GoogleSearch, discord_client: DiscordChatBot):
         logger.log_debug_msg('Search google result synchronously')
         search_start_time = time.time()
         shorten_url_list = []
@@ -148,9 +148,9 @@ class GoogleSearchUtil:
         serp_api_account_info_log += '\n\n' 
         
         if SHOW_DISCORD_DEBUG_LOG:
-            discord_client.send_message(DiscordMessage(content=serp_api_account_info_log), DiscordChannel.SERP_API_ACCOUNT_INFO_LOG)
+            discord_client.send_message(DiscordMessage(content=serp_api_account_info_log), DiscordMessageChannel.SERP_API_ACCOUNT_INFO_LOG)
         
-        yesterday_bullish_daily_candle_log = 'Yesterday bullish daily candle ticker list: '
+        yesterday_bullish_daily_candle_log = 'Yesterday bullish daily candle ticker list: \n'
         last_contract = contract_list[-1]
         for index, contract in enumerate(contract_list):
             yesterday_bullish_daily_candle_log += f'{index + 1}. ' + contract.get("symbol") 
@@ -159,7 +159,7 @@ class GoogleSearchUtil:
                 yesterday_bullish_daily_candle_log += ', \n'
         yesterday_bullish_daily_candle_log += '\n\n'
         
-        yesterday_bullish_daily_candle_log += 'Original company name list: '
+        yesterday_bullish_daily_candle_log += 'Original company name list: \n'
         for index, contract in enumerate(contract_list):
             yesterday_bullish_daily_candle_log += f'{index + 1}. ' + contract.get("company_name")
             
@@ -196,11 +196,11 @@ class GoogleSearchUtil:
                     
                     if not organic_results:
                         if SHOW_DISCORD_DEBUG_LOG:
-                            discord_client.send_message(DiscordMessage(content=f'{ticker} has no organic result\n'), DiscordChannel.SERP_API_SEARCH_RESULT_LOG)
+                            discord_client.send_message(DiscordMessage(content=f'{ticker} has no organic result\n'), DiscordMessageChannel.SERP_API_SEARCH_RESULT_LOG)
                         continue
                     else:
                         if SHOW_DISCORD_DEBUG_LOG:
-                            discord_client.send_message(DiscordMessage(content=f'{ticker} no of organic result: {len(organic_results)}\n'), DiscordChannel.SERP_API_SEARCH_RESULT_LOG)
+                            discord_client.send_message(DiscordMessage(content=f'{ticker} no of organic result: {len(organic_results)}\n'), DiscordMessageChannel.SERP_API_SEARCH_RESULT_LOG)
                     
                     for _, search_result in enumerate(organic_results):
                         position = search_result.get('position')
@@ -281,8 +281,8 @@ class GoogleSearchUtil:
                 break
         
         if SHOW_DISCORD_DEBUG_LOG:
-            discord_client.send_message(DiscordMessage(content=yesterday_bullish_daily_candle_log), DiscordChannel.YESTERDAY_TOP_GAINER_SCANNER_LIST)
-            discord_client.send_message(DiscordMessage(content=search_query_log), DiscordChannel.SERP_API_SEARCH_QUERY_LOG)    
+            discord_client.send_message(DiscordMessage(content=yesterday_bullish_daily_candle_log), DiscordMessageChannel.YESTERDAY_TOP_GAINER_SCREENER_LIST)
+            discord_client.send_message(DiscordMessage(content=search_query_log), DiscordMessageChannel.SERP_API_SEARCH_QUERY_LOG)    
         
         original_url_to_shortened_url_dict = shorten_url(shorten_url_list)
         for ticker, datetime_to_news_dict in ticker_to_datetime_to_news_dict.items():
@@ -295,6 +295,6 @@ class GoogleSearchUtil:
         for contract in contract_list:
             if contract.get('symbol') not in completed_ticker_list:
                 if SHOW_DISCORD_DEBUG_LOG:
-                    discord_client.send_message(DiscordMessage(content=f'Not enought API limit to retrieve offering news for {contract.get("symbol")}'), DiscordChannel.CHATBOT_ERROR_LOG)
+                    discord_client.send_message(DiscordMessage(content=f'Not enought API limit to retrieve offering news for {contract.get("symbol")}'), DiscordMessageChannel.CHATBOT_ERROR_LOG)
                 
         logger.log_debug_msg(f'Total sync search time for {[contract.get("symbol") for contract in contract_list]}, {time.time() - search_start_time}s', with_std_out=True)

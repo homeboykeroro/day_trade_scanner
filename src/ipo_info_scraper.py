@@ -3,6 +3,7 @@ import threading
 import traceback
 
 from constant.scanner.scanner_thread_name import ScannerThreadName
+from module.discord_chatbot import DiscordChatBot
 
 threading.current_thread().name = ScannerThreadName.IPO_INFO_SCRAPER.value
 
@@ -14,8 +15,6 @@ import requests
 from selenium import webdriver 
 from selenium.webdriver.support.ui import WebDriverWait 
 from selenium.webdriver.common.by import By 
-
-from module.discord_chatbot_client import DiscordChatBotClient
 
 from sql.execute_query_impl import ExecuteQueryImpl
 from sql.oracle_connector import execute_in_transaction
@@ -47,8 +46,22 @@ OPTIONS.add_argument('--ignore-ssl-errors')
 session = requests.Session()
 logger = Logger()
 
-# Chatbot
-ipo_info_scraper_chatbot = DiscordChatBotClient()
+# Chatbot Token
+IPO_INFO_SCRAPER_CHATBOT_TOKEN = os.environ['DISCORD_IPO_INFO_SCRAPER_CHATBOT_TOKEN']
+CHATBOT_THREAD_NAME = 'ipo_info_scraper_chatbot_thread'
+ipo_info_scraper_chatbot = DiscordChatBot(IPO_INFO_SCRAPER_CHATBOT_TOKEN)
+
+def create_bot():
+    global ipo_info_scraper_chatbot
+    ipo_info_scraper_chatbot.run_chatbot()
+    
+bot_thread = threading.Thread(target=create_bot, name=CHATBOT_THREAD_NAME)
+bot_thread.start()
+
+while not ipo_info_scraper_chatbot.is_chatbot_ready:
+    continue
+
+logger.log_debug_msg(f'Chatbot starts', with_std_out=True)
 
 def delete_ipo_record(params: list):
     def execute(cursor: Cursor, params):
@@ -122,11 +135,6 @@ def send_message(message):
     else:  
         ipo_info_scraper_chatbot.send_message(message=DiscordMessage(content=f'No response returned from message {message} to {DiscordChannel.IPO_LIST.value}'), channel_type=DiscordChannel.CHATBOT_ERROR_LOG)
 def scrap():
-    # Chatbot Token
-    IPO_INFO_SCRAPER_CHATBOT_TOKEN = os.environ['DISCORD_IPO_INFO_SCRAPER_CHATBOT_TOKEN']
-    CHATBOT_THREAD_NAME = 'ipo_info_scraper_chatbot_thread'
-
-    ipo_info_scraper_chatbot.run_chatbot(CHATBOT_THREAD_NAME, IPO_INFO_SCRAPER_CHATBOT_TOKEN)
     ipo_info_scraper_chatbot.send_message_by_list_with_response([DiscordMessage(content='Starts scanner')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
     
     start_time = time.time()

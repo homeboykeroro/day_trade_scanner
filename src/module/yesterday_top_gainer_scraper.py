@@ -6,7 +6,7 @@ import traceback
 from bs4 import BeautifulSoup
 import requests
 
-from module.discord_chatbot_client import DiscordChatBotClient
+from module.discord_chatbot import DiscordChatBot
 
 from model.discord.discord_message import DiscordMessage
 
@@ -14,7 +14,7 @@ from utils.sql.scraper_record_util import check_if_top_gainer_added, add_top_gai
 from utils.common.datetime_util import check_if_us_business_day, get_current_us_datetime, get_us_business_day
 from utils.logger import Logger
 
-from constant.discord.discord_channel import DiscordChannel
+from constant.discord.discord_message_channel import DiscordMessageChannel
 
 FINVIZ_LINK = 'https://finviz.com/screener.ashx'
 HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:95.0) Gecko/20100101 Firefox/95.0'}
@@ -25,7 +25,7 @@ logger = Logger()
 
 EXIT_WAIT_TIME = 30
 
-def scrap(discord_client: DiscordChatBotClient):
+def scrap(discord_client: DiscordChatBot):
     start_time = time.time() 
     us_current_datetime = get_current_us_datetime()
     day_offset = 0 if us_current_datetime.time() > datetime.time(16, 0, 0) else -1
@@ -34,7 +34,7 @@ def scrap(discord_client: DiscordChatBotClient):
     is_business_day = check_if_us_business_day(scan_date)
 
     if not is_business_day:
-        discord_client.send_message_by_list_with_response([DiscordMessage(content='No data is retrieved, current datetime is not U S business day')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+        discord_client.send_message_by_list_with_response([DiscordMessage(content='No data is retrieved, current datetime is not U S business day')], channel_type=DiscordMessageChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
         logger.log_error_msg(f'No data is fetched, current datetime is not US business day', with_std_out=True)
         return
     
@@ -96,15 +96,16 @@ def scrap(discord_client: DiscordChatBotClient):
 
             if top_gainer_list:
                 add_top_gainer_record(top_gainer_list)
-                discord_client.send_message(DiscordMessage(content=f'Yesterday top gainer history: {[f"{top_gainer[0]} ({top_gainer[1]}): {top_gainer[7]}%" for top_gainer in top_gainer_list]}'), channel_type=DiscordChannel.YESTERDAY_TOP_GAINER_SCRAPER_HISTORY_LOG)
-                discord_client.send_message(DiscordMessage(content='Yesterday top gainer history retrieval succeed'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+                logger.log_debug_msg(f'Yesterday top gainer history has been updated', with_std_out=True)
+                discord_client.send_message(DiscordMessage(content=f'Yesterday top gainer history: {[f"{top_gainer[0]} ({top_gainer[1]}): {top_gainer[7]}%" for top_gainer in top_gainer_list]}'), channel_type=DiscordMessageChannel.YESTERDAY_TOP_GAINER_SCRAPER_HISTORY_LOG)
+                discord_client.send_message(DiscordMessage(content='Yesterday top gainer history retrieval succeed'), channel_type=DiscordMessageChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
                 logger.log_debug_msg(f'Scraped yesterday top gainer: {[f"{top_gainer[0]} ({top_gainer[1]}): {top_gainer[7]}%" for top_gainer in top_gainer_list]}')
             else:
-                discord_client.send_message(DiscordMessage(content='No Yesterday day top gainer history is added'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+                discord_client.send_message(DiscordMessage(content='No Yesterday day top gainer history is added'), channel_type=DiscordMessageChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
                 
             logger.log_debug_msg(f'Yesterday top gainers scraping completed, finished in {time.time() - start_time} seconds', with_std_out=True)
         except Exception as e:
-            discord_client.send_message_by_list_with_response(DiscordMessage(content='Yesterday day top gainer history retrieval failed'), channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
-            discord_client.send_message(DiscordMessage(content=traceback.format_exc()), channel_type=DiscordChannel.CHATBOT_ERROR_LOG)
+            discord_client.send_message_by_list_with_response(DiscordMessage(content='Yesterday day top gainer history retrieval failed'), channel_type=DiscordMessageChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+            discord_client.send_message(DiscordMessage(content=traceback.format_exc()), channel_type=DiscordMessageChannel.CHATBOT_ERROR_LOG)
             logger.log_error_msg(f'Yesterday top gainer history retrieval failed, Error: {e}')
             time.sleep(EXIT_WAIT_TIME)

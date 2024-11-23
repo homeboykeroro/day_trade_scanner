@@ -24,9 +24,11 @@ YESTERDAY_TOP_GAINER_SCREENER_LIST_CHANNEL_ID = int(os.environ['DISCORD_YESTERDA
 # Scanner
 SMALL_CAP_INITIAL_POP_CHANNEL_ID = int(os.environ['DISCORD_SMALL_CAP_INITIAL_POP_CHANNEL_ID'])
 YESTERDAY_TOP_GAINER_BULLISH_DAILY_CANDLE_CHANNEL_ID = int(os.environ['DISCORD_YESTERDAY_TOP_GAINER_BULLISH_DAILY_CANDLE_CHANNEL_ID'])
+SMALL_CAP_INTRA_DAY_BREAKOUT_CHANNEL_ID = int(os.environ['DISCORD_SMALL_CAP_INTRA_DAY_BREAKOUT_CHANNEL_ID'])
 IPO_LIST_CHANNEL_ID = int(os.environ['DISCORD_IPO_LIST_CHANNEL_ID'])
 
 # Log
+YESTERDAY_TOP_GAINER_SCRAPER_HISTORY_LOG_CHANNEL_ID = int(os.environ['DISCORD_YESTERDAY_TOP_GAINER_SCRAPER_HISTORY_LOG_CHANNEL_ID'])
 SERP_API_ACCOUNT_INFO_LOG_CHANNEL_ID = int(os.environ['DISCORD_SERP_API_ACCOUNT_INFO_LOG_CHANNEL_ID'])
 SERP_API_SEARCH_QUERY_LOG_CHANNEL_ID = int(os.environ['DISCORD_SERP_API_SEARCH_QUERY_LOG_CHANNEL_ID'])
 SERP_API_SEARCH_RESULT_LOG_CHANNEL_ID = int(os.environ['DISCORD_SERP_API_SEARCH_RESULT_LOG_CHANNEL_ID'])
@@ -40,14 +42,14 @@ intents.members = True
 intents.guilds = True
 intents.message_content = True
 
-# try:
-# reset token
-
 class DiscordChatBot(discord.Client):
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs, intents=intents)
+    def __init__(self, token: str, *args, **kwargs):
         self.__is_chatbot_ready = False
+        self.__token = token
         
+        loop = asyncio.new_event_loop()
+        super().__init__(*args, **kwargs, intents=intents, loop=loop)
+
     @property
     def is_chatbot_ready(self):
         return self.__is_chatbot_ready
@@ -57,7 +59,7 @@ class DiscordChatBot(discord.Client):
         self.__is_chatbot_ready = is_chatbot_ready
            
     async def on_ready(self):
-        logger.log_debug_msg(f'Chatbot ', with_std_out=True)
+        logger.log_debug_msg(f'Chatbot is ready', with_std_out=True)
         self.__is_chatbot_ready = True
     
     async def on_message(self, message):
@@ -77,6 +79,8 @@ class DiscordChatBot(discord.Client):
             channel_id = SMALL_CAP_TOP_GAINER_SCREENER_LIST_CHANNEL_ID
         elif channel_type == DiscordMessageChannel.YESTERDAY_TOP_GAINER_BULLISH_DAILY_CANDLE:
             channel_id = YESTERDAY_TOP_GAINER_BULLISH_DAILY_CANDLE_CHANNEL_ID
+        elif channel_type == DiscordMessageChannel.SMALL_CAP_INTRA_DAY_BREAKOUT:
+            channel_id = SMALL_CAP_INTRA_DAY_BREAKOUT_CHANNEL_ID
         elif channel_type == DiscordMessageChannel.IPO_LIST:
             channel_id = IPO_LIST_CHANNEL_ID
         elif channel_type == DiscordMessageChannel.SERP_API_ACCOUNT_INFO_LOG:
@@ -94,7 +98,6 @@ class DiscordChatBot(discord.Client):
         channel = self.get_channel(channel_id)
         return channel
 
-    # https://discordpy.readthedocs.io/en/stable/ext/commands/commands.html#parameters
     async def send_message_to_channel(self,
                                       message: DiscordMessage, 
                                       channel_type: DiscordMessageChannel, 
@@ -120,7 +123,7 @@ class DiscordChatBot(discord.Client):
     
     async def add_message_list_to_task(self, message_list: list, channel_type: DiscordMessageChannel, with_text_to_speech: bool = False):
         tasks = [self.send_message_to_channel(message=message, channel_type=channel_type, with_text_to_speech=with_text_to_speech) for message in message_list] 
-        result_message_list = await asyncio.gather(*tasks, return_exceptions=True)
+        result_message_list = await asyncio.gather(*tasks, return_exceptions=True, loop=self.loop)
         
         return result_message_list
     
@@ -139,20 +142,23 @@ class DiscordChatBot(discord.Client):
         except Exception as e:
             logger.log_error_msg(f'Add message to discord event loop error, {e}')
     
-    def send_message_by_list_with_response(self, message_list: list, channel_type: DiscordMessageChannel):
+    def send_message_by_list_with_response(self, message_list: list, channel_type: DiscordMessageChannel, with_text_to_speech: bool = False):
         try:
-            result_message_list = asyncio.run(self.add_message_list_to_task(message_list=message_list, channel_type=channel_type))
-            return result_message_list
+            loop = self.loop
+            response = asyncio.run_coroutine_threadsafe(self.add_message_list_to_task(message_list=message_list, channel_type=channel_type, with_text_to_speech=with_text_to_speech), loop)
+            try: 
+                result_list = response.result() 
+                return result_list
+            except Exception as ex: 
+                print("Get future response error, {ex}")
         except Exception as e:
             logger.log_error_msg(f'Send message by list with response failed, {e}', with_std_out = True)
     
-    def run_chatbot(self, chatbot_thread_name: str, chatbot_token: str):
-        bot_thread = threading.Thread(target=self.run, name=chatbot_thread_name, args=(chatbot_token,))
-        bot_thread.start()
-        
+    def run_chatbot(self):
+        self.run(self.__token)
+
         while True:
             if self.__is_chatbot_ready:
-                logger.log_debug_msg('Chatbot is ready', with_std_out=True)
+                logger.log_debug_msg('Chatbot starts in run_chatbot', with_std_out=True)
                 break
         
-        return bot_thread
