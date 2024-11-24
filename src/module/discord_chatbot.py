@@ -1,7 +1,5 @@
 import os
 import asyncio
-import threading
-from discord.ext import commands
 import discord
 
 from model.discord.discord_message import DiscordMessage
@@ -162,9 +160,3 @@ class DiscordChatBot(discord.Client):
     
     def run_chatbot(self):
         self.run(self.__token)
-
-        while True:
-            if self.__is_chatbot_ready:
-                logger.log_debug_msg('Chatbot starts in run_chatbot', with_std_out=True)
-                break
-        
