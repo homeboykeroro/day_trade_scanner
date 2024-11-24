@@ -13,7 +13,7 @@ from scanner_wrapper import ScannerWrapper
 
 from pattern.intra_day_breakout import IntraDayBreakout
 
-from module.discord_chatbot_client import DiscordChatBotClient
+from module.discord_chatbot import DiscordChatBot
 
 from utils.common.config_util import get_config
 from utils.ib.filter_util import get_ib_scanner_filter
@@ -22,14 +22,28 @@ from utils.logger import Logger
 from model.discord.discord_message import DiscordMessage
 
 from constant.scanner.scanner_target import ScannerTarget
-from constant.discord.discord_channel import DiscordChannel
+from constant.discord.discord_message_channel import DiscordMessageChannel
 from constant.candle.bar_size import BarSize
-
-# Chatbot
-small_cap_intra_day_breakout_chatbot = DiscordChatBotClient()
 
 ib_connector = IBConnector()
 logger = Logger()
+
+# Chatbot Token
+SMALL_CAP_INTRA_DAY_BREAKOUT_CHATBOT_TOKEN = os.environ['DISCORD_SMALL_CAP_INTRA_DAY_BREAKOUT_CHATBOT_TOKEN']
+CHATBOT_THREAD_NAME = 'small_cap_intra_day_breakout_chatbot_thread'
+small_cap_intra_day_breakout_chatbot = DiscordChatBot(SMALL_CAP_INTRA_DAY_BREAKOUT_CHATBOT_TOKEN)
+
+def create_bot():
+    global small_cap_intra_day_breakout_chatbot
+    small_cap_intra_day_breakout_chatbot.run_chatbot()
+
+bot_thread = threading.Thread(target=create_bot, name=CHATBOT_THREAD_NAME)
+bot_thread.start()
+
+while not small_cap_intra_day_breakout_chatbot.is_chatbot_ready:
+    continue
+
+logger.log_debug_msg(f'Chatbot starts', with_std_out=True)
 
 SCAN_PATTERN_NAME = 'SMALL_CAP_INTRA_DAY_BREAKOUT'
 SCREENER_NAME = 'SMALL_CAP_TOP_GAINER_SCREENER'
@@ -69,7 +83,7 @@ def scan():
     
     if SHOW_DISCORD_SCREENER_DEBUG_LOG:
         send_msg_start_time = time.time()
-        small_cap_intra_day_breakout_chatbot.send_message(DiscordMessage(content=f'{[contract["symbol"] for contract in contract_list]}'), DiscordChannel.TOP_GAINER_SCANNER_LIST)
+        small_cap_intra_day_breakout_chatbot.send_message(DiscordMessage(content=f'{[contract["symbol"] for contract in contract_list]}'), DiscordMessageChannel.SMALL_CAP_TOP_GAINER_SCREENER_LIST)
         logger.log_debug_msg(f'Send top gainer scanner result time: {time.time() - send_msg_start_time}')
     
     contract_list = ib_connector.fetch_screener_result(screener_filter=IB_TOP_GAINER_FILTER, 
@@ -97,10 +111,7 @@ def scan():
     logger.log_debug_msg(f'Small cap intra day breakout scan time: {time.time() - start_time}', with_std_out=True)
 
 def run():
-    # Chatbot Token
-    SMALL_CAP_INTRA_DAY_BREAKOUT_CHATBOT_TOKEN = os.environ['DISCORD_SMALL_CAP_INTRA_DAY_BREAKOUT_CHATBOT_TOKEN']
-    small_cap_intra_day_breakout_chatbot.run_chatbot(SMALL_CAP_INTRA_DAY_BREAKOUT_CHATBOT_TOKEN)
-    small_cap_intra_day_breakout_chatbot.send_message_by_list_with_response([DiscordMessage(content='Starts scanner')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+    small_cap_intra_day_breakout_chatbot.send_message_by_list_with_response([DiscordMessage(content='Starts scanner')], channel_type=DiscordMessageChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
     
     small_cap_intra_day_breakout_scanner = ScannerWrapper(scanner_name='Small cap intra day breakout', 
                                                           scan=scan, 

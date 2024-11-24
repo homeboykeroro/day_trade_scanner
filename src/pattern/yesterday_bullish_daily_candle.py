@@ -32,7 +32,6 @@ google_search_util = GoogleSearchUtil()
 SHOW_DISCORD_DEBUG_LOG = get_config('YESTERDAY_TOP_GAINER', 'SHOW_DISCORD_DEBUG_LOG')
 
 class YesterdayBullishDailyCandle(PatternAnalyser):
-    
     def __init__(self, hit_scanner_date: datetime.date,  daily_candle_df: pd.DataFrame, 
                        ticker_to_contract_info_dict: dict, 
                        discord_client,

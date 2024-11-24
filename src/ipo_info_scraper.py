@@ -136,6 +136,7 @@ def send_message(message):
         ipo_info_scraper_chatbot.send_message(message=DiscordMessage(content=f'No response returned from message {message} to {DiscordChannel.IPO_LIST.value}'), channel_type=DiscordChannel.CHATBOT_ERROR_LOG)
 def scrap():
     ipo_info_scraper_chatbot.send_message_by_list_with_response([DiscordMessage(content='Starts scanner')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+    logger.log_debug_msg('IPO scraper starts', with_std_out=True)
     
     start_time = time.time()
     
@@ -274,6 +275,8 @@ def scrap():
                                            no_of_employee])
             send_message(message)
             add_ipo_record(insert_ipo_record_list)
+        
+        logger.log_debug_msg(f'IPO list scrap time: {time.time() - start_time} seconds', with_std_out=True)
     except Exception as exception:
         ipo_info_scraper_chatbot.send_message_by_list_with_response([DiscordMessage(content='Fatal error')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)   
         stacktrace = traceback.format_exc()

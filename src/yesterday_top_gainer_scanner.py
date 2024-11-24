@@ -66,7 +66,7 @@ MARKET_DATA_API_ENDPOINT_LOCK_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'MA
 date_to_filtered_top_gainer_list_dict = {}
 
 def scan():
-    logger.log_debug_msg('Yesterday top gainer scanner starts')
+    logger.log_debug_msg('Yesterday top gainer scanner starts', with_std_out=True)
     start_time = time.time()
     
     us_current_datetime = get_current_us_datetime()

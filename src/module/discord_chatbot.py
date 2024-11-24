@@ -75,8 +75,10 @@ class DiscordChatBot(discord.Client):
             channel_id = TEXT_TO_SPEECH_CHANNEL_ID
         elif channel_type == DiscordMessageChannel.CHATBOT_ERROR_LOG:
             channel_id = CHATBOT_ERROR_LOG_CHANNEL_ID
-        elif channel_type == DiscordMessageChannel.SMALL_CAP_INITIAL_POP:
+        elif channel_type == DiscordMessageChannel.SMALL_CAP_TOP_GAINER_SCREENER_LIST:
             channel_id = SMALL_CAP_TOP_GAINER_SCREENER_LIST_CHANNEL_ID
+        elif channel_type == DiscordMessageChannel.SMALL_CAP_INITIAL_POP:
+            channel_id = SMALL_CAP_INITIAL_POP_CHANNEL_ID
         elif channel_type == DiscordMessageChannel.YESTERDAY_TOP_GAINER_BULLISH_DAILY_CANDLE:
             channel_id = YESTERDAY_TOP_GAINER_BULLISH_DAILY_CANDLE_CHANNEL_ID
         elif channel_type == DiscordMessageChannel.SMALL_CAP_INTRA_DAY_BREAKOUT:
@@ -137,6 +139,10 @@ class DiscordChatBot(discord.Client):
                              view=message.view, 
                              files=message.files, 
                              tts=with_text_to_speech)
+            
+            if message.jump_url:
+                view=RedirectButton(ticker=message.ticker, jump_url=message.jump_url)
+                msg_param.update(dict(view=view))
 
             loop.create_task(channel.send(**msg_param))
         except Exception as e:
