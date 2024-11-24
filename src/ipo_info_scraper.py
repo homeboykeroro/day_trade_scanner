@@ -100,6 +100,10 @@ def check_if_ipo_added(ticker: str, ipo_datetime: datetime) -> bool:
                 logger.log_debug_msg(f'{ticker} IPO date require updates', with_std_out=True)
                 delete_ipo_record([dict(ticker)])
                 return False
+        else:
+            logger.log_debug_msg(f'Multiple IPO records of {ticker} found', with_std_out=True)
+            delete_ipo_record([dict(ticker)])
+            return False
         
         return True
     else:
@@ -230,8 +234,8 @@ def scrap():
         details_scrape_driver.close()
         details_scrape_driver.quit()
         
-        insert_ipo_record_list = []
         for ticker, details_dict in ipo_info_dict.items():
+            insert_ipo_record_list = []
             price_str = details_dict.get('Share Price').replace(",", "").replace("$", "")
             
             if '-' in price_str:
