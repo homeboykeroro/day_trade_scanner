@@ -25,7 +25,7 @@ logger = Logger()
 
 EXIT_WAIT_TIME = 30
 
-def scrap(discord_client: DiscordChatBot):
+def scrape(discord_client: DiscordChatBot):
     start_time = time.time() 
     us_current_datetime = get_current_us_datetime()
     day_offset = 0 if us_current_datetime.time() > datetime.time(16, 0, 0) else -1

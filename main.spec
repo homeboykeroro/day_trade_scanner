@@ -2,7 +2,7 @@
 
 
 a = Analysis(
-    ['src\\small_cap_initial_pop_scanner.py'],
+    ['src\\main.py'],
     pathex=[],
     binaries=[],
     datas=[('config.ini', '.')],
@@ -20,7 +20,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='small_cap_initial_pop_scanner',
+    name='main',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -39,10 +39,10 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='small_cap_initial_pop_scanner',
+    name='main',
     icon='app_icon.png'
 )
 
 
 import shutil
-shutil.copyfile('config.ini', 'dist/small_cap_initial_pop_scanner/config.ini')
+shutil.copyfile('config.ini', 'dist/main/config.ini')
