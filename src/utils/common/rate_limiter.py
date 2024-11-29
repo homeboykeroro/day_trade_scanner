@@ -20,9 +20,7 @@ class RateLimiter:
 
             print(f"{threading.current_thread().name}, time passed: {time_passed:.4f} seconds, allowance before acquiring: {self.allowance:.2f}")
             if self.allowance < 1.0:
-                time_to_sleep = (1.0 - self.allowance) * (self.per / self.rate)
-                print(f"{threading.current_thread().name}, sleeping for {time_to_sleep:.4f} seconds")
-                time.sleep(time_to_sleep)
+                time.sleep(self.per)
                 self.allowance = 0
             else:
                 self.allowance -= 1.0

@@ -80,8 +80,8 @@ CON_ID_CONCAT_CHUNK_SIZE = get_config('SYS_PARAM', 'CON_ID_CONCAT_CHUNK_SIZE')
 DEFAULT_RATE_LIMITER = RateLimiter(rate=10, per=1)
 SCREENER_RATE_LIMITER = RateLimiter(rate=1, per=1)
 SNAPSHOT_RATE_LIMITER = RateLimiter(rate=10, per=1)
-# May Not Necessary, But Add  
-MARKET_DATA_RATE_LIMITER = RateLimiter(rate=1, per=1) # 1 call/ second, at most 5 concurrent requests/ 1 call
+# May Not Necessary, But Add Throttle in Order Not to Call API Too Frequently
+MARKET_DATA_RATE_LIMITER = RateLimiter(rate=1, per=1) # 1 call/ second, at most 5 concurrent requests/ call
 
 class IBConnector:
     def __init__(self, loop: AbstractEventLoop = None) -> None:
