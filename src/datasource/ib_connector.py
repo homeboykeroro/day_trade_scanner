@@ -1,11 +1,9 @@
 from asyncio import AbstractEventLoop
 import math
 import re
-import threading
 import time
 from datetime import time as dt_time, datetime, timedelta
 import html
-import oracledb
 import pytz
 from aiohttp import ClientError
 from requests import HTTPError, RequestException
@@ -21,9 +19,9 @@ from model.ib.snapshot import Snapshot
 from utils.common.config_util import get_config
 from utils.common.http_util import send_async_request
 from utils.common.collection_util import get_chunk_list
-from utils.sql.api_endpoint_lock_record_util import check_api_endpoint_locked, update_api_endpoint_lock
 from utils.common.dataframe_util import append_customised_indicator
-from utils.common.datetime_util import  PRE_MARKET_START_DATETIME, US_BUSINESS_DAY, get_us_business_day, get_current_us_datetime
+from utils.common.datetime_util import  PRE_MARKET_START_DATETIME, get_us_business_day, get_current_us_datetime
+from utils.common.rate_limiter import RateLimiter
 from utils.logger import Logger
 
 from constant.endpoint.ib.client_portal_api_endpoint import ClientPortalApiEndpoint
@@ -75,9 +73,16 @@ MAX_CONCURRENT_SNAPSHOT_REQUEST = get_config('SYS_PARAM', 'MAX_CONCURRENT_SNAPSH
 # Default API Endpoint Limit
 DEFAULT_MAX_REQUEST_PER_SECOND = get_config('SYS_PARAM', 'DEFAULT_MAX_REQUEST_PER_SECOND')
 DEFAULT_MAX_CONCURRENT_REQUEST = get_config('SYS_PARAM', 'DEFAULT_MAX_CONCURRENT_REQUEST')
-DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL = get_config('SYS_PARAM', 'DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL')
 
 CON_ID_CONCAT_CHUNK_SIZE = get_config('SYS_PARAM', 'CON_ID_CONCAT_CHUNK_SIZE')
+
+# Necessary 
+DEFAULT_RATE_LIMITER = RateLimiter(rate=10, per=1)
+SCREENER_RATE_LIMITER = RateLimiter(rate=1, per=1)
+SNAPSHOT_RATE_LIMITER = RateLimiter(rate=10, per=1)
+# May Not Necessary, But Add  
+MARKET_DATA_RATE_LIMITER = RateLimiter(rate=1, per=1) # 1 call/ second, at most 5 concurrent requests/ 1 call
+
 class IBConnector:
     def __init__(self, loop: AbstractEventLoop = None) -> None:
         self.__ticker_to_contract_info_dict = {}
@@ -85,47 +90,42 @@ class IBConnector:
         
         self.__daily_canlde_df = pd.DataFrame()
     
-    def fetch_contract_by_ticker_list(self, ticker_list: list, security_api_endpoint_lock_check_interval: int):
-        self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SECURITY_STOCKS_BY_SYMBOL, security_api_endpoint_lock_check_interval)
+    def fetch_contract_by_ticker_list(self, ticker_list: list):
+        DEFAULT_RATE_LIMITER.acquire()
         logger.log_debug_msg(f'Fetch secuity for {ticker_list}')
         contract_list = self.get_security_by_tickers(ticker_list)
-        self.release_api_endpoint_lock(ClientPortalApiEndpoint.SECURITY_STOCKS_BY_SYMBOL)
 
         return contract_list
     
-    def fetch_screener_result(self, screener_filter: dict, max_no_of_scanner_result: int, scanner_api_endpoint_lock_check_interval: int) -> list:
+    def fetch_screener_result(self, screener_filter: dict, max_no_of_scanner_result: int) -> list:
         # Get contract list from IB screener
-        self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.RUN_SCANNER, scanner_api_endpoint_lock_check_interval)
+        SCREENER_RATE_LIMITER.acquire()
         logger.log_debug_msg(f'Fetch {screener_filter.get("type")} screener result', with_std_out=True)
         contract_list = self.get_screener_results(screener_filter, max_no_of_scanner_result)
-        self.release_api_endpoint_lock(ClientPortalApiEndpoint.RUN_SCANNER)
         
         return contract_list
     
-    def fetch_snapshot(self, contract_list: list, snapshot_api_endpoint_lock_check_interval: int) -> dict:
+    def fetch_snapshot(self, contract_list: list) -> dict:
         if (self.check_if_contract_update_required(contract_list)):
-            self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.SNAPSHOT, snapshot_api_endpoint_lock_check_interval)
+            SNAPSHOT_RATE_LIMITER.acquire()
             logger.log_debug_msg(f'Fetch snapshot for {[contract.get("symbol") for contract in contract_list]}', with_std_out=True)
             self.update_contract_info(contract_list)
-            self.release_api_endpoint_lock(ClientPortalApiEndpoint.SNAPSHOT)
         
         ticker_to_contract_dict = self.get_ticker_to_contract_dict()
         return ticker_to_contract_dict
     
-    def fetch_daily_candle(self, contract_list: list, offset_day: int, market_data_api_endpoint_lock_check_inverval: int) -> pd.DataFrame:
-        self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY, market_data_api_endpoint_lock_check_inverval)
+    def fetch_daily_candle(self, contract_list: list, offset_day: int) -> pd.DataFrame:
+        MARKET_DATA_RATE_LIMITER.acquire()
         daily_df = self.get_daily_candle(contract_list=contract_list, 
                                          offset_day=offset_day, 
                                          outside_rth=False)
-        self.release_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY)
         
         return daily_df
 
-    def fetch_intra_day_minute_candle(self, contract_list: list, market_data_api_endpoint_lock_check_interval: int) -> pd.DataFrame:
-        self.acquire_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY, market_data_api_endpoint_lock_check_interval)
+    def fetch_intra_day_minute_candle(self, contract_list: list) -> pd.DataFrame:
+        MARKET_DATA_RATE_LIMITER.acquire()
         one_minute_candle_df = self.retrieve_intra_day_minute_candle(contract_list=contract_list, 
                                                                      bar_size=BarSize.ONE_MINUTE)
-        self.release_api_endpoint_lock(ClientPortalApiEndpoint.MARKET_DATA_HISTORY)
         
         return one_minute_candle_df
     
@@ -188,52 +188,7 @@ class IBConnector:
                 return append_customised_indicator(candle_df)
             else:
                 return pd.DataFrame()
-    
-    def acquire_api_endpoint_lock(self, endpoint: ClientPortalApiEndpoint, check_interval: int = DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL):
-        logger.log_debug_msg(f'Acquiring lock for {endpoint}', with_std_out=True)
-        
-        try:
-            while check_api_endpoint_locked(endpoint):
-                time.sleep(check_interval)
-                logger.log_debug_msg(f'{endpoint.value} is locking', with_std_out=True)
-                continue
-            
-            self.set_api_endpoint_lock(endpoint, True)
-        except Exception as e:
-            logger.log_error_msg(f'Failed to acquire lock for {endpoint}, {e}', with_std_out=True)
-            raise oracledb.Error(f'Failed to acquire lock for {endpoint}, {e}')
-    
-    def release_api_endpoint_lock(self, endpoint: ClientPortalApiEndpoint):
-        try:
-            self.set_api_endpoint_lock(endpoint, False)
-            logger.log_debug_msg(f'{endpoint.value} lock released', with_std_out=True)
-        except Exception as e:
-            logger.log_error_msg(f'Failed to release lock for {endpoint}, {e}', with_std_out=True)
-            raise oracledb.Error(f'Failed to release lock for {endpoint}, {e}')
-    
-    def set_api_endpoint_lock(self, endpoint: ClientPortalApiEndpoint, lock: bool):
-        try:
-            update_lock_start_time = time.time()
 
-            locked_by = None
-            lock_datetime = None
-            is_locked = 'N'
-            
-            if lock:
-                locked_by = threading.current_thread().name
-                lock_datetime = get_current_us_datetime()
-                is_locked = 'Y'
-                
-            update_api_endpoint_lock([dict(is_locked=is_locked, 
-                                           locked_by=locked_by, 
-                                           lock_datetime=lock_datetime, 
-                                           endpoint=endpoint.value)])
-            
-            logger.log_debug_msg(f'Update lock time: {time.time() - update_lock_start_time} seconds')
-        except Exception as e:
-            logger.log_error_msg(f'Update {endpoint} lock error, {e}', with_std_out=True)
-            raise oracledb.Error(f'Update {endpoint} lock error, {e}')
-    
     def receive_brokerage_account(self):
         try:
             receive_brokerage_account_time = time.time()
@@ -291,10 +246,12 @@ class IBConnector:
             raise check_status_request_exception
         else:
             status_result = status_response.json()
+            logger.log_debug_msg(f'Check authentication status response: {status_result}')
 
             authenticated = status_result['authenticated']
             competing = status_result['competing']
             connected = status_result['connected']
+            failed = status_result.get('fail')
 
             if 'message' in status_result:
                 message = status_result['message']
@@ -312,6 +269,10 @@ class IBConnector:
             if competing:
                 is_connection_success = False
                 logger.log_error_msg('Session is occupied')
+                
+            if failed:
+                is_connection_success = False
+                logger.log_error_msg(f'Auth failed, {failed}')
 
             if is_connection_success:
                 logger.log_debug_msg('Connected and authenticated', with_std_out = True)

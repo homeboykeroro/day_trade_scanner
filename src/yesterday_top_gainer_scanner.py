@@ -29,11 +29,6 @@ MAX_OFFERING_NEWS_SIZE = get_config(SCAN_PATTERN_NAME, 'MAX_OFFERING_NEWS_SIZE')
 # Refresh Time
 REFRESH_INTERVAL = get_config(SCAN_PATTERN_NAME, 'REFRESH_INTERVAL')
 
-# API Endpoint Check Interval
-DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL = get_config('SYS_PARAM', 'DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL')
-SNAPSHOT_API_ENDPOINT_LOCK_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'SNAPSHOT_API_ENDPOINT_LOCK_CHECK_INTERVAL')
-MARKET_DATA_API_ENDPOINT_LOCK_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'MARKET_DATA_API_ENDPOINT_LOCK_CHECK_INTERVAL')
-
 date_to_filtered_top_gainer_list_dict = {}
 
 def yesterday_top_gainer_scan(ib_connector: IBConnector, discord_chatbot: DiscordChatBot):
@@ -90,14 +85,11 @@ def yesterday_top_gainer_scan(ib_connector: IBConnector, discord_chatbot: Discor
         logger.log_debug_msg(f'Retry analysing top gainer: {new_yesterday_top_gainer_ticker_list}', with_std_out=True)
 
     if new_yesterday_top_gainer_ticker_list:
-        yesterday_top_gainer_contract_list = ib_connector.fetch_contract_by_ticker_list(ticker_list=new_yesterday_top_gainer_ticker_list,
-                                                                                        security_api_endpoint_lock_check_interval=DEFAULT_API_ENDPOINT_LOCK_CHECK_INTERVAL)
-        ticker_to_contract_dict = ib_connector.fetch_snapshot(contract_list=yesterday_top_gainer_contract_list, 
-                                                              snapshot_api_endpoint_lock_check_interval=SNAPSHOT_API_ENDPOINT_LOCK_CHECK_INTERVAL)
+        yesterday_top_gainer_contract_list = ib_connector.fetch_contract_by_ticker_list(ticker_list=new_yesterday_top_gainer_ticker_list)
+        ticker_to_contract_dict = ib_connector.fetch_snapshot(contract_list=yesterday_top_gainer_contract_list)
 
         daily_candle_df = ib_connector.fetch_daily_candle(contract_list=yesterday_top_gainer_contract_list, 
-                                                          offset_day=DAILY_CANDLE_DAYS, 
-                                                          market_data_api_endpoint_lock_check_inverval=MARKET_DATA_API_ENDPOINT_LOCK_CHECK_INTERVAL)
+                                                          offset_day=DAILY_CANDLE_DAYS)
 
         yesterday_bullish_daily_candle_analyser = YesterdayBullishDailyCandle(hit_scanner_date=yesterday_top_gainer_retrieval_datetime.date(),
                                                                               daily_candle_df=daily_candle_df,

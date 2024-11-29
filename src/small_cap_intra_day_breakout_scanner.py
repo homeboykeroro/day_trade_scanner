@@ -41,11 +41,6 @@ MIN_BREAKOUT_TRADING_VOLUME_IN_USD = get_config(SCAN_PATTERN_NAME, 'MIN_BREAKOUT
 DAILY_CANDLE_DAYS = get_config(SCAN_PATTERN_NAME, 'DAILY_CANDLE_DAYS')
 DAILY_AND_MINUTE_CANDLE_GAP = get_config(SCAN_PATTERN_NAME, 'DAILY_AND_MINUTE_CANDLE_GAP')
 
-# API Endpoint Check Interval
-SCANNER_API_ENDPOINT_LOCK_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'SCANNER_API_ENDPOINT_LOCK_CHECK_INTERVAL')
-SNAPSHOT_API_ENDPOINT_LOCK_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'SNAPSHOT_API_ENDPOINT_LOCK_CHECK_INTERVAL')
-MARKET_DATA_API_ENDPOINT_LOCK_CHECK_INTERVAL = get_config(SCAN_PATTERN_NAME, 'MARKET_DATA_API_ENDPOINT_LOCK_CHECK_INTERVAL')
-
 # Log
 SHOW_DISCORD_SCREENER_DEBUG_LOG = get_config(SCREENER_NAME, 'SHOW_DISCORD_DEBUG_LOG')
 
@@ -59,15 +54,11 @@ def small_cap_intra_day_breakout_scan(ib_connector: IBConnector, discord_chatbot
         logger.log_debug_msg(f'Send top gainer scanner result time: {time.time() - send_msg_start_time}')
     
     contract_list = ib_connector.fetch_screener_result(screener_filter=IB_TOP_GAINER_FILTER, 
-                                                       max_no_of_scanner_result=MAX_NO_OF_SCANNER_RESULT, 
-                                                       scanner_api_endpoint_lock_check_interval=SCANNER_API_ENDPOINT_LOCK_CHECK_INTERVAL)
-    ticker_to_contract_dict = ib_connector.fetch_snapshot(contract_list=contract_list, 
-                                                          snapshot_api_endpoint_lock_check_interval=SNAPSHOT_API_ENDPOINT_LOCK_CHECK_INTERVAL)
-    one_minute_candle_df = ib_connector.fetch_intra_day_minute_candle(contract_list=contract_list, 
-                                                                      market_data_api_endpoint_lock_check_interval=MARKET_DATA_API_ENDPOINT_LOCK_CHECK_INTERVAL)
+                                                       max_no_of_scanner_result=MAX_NO_OF_SCANNER_RESULT)
+    ticker_to_contract_dict = ib_connector.fetch_snapshot(contract_list=contract_list)
+    one_minute_candle_df = ib_connector.fetch_intra_day_minute_candle(contract_list=contract_list)
     daily_candle_df = ib_connector.fetch_daily_candle(contract_list=contract_list, 
-                                                      offset_day=DAILY_CANDLE_DAYS, 
-                                                      market_data_api_endpoint_lock_check_inverval=MARKET_DATA_API_ENDPOINT_LOCK_CHECK_INTERVAL)
+                                                      offset_day=DAILY_CANDLE_DAYS)
     
     intra_day_breakout_analyser = IntraDayBreakout(bar_size=BarSize.ONE_MINUTE,
                                                    minute_candle_df=one_minute_candle_df,
