@@ -1,6 +1,7 @@
 import os
 import time
 import threading
+import concurrent
 import oracledb
 
 from aiohttp import ClientError
@@ -66,7 +67,7 @@ def reauthenticate():
                 raise RequestException("Reauthentication failed")
         except (RequestException, ClientError, HTTPError) as reauthenticate_exception:
             if current_reauthentication_retry_times < MAX_REAUTHENTICATION_RETRY_CONNECTION_TIMES:
-                discord_chatbot.send_message_by_list_with_response([DiscordMessage(content=f'Failed to re-authenticate session IB client portal, retry after {SCANNER_REAUTHENTICATION_RETRY_INTERVAL} seconds')], channel_type=DiscordMessageChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+                discord_chatbot.send_message_by_list_with_response([DiscordMessage(content=f'Failed to re-authenticate IB client portal session, retry after {SCANNER_REAUTHENTICATION_RETRY_INTERVAL} seconds')], channel_type=DiscordMessageChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
                 logger.log_error_msg(f'Session re-authentication error, {reauthenticate_exception}', with_std_out=True)
                 current_reauthentication_retry_times += 1
                 time.sleep(SCANNER_REAUTHENTICATION_RETRY_INTERVAL)
@@ -89,47 +90,46 @@ def reauthenticate():
             break
         except Exception as auth_exception:
             logger.log_debug_msg(f'Re-authentication failed, {auth_exception}')
-            discord_chatbot.send_message_by_list_with_response([DiscordMessage(content=f'Failed to re-authenticate session IB client portal, retry after {SCANNER_REAUTHENTICATION_RETRY_INTERVAL} seconds')], channel_type=DiscordMessageChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+            discord_chatbot.send_message_by_list_with_response([DiscordMessage(content=f'Failed to re-authenticate IB client portal session, retry after {SCANNER_REAUTHENTICATION_RETRY_INTERVAL} seconds')], channel_type=DiscordMessageChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
             current_reauthentication_retry_times += 1
             time.sleep(SCANNER_REAUTHENTICATION_RETRY_INTERVAL)
             client_portal_connection_failed = True
             continue
 
-def main():  
-    scanner_list = []
+
+def main():
     global current_reauthentication_retry_times
     
     def create_scanner():
         small_cap_initial_pop_scanner = ScannerWrapper(scanner_name='Small cap initial pop', 
-                                               scan=small_cap_initial_pop_scan, 
-                                               scan_parameter=dict(ib_connector=ib_connector, discord_chatbot=discord_chatbot),
-                                               thread_name=ScannerThreadName.SMALL_CAP_INITIAL_POP_SCANNER.value,
-                                               discord_chatbot=discord_chatbot)
+                                                       scan=small_cap_initial_pop_scan, 
+                                                       scan_parameter=dict(ib_connector=ib_connector, 
+                                                                           discord_chatbot=discord_chatbot), 
+                                                       thread_name=ScannerThreadName.SMALL_CAP_INITIAL_POP_SCANNER.value, discord_chatbot=discord_chatbot)
         small_cap_intra_day_breakout_scanner = ScannerWrapper(scanner_name='Small cap intra day breakout', 
                                                               scan=small_cap_intra_day_breakout_scan, 
-                                                              scan_parameter=dict(ib_connector=ib_connector, discord_chatbot=discord_chatbot),
-                                                              thread_name=ScannerThreadName.SMALL_CAP_INTRA_DAY_BREAKOUT_SCANNER.value,
+                                                              scan_parameter=dict(ib_connector=ib_connector, 
+                                                                                               discord_chatbot=discord_chatbot), 
+                                                              thread_name=ScannerThreadName.SMALL_CAP_INTRA_DAY_BREAKOUT_SCANNER.value, 
                                                               discord_chatbot=discord_chatbot)
         yesterday_top_gainer_scanner = ScannerWrapper(scanner_name='Yesterday top gainer bullish daily candle', 
                                                       scan=yesterday_top_gainer_scan, 
-                                                      scan_parameter=dict(ib_connector=ib_connector, discord_chatbot=discord_chatbot),
-                                                      thread_name=ScannerThreadName.YESTERDAY_TOP_GAINER_BULLISH_DAILY_CANDLE_SCANNER.value,
+                                                      scan_parameter=dict(ib_connector=ib_connector, 
+                                                                          discord_chatbot=discord_chatbot), 
+                                                      thread_name=ScannerThreadName.YESTERDAY_TOP_GAINER_BULLISH_DAILY_CANDLE_SCANNER.value, 
                                                       discord_chatbot=discord_chatbot)
         ipo_scanner = ScannerWrapper(scanner_name='IPO list', 
                                      scan=ipo_scan, 
-                                     scan_parameter=dict(discord_chatbot=discord_chatbot),
-                                     thread_name=ScannerThreadName.IPO_INFO_SCRAPER.value,
+                                     scan_parameter=dict(discord_chatbot=discord_chatbot), 
+                                     thread_name=ScannerThreadName.IPO_INFO_SCRAPER.value, 
                                      discord_chatbot=discord_chatbot)
         
-        scanner_list = [
-            small_cap_initial_pop_scanner,
-            small_cap_intra_day_breakout_scanner,
-            yesterday_top_gainer_scanner,
-            ipo_scanner
-        ]
-        
-        return scanner_list
-        
+        return [small_cap_initial_pop_scanner, 
+                small_cap_intra_day_breakout_scanner, 
+                yesterday_top_gainer_scanner, 
+                ipo_scanner]
+    
+    logger.log_debug_msg('Initialising scanners', with_std_out=True)
     scanner_list = create_scanner()
     
     try:
@@ -137,24 +137,21 @@ def main():
     except HTTPError as preflight_request_exception:
         logger.log_error_msg(f'Client portal API preflight request error, {preflight_request_exception}', with_std_out=True)
         reauthenticate()
+    
+    with concurrent.futures.ThreadPoolExecutor(max_workers=len(scanner_list)) as executor:
+        futures = {executor.submit(scanner.run): scanner for scanner in scanner_list}
         
-    while not client_portal_connection_failed:
-        for scanner in scanner_list:
-            scanner.start()
-        
-        try:
-            for scanner in scanner_list:
-                scanner.join()
-        except (RequestException, ClientError, HTTPError) as connection_exception:
-            # if any of these threads catch RequestException, ClientError, HTTPError
-            logger.log_error_msg(f'Client portal API connection error, {connection_exception}', with_std_out=True)
-            reauthenticate(ib_connector, current_reauthentication_retry_times)
-            create_scanner()
-        except oracledb.Error as oracle_connection_exception:
-            logger.log_error_msg(f'Oracle connection error, {oracle_connection_exception}', with_std_out=True)
-            discord_chatbot.send_message(DiscordMessage(content=f'Database connection error, {oracle_connection_exception}'), channel_type=DiscordMessageChannel.CHATBOT_ERROR_LOG, with_text_to_speech=True)
-            time.sleep(30)
-            os._exit(1)
+        for future in concurrent.futures.as_completed(futures):
+            scanner = futures[future]
+            try:
+                future.result()  # This will propagate exceptions
+            except Exception as e:
+                logger.log_error_msg(f'Scanner {scanner.__scanner_name} raised an exception: {e}', with_std_out=True)
+                client_portal_connection_failed = True
+                reauthenticate()
+                break
+    
+    logger.log_debug_msg('Main thread finished', with_std_out=True)
 
 if __name__ == '__main__':
     main()

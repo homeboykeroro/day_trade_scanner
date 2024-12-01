@@ -1,6 +1,7 @@
 from asyncio import AbstractEventLoop
 import math
 import re
+import threading
 import time
 from datetime import time as dt_time, datetime, timedelta
 import html
@@ -91,31 +92,31 @@ class IBConnector:
         self.__daily_canlde_df = pd.DataFrame()
     
     def fetch_contract_by_ticker_list(self, ticker_list: list):
-        DEFAULT_RATE_LIMITER.acquire()
-        logger.log_debug_msg(f'Fetch secuity for {ticker_list}')
+        DEFAULT_RATE_LIMITER.acquire('fetch_contract_by_ticker_list')
+        logger.log_debug_msg(f'{threading.current_thread().name} fetch secuity for {ticker_list}')
         contract_list = self.get_security_by_tickers(ticker_list)
 
         return contract_list
     
     def fetch_screener_result(self, screener_filter: dict, max_no_of_scanner_result: int) -> list:
         # Get contract list from IB screener
-        SCREENER_RATE_LIMITER.acquire()
-        logger.log_debug_msg(f'Fetch {screener_filter.get("type")} screener result', with_std_out=True)
+        SCREENER_RATE_LIMITER.acquire('fetch_screener_result')
+        logger.log_debug_msg(f'{threading.current_thread().name} fetch {screener_filter.get("type")} screener result', with_std_out=True)
         contract_list = self.get_screener_results(screener_filter, max_no_of_scanner_result)
         
         return contract_list
     
     def fetch_snapshot(self, contract_list: list) -> dict:
         if (self.check_if_contract_update_required(contract_list)):
-            SNAPSHOT_RATE_LIMITER.acquire()
-            logger.log_debug_msg(f'Fetch snapshot for {[contract.get("symbol") for contract in contract_list]}', with_std_out=True)
+            SNAPSHOT_RATE_LIMITER.acquire('fetch_snapshot')
+            logger.log_debug_msg(f'{threading.current_thread().name} fetch snapshot for {[contract.get("symbol") for contract in contract_list]}', with_std_out=True)
             self.update_contract_info(contract_list)
         
         ticker_to_contract_dict = self.get_ticker_to_contract_dict()
         return ticker_to_contract_dict
     
     def fetch_daily_candle(self, contract_list: list, offset_day: int) -> pd.DataFrame:
-        MARKET_DATA_RATE_LIMITER.acquire()
+        MARKET_DATA_RATE_LIMITER.acquire('fetch_daily_candle')
         daily_df = self.get_daily_candle(contract_list=contract_list, 
                                          offset_day=offset_day, 
                                          outside_rth=False)
@@ -123,7 +124,8 @@ class IBConnector:
         return daily_df
 
     def fetch_intra_day_minute_candle(self, contract_list: list) -> pd.DataFrame:
-        MARKET_DATA_RATE_LIMITER.acquire()
+        MARKET_DATA_RATE_LIMITER.acquire('fetch_intra_day_minute_candle')
+        logger.log_debug_msg(f'{threading.current_thread().name} fetch intra day minute candle')
         one_minute_candle_df = self.retrieve_intra_day_minute_candle(contract_list=contract_list, 
                                                                      bar_size=BarSize.ONE_MINUTE)
         
@@ -133,6 +135,8 @@ class IBConnector:
                                offset_day: int, 
                                outside_rth: bool = False, 
                                candle_retrieval_end_datetime: datetime = None) -> pd.DataFrame:
+        logger.log_debug_msg(f'{threading.current_thread().name} fetch daily candle')
+        
         candle_request_contract_list = []
         contract_ticker_list = [contract['symbol'] for contract in contract_list]
         daily_candle_df_ticker_list = list(self.__daily_canlde_df.columns.get_level_values(0).unique())
