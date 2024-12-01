@@ -102,18 +102,22 @@ def main():
     def create_scanner():
         small_cap_initial_pop_scanner = ScannerWrapper(scanner_name='Small cap initial pop', 
                                                scan=small_cap_initial_pop_scan, 
+                                               scan_parameter=dict(ib_connector=ib_connector, discord_chatbot=discord_chatbot),
                                                thread_name=ScannerThreadName.SMALL_CAP_INITIAL_POP_SCANNER.value,
                                                discord_chatbot=discord_chatbot)
         small_cap_intra_day_breakout_scanner = ScannerWrapper(scanner_name='Small cap intra day breakout', 
                                                               scan=small_cap_intra_day_breakout_scan, 
+                                                              scan_parameter=dict(ib_connector=ib_connector, discord_chatbot=discord_chatbot),
                                                               thread_name=ScannerThreadName.SMALL_CAP_INTRA_DAY_BREAKOUT_SCANNER.value,
                                                               discord_chatbot=discord_chatbot)
         yesterday_top_gainer_scanner = ScannerWrapper(scanner_name='Yesterday top gainer bullish daily candle', 
                                                       scan=yesterday_top_gainer_scan, 
+                                                      scan_parameter=dict(ib_connector=ib_connector, discord_chatbot=discord_chatbot),
                                                       thread_name=ScannerThreadName.YESTERDAY_TOP_GAINER_BULLISH_DAILY_CANDLE_SCANNER.value,
                                                       discord_chatbot=discord_chatbot)
         ipo_scanner = ScannerWrapper(scanner_name='IPO list', 
                                      scan=ipo_scan, 
+                                     scan_parameter=dict(discord_chatbot=discord_chatbot),
                                      thread_name=ScannerThreadName.IPO_INFO_SCRAPER.value,
                                      discord_chatbot=discord_chatbot)
         

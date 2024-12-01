@@ -28,10 +28,11 @@ SCANNER_FATAL_ERROR_REFRESH_INTERVAL = get_config('SYS_PARAM', 'SCANNER_FATAL_ER
 client_portal_connection_failed = False
 
 class ScannerWrapper(threading.Thread):
-    def __init__(self, scanner_name: str, scan: Callable, thread_name: str, discord_chatbot: DiscordChatBot):
+    def __init__(self, scanner_name: str, scan: Callable, scan_parameter: dict, thread_name: str, discord_chatbot: DiscordChatBot):
         threading.Thread.__init__(self, name=thread_name)
         self.__scanner_name = scanner_name
         self.__scan = scan
+        self.__scan_parameter = scan_parameter
         self.__discord_chatbot = discord_chatbot
         self.exc = None
 
@@ -63,7 +64,7 @@ class ScannerWrapper(threading.Thread):
         while True and not client_portal_connection_failed:
             try:
                 start_time = time.time()
-                self.__scan()
+                self.__scan(**self.__scan_parameter)
                 logger.log_debug_msg(f'{self.__scanner_name} scan time: {time.time() - start_time}', with_std_out=True)
             except (RequestException, ClientError, HTTPError) as connection_exception:
                 client_portal_connection_failed = True

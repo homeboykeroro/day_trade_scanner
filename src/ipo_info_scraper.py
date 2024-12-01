@@ -15,7 +15,6 @@ from sql.oracle_connector import execute_in_transaction
 
 from utils.logger import Logger
 from utils.common.config_util import get_config
-from utils.common.string_util import split_long_paragraph_into_chunks
 
 from model.discord.discord_message import DiscordMessage
 from model.discord.ipo_message import IPOMessage
@@ -253,7 +252,7 @@ def scrap(discord_chatbot: DiscordChatBot):
                                            website,
                                            address,
                                            no_of_employee])
-            send_message(message)
+            send_message(discord_chatbot, message)
             add_ipo_record(insert_ipo_record_list)
         
         logger.log_debug_msg(f'IPO list scrap time: {time.time() - start_time} seconds', with_std_out=True)
