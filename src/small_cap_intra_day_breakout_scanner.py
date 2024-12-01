@@ -45,7 +45,7 @@ DAILY_AND_MINUTE_CANDLE_GAP = get_config(SCAN_PATTERN_NAME, 'DAILY_AND_MINUTE_CA
 SHOW_DISCORD_SCREENER_DEBUG_LOG = get_config(SCREENER_NAME, 'SHOW_DISCORD_DEBUG_LOG')
 
 def small_cap_intra_day_breakout_scan(ib_connector: IBConnector, discord_chatbot: DiscordChatBot):
-    logger.log_debug_msg('Small cap intra day breakout scanner starts')
+    logger.log_debug_msg('Small cap intra day breakout scanner starts', with_std_out=True)
     start_time = time.time()
     
     if SHOW_DISCORD_SCREENER_DEBUG_LOG:
