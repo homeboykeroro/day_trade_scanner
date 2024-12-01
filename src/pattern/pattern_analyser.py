@@ -6,7 +6,7 @@ from model.discord.discord_message import DiscordMessage
 from utils.sql.discord_message_record_util import check_if_pattern_analysis_message_sent, check_if_pattern_analysis_message_sent_by_daily_basis ,add_sent_pattern_analysis_message_record
 from utils.logger import Logger
 
-from constant.discord.discord_channel import DiscordChannel
+from constant.discord.discord_message_channel import DiscordMessageChannel
 from constant.candle.bar_size import BarSize
 
 MAX_READ_OUT_MESSAGE_CHUNK_SIZE = 3
@@ -26,7 +26,7 @@ class PatternAnalyser(ABC):
     def check_if_pattern_analysis_message_sent(self, ticker: str, hit_scanner_datetime: datetime.datetime, pattern: str, bar_size: BarSize):
         return check_if_pattern_analysis_message_sent(ticker, hit_scanner_datetime, pattern, bar_size.value)
         
-    def send_notification(self, scanner_result_list: list, discord_channel: DiscordChannel, is_async: bool = True):
+    def send_notification(self, scanner_result_list: list, discord_channel: DiscordMessageChannel, is_async: bool = True):
         if scanner_result_list:
             save_notification_db_record_param_list = []
             title_to_read_out_message_dict = {}
@@ -53,7 +53,7 @@ class PatternAnalyser(ABC):
             invalid_notification_ticker_list = []
             for response in response_list:
                 if not hasattr(response, 'embeds'):
-                    self._discord_client.send_message(DiscordMessage(content=f'Failed to send message {str(response)} to {discord_channel.value}'), DiscordChannel.CHATBOT_ERROR_LOG)
+                    self._discord_client.send_message(DiscordMessage(content=f'Failed to send message {str(response)} to {discord_channel.value}'), DiscordMessageChannel.CHATBOT_ERROR_LOG)
                     continue
                 
                 title = response.embeds[0].title   
@@ -70,12 +70,12 @@ class PatternAnalyser(ABC):
                     invalid_notification_ticker_list.append(scanner_ticker)
             
             if invalid_notification_ticker_list:
-                self._discord_client.send_message(DiscordMessage(content=f'Failed to send notification to {discord_channel.value} channel, ticker list: {str(invalid_notification_ticker_list)}'), DiscordChannel.CHATBOT_ERROR_LOG)
+                self._discord_client.send_message(DiscordMessage(content=f'Failed to send notification to {discord_channel.value} channel, ticker list: {str(invalid_notification_ticker_list)}'), DiscordMessageChannel.CHATBOT_ERROR_LOG)
             
             if is_async:
-                self._discord_client.send_message_by_list_with_response(message_list=notification_message_list, channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+                self._discord_client.send_message_by_list_with_response(message_list=notification_message_list, channel_type=DiscordMessageChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
             else:
                 for notification_message in notification_message_list:
-                    self._discord_client.send_message_by_list_with_response(message_list=[notification_message], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+                    self._discord_client.send_message_by_list_with_response(message_list=[notification_message], channel_type=DiscordMessageChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
             
             add_sent_pattern_analysis_message_record(save_notification_db_record_param_list)

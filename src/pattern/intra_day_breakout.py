@@ -13,7 +13,7 @@ from constant.indicator.runtime_indicator import RuntimeIndicator
 from constant.indicator.scatter_symbol import ScatterSymbol
 from constant.indicator.scatter_colour import ScatterColour
 from constant.candle.bar_size import BarSize
-from constant.discord.discord_channel import DiscordChannel
+from constant.discord.discord_message_channel import DiscordMessageChannel
 
 from utils.chart_util import get_candlestick_chart
 from utils.common.dataframe_util import concat_daily_df_and_minute_df, derive_idx_df
@@ -220,5 +220,5 @@ class IntraDayBreakout(PatternAnalyser):
             
             if message_list:
                 send_msg_start_time = time.time()
-                self.send_notification(message_list, DiscordChannel.INTRA_DAY_BREAKOUT)
+                self.send_notification(message_list, DiscordMessageChannel.INTRA_DAY_BREAKOUT)
                 logger.log_debug_msg(f'{self.__pattern_name} send message time: {time.time() - send_msg_start_time} seconds')

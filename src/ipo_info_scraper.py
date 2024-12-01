@@ -1,15 +1,9 @@
 import re
-import threading
-import traceback
 
-from constant.scanner.scanner_thread_name import ScannerThreadName
 from module.discord_chatbot import DiscordChatBot
-
-threading.current_thread().name = ScannerThreadName.IPO_INFO_SCRAPER.value
 
 from sqlite3 import Cursor
 from datetime import datetime
-import os
 import time
 import requests
 from selenium import webdriver 
@@ -26,16 +20,15 @@ from utils.common.string_util import split_long_paragraph_into_chunks
 from model.discord.discord_message import DiscordMessage
 from model.discord.ipo_message import IPOMessage
 
+from constant.scanner.scanner_thread_name import ScannerThreadName
+from constant.discord.discord_message_channel import DiscordMessageChannel
 from constant.query.oracle_query import OracleQuery
-from constant.discord.discord_channel import DiscordChannel
 
 IPO_LIST_LINK = 'https://www.nasdaq.com/market-activity/ipos'
 HEADERS = {'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:95.0) Gecko/20100101 Firefox/95.0'}
 
 # Refresh Time
 REFRESH_INTERVAL = get_config('IPO_INFO_SCRAPER', 'REFRESH_INTERVAL')
-STACKTRACE_CHUNK_SIZE = get_config('SYS_PARAM', 'STACKTRACE_CHUNK_SIZE')
-SCANNER_FATAL_ERROR_REFRESH_INTERVAL = get_config('SYS_PARAM', 'SCANNER_FATAL_ERROR_REFRESH_INTERVAL')
 SELENIUM_DRIVER_PATH = get_config('SYS_PARAM', 'SELENIUM_DRIVER_PATH')
 
 CHROME_SERVICE = webdriver.ChromeService(executable_path=SELENIUM_DRIVER_PATH)
@@ -107,20 +100,20 @@ def add_ipo_record(params: list):
     execute_in_transaction(exec, params)
 
 def send_message(discord_chatbot: DiscordChatBot ,message: DiscordMessage):
-    response = discord_chatbot.send_message_by_list_with_response(message_list=[message], channel_type=DiscordChannel.IPO_LIST)
+    response = discord_chatbot.send_message_by_list_with_response(message_list=[message], channel_type=DiscordMessageChannel.IPO_LIST)
     
     if len(response) > 0:
         if not hasattr(response[0], 'embeds'):
-            discord_chatbot.send_message(message=DiscordMessage(content=f'Failed to send message to {DiscordChannel.IPO_LIST.value}, {response[0]}'), channel_type=DiscordChannel.CHATBOT_ERROR_LOG)
-            raise Exception(f'Failed to send message to {DiscordChannel.IPO_LIST.value}, {response[0]}')
+            discord_chatbot.send_message(message=DiscordMessage(content=f'Failed to send message to {DiscordMessageChannel.IPO_LIST.value}, {response[0]}'), channel_type=DiscordMessageChannel.CHATBOT_ERROR_LOG)
+            raise Exception(f'Failed to send message to {DiscordMessageChannel.IPO_LIST.value}, {response[0]}')
         
         jump_url = response[0].jump_url
         readout_msg = message.readout_msg
         ticker = message.ticker
         notification_message = DiscordMessage(ticker=ticker, jump_url=jump_url, content=readout_msg)
-        discord_chatbot.send_message(message=notification_message, channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
+        discord_chatbot.send_message(message=notification_message, channel_type=DiscordMessageChannel.TEXT_TO_SPEECH, with_text_to_speech=True)
     else:  
-        discord_chatbot.send_message(message=DiscordMessage(content=f'No response returned from message {message} to {DiscordChannel.IPO_LIST.value}'), channel_type=DiscordChannel.CHATBOT_ERROR_LOG)
+        discord_chatbot.send_message(message=DiscordMessage(content=f'No response returned from message {message} to {DiscordMessageChannel.IPO_LIST.value}'), channel_type=DiscordMessageChannel.CHATBOT_ERROR_LOG)
 
 def scrap(discord_chatbot: DiscordChatBot):
     logger.log_debug_msg('IPO scraper starts', with_std_out=True)
@@ -265,18 +258,7 @@ def scrap(discord_chatbot: DiscordChatBot):
         
         logger.log_debug_msg(f'IPO list scrap time: {time.time() - start_time} seconds', with_std_out=True)
     except Exception as exception:
-        discord_chatbot.send_message_by_list_with_response([DiscordMessage(content='Fatal error')], channel_type=DiscordChannel.TEXT_TO_SPEECH, with_text_to_speech=True)   
-        stacktrace = traceback.format_exc()
-        if len(stacktrace) > STACKTRACE_CHUNK_SIZE:
-            send_chunk_list = split_long_paragraph_into_chunks(stacktrace, STACKTRACE_CHUNK_SIZE)
-            for send_chunk in send_chunk_list:
-                discord_chatbot.send_message_by_list_with_response([DiscordMessage(content=send_chunk)], channel_type=DiscordChannel.CHATBOT_ERROR_LOG)    
-        else:
-            discord_chatbot.send_message(DiscordMessage(content=stacktrace), channel_type=DiscordChannel.CHATBOT_ERROR_LOG)
-        
-        logger.log_error_msg(f'Scanner fatal error, {exception}', with_std_out=True)
-        logger.log_debug_msg(f'Retry scanning due to fatal error after: {SCANNER_FATAL_ERROR_REFRESH_INTERVAL} seconds', with_std_out=True)
-        time.sleep(SCANNER_FATAL_ERROR_REFRESH_INTERVAL)
+        raise exception
 
 def ipo_scan():
     while True: 

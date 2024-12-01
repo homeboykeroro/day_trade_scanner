@@ -23,7 +23,7 @@ from constant.candle.candle_colour import CandleColour
 from constant.candle.bar_size import BarSize
 from constant.indicator.scatter_symbol import ScatterSymbol
 from constant.indicator.scatter_colour import ScatterColour
-from constant.discord.discord_channel import DiscordChannel
+from constant.discord.discord_message_channel import DiscordMessageChannel
 
 idx = pd.IndexSlice
 logger = Logger()
@@ -38,7 +38,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
                        min_close_pct, 
                        max_offering_news_size,
                        pattern_name,
-                       discord_channel: DiscordChannel):
+                       discord_channel: DiscordMessageChannel):
         super().__init__(discord_client)
         self.__hit_scanner_date = hit_scanner_date
         self.__daily_candle_df = daily_candle_df
@@ -130,7 +130,7 @@ class YesterdayBullishDailyCandle(PatternAnalyser):
             date_to_news_dict_size = len(date_to_news_dict) if date_to_news_dict else 0
             
             if SHOW_DISCORD_DEBUG_LOG:
-                self._discord_client.send_message(DiscordMessage(content=f'{ticker} offering news size: {date_to_news_dict_size}'), DiscordChannel.OFFERING_NEWS_LOG)
+                self._discord_client.send_message(DiscordMessage(content=f'{ticker} offering news size: {date_to_news_dict_size}'), DiscordMessageChannel.OFFERING_NEWS_LOG)
                 
             close = self.__daily_candle_df.loc[self.__hit_scanner_date.strftime('%Y-%m-%d'), (ticker, Indicator.CLOSE.value)]
             close_pct = self.__daily_candle_df.loc[self.__hit_scanner_date.strftime('%Y-%m-%d'), (ticker, CustomisedIndicator.CLOSE_CHANGE.value)]

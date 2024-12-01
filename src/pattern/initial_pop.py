@@ -14,7 +14,7 @@ from constant.indicator.scatter_symbol import ScatterSymbol
 from constant.indicator.scatter_colour import ScatterColour
 from constant.candle.candle_colour import CandleColour
 from constant.candle.bar_size import BarSize
-from constant.discord.discord_channel import DiscordChannel
+from constant.discord.discord_message_channel import DiscordMessageChannel
 
 from utils.chart_util import get_candlestick_chart
 from utils.common.dataframe_util import concat_daily_df_and_minute_df, derive_idx_df, get_ticker_to_occurrence_idx_list
@@ -35,7 +35,7 @@ class InitialPop(PatternAnalyser):
                        max_tolerance_period_in_minute,
                        daily_and_minute_candle_gap,
                        pattern_name,
-                       discord_channel: DiscordChannel):
+                       discord_channel: DiscordMessageChannel):
         super().__init__(discord_client)
         self.__bar_size = bar_size
         self.__minute_candle_df = minute_candle_df

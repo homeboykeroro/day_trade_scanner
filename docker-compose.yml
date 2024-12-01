@@ -17,3 +17,8 @@ services:
       - ~/oracle-data:/opt/oracle/oradata 
       - ./script/database:/docker-entrypoint-initdb.d
     restart: always
+    # healthcheck:
+    #   test: ["CMD-SHELL", "echo 'SELECT 1 FROM DUAL;' | sqlplus system/demo1234@localhost:1521/ORCL || exit 1"]
+    #   interval: 2m  # How often to perform the check
+    #   timeout: 30s  # Maximum time to wait for a successful check
+    #   retries: 3  # Number of retries before marking the container as unhealthy
