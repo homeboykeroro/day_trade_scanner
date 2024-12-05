@@ -260,6 +260,5 @@ def scrap(discord_chatbot: DiscordChatBot):
         raise exception
 
 def ipo_scan(discord_chatbot: DiscordChatBot):
-    while True: 
-        scrap(discord_chatbot)
-        time.sleep(REFRESH_INTERVAL)
+    scrap(discord_chatbot)
+    time.sleep(REFRESH_INTERVAL)

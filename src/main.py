@@ -2,7 +2,6 @@ import os
 import time
 import threading
 import concurrent
-import oracledb
 
 from aiohttp import ClientError
 from requests import HTTPError, RequestException
@@ -97,10 +96,7 @@ def reauthenticate():
             client_portal_connection_failed = True
             continue
 
-
 def main():
-    global current_reauthentication_retry_times
-    
     def create_scanner():
         small_cap_initial_pop_scanner = ScannerWrapper(scanner_name='Small cap initial pop', 
                                                        scan=small_cap_initial_pop_scan, 
@@ -148,17 +144,19 @@ def main():
     
     with concurrent.futures.ThreadPoolExecutor(max_workers=len(scanner_list)) as executor:
         futures = {executor.submit(scanner.run): scanner for scanner in scanner_list}
-        
+
         for future in concurrent.futures.as_completed(futures):
             scanner = futures[future]
+
             try:
-                future.result()  # This will propagate exceptions
-            except Exception as e:
-                logger.log_error_msg(f'Scanner {scanner.__scanner_name} raised an exception: {e}', with_std_out=True)
-                client_portal_connection_failed = True
+                logger.log_debug_msg(f'Fetching {scanner} future result', with_std_out=True)
+                future.result()
+                logger.log_debug_msg(f'{scanner} thread execution finished', with_std_out=True)
+            except (RequestException, ClientError, HTTPError) as connection_exception:
+                logger.log_debug_msg(f'Re-establishing IB client portal connection due to connectivity issue', with_std_out=True)
                 reauthenticate()
                 break
-    
+
     logger.log_debug_msg('Main thread finished', with_std_out=True)
 
 if __name__ == '__main__':
