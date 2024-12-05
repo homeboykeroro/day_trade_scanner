@@ -24,6 +24,7 @@ SMALL_CAP_INITIAL_POP_CHANNEL_ID = int(os.environ['DISCORD_SMALL_CAP_INITIAL_POP
 YESTERDAY_TOP_GAINER_BULLISH_DAILY_CANDLE_CHANNEL_ID = int(os.environ['DISCORD_YESTERDAY_TOP_GAINER_BULLISH_DAILY_CANDLE_CHANNEL_ID'])
 SMALL_CAP_INTRA_DAY_BREAKOUT_CHANNEL_ID = int(os.environ['DISCORD_SMALL_CAP_INTRA_DAY_BREAKOUT_CHANNEL_ID'])
 IPO_LIST_CHANNEL_ID = int(os.environ['DISCORD_IPO_LIST_CHANNEL_ID'])
+FOREX_CHANNEL_ID = int(os.environ['DISCORD_FOREX_CHANNEL_ID'])
 
 # Log
 YESTERDAY_TOP_GAINER_SCRAPER_HISTORY_LOG_CHANNEL_ID = int(os.environ['DISCORD_YESTERDAY_TOP_GAINER_SCRAPER_HISTORY_LOG_CHANNEL_ID'])
@@ -83,6 +84,8 @@ class DiscordChatBot(discord.Client):
             channel_id = SMALL_CAP_INTRA_DAY_BREAKOUT_CHANNEL_ID
         elif channel_type == DiscordMessageChannel.IPO_LIST:
             channel_id = IPO_LIST_CHANNEL_ID
+        elif channel_type == DiscordMessageChannel.FOREX:
+            channel_id = FOREX_CHANNEL_ID
         elif channel_type == DiscordMessageChannel.SERP_API_ACCOUNT_INFO_LOG:
             channel_id = SERP_API_ACCOUNT_INFO_LOG_CHANNEL_ID
         elif channel_type == DiscordMessageChannel.SERP_API_SEARCH_QUERY_LOG:
