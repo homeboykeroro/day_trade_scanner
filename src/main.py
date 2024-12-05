@@ -17,6 +17,7 @@ from small_cap_initial_pop_scanner import small_cap_initial_pop_scan
 from small_cap_intra_day_breakout_scanner import small_cap_intra_day_breakout_scan
 from yesterday_top_gainer_scanner import yesterday_top_gainer_scan
 from ipo_info_scraper import ipo_scan
+from forex_scanner import forex_scan
 
 from model.discord.discord_message import DiscordMessage
 
@@ -109,7 +110,7 @@ def main():
         small_cap_intra_day_breakout_scanner = ScannerWrapper(scanner_name='Small cap intra day breakout', 
                                                               scan=small_cap_intra_day_breakout_scan, 
                                                               scan_parameter=dict(ib_connector=ib_connector, 
-                                                                                               discord_chatbot=discord_chatbot), 
+                                                                                  discord_chatbot=discord_chatbot), 
                                                               thread_name=ScannerThreadName.SMALL_CAP_INTRA_DAY_BREAKOUT_SCANNER.value, 
                                                               discord_chatbot=discord_chatbot)
         yesterday_top_gainer_scanner = ScannerWrapper(scanner_name='Yesterday top gainer bullish daily candle', 
@@ -123,11 +124,18 @@ def main():
                                      scan_parameter=dict(discord_chatbot=discord_chatbot), 
                                      thread_name=ScannerThreadName.IPO_INFO_SCRAPER.value, 
                                      discord_chatbot=discord_chatbot)
+        forex_scanner = ScannerWrapper(scanner_name='Forex',
+                                       scan=forex_scan,
+                                       scan_parameter=dict(ib_connector=ib_connector, 
+                                                           discord_chatbot=discord_chatbot), 
+                                       thread_name=ScannerThreadName.FOREX_SCANNER.value, 
+                                       discord_chatbot=discord_chatbot)
         
         return [small_cap_initial_pop_scanner, 
                 small_cap_intra_day_breakout_scanner, 
                 yesterday_top_gainer_scanner, 
-                ipo_scanner]
+                ipo_scanner,
+                forex_scanner]
     
     logger.log_debug_msg('Initialising scanners', with_std_out=True)
     scanner_list = create_scanner()

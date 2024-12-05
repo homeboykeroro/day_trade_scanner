@@ -50,17 +50,17 @@ class ScannerWrapper(threading.Thread):
         
         idle_message_shown = False
         
-        # while True: 
-        #     start_scan = is_within_trading_day_and_hours()
+        while True: 
+            start_scan = is_within_trading_day_and_hours()
 
-        #     if start_scan:
-        #         break
-        #     else:
-        #         if not idle_message_shown:
-        #             logger.log_debug_msg(f'{threading.current_thread().name} is idle until valid trading weekday and time', with_std_out=True)
-        #             idle_message_shown = True
+            if start_scan:
+                break
+            else:
+                if not idle_message_shown:
+                    logger.log_debug_msg(f'{threading.current_thread().name} is idle until valid trading weekday and time', with_std_out=True)
+                    idle_message_shown = True
 
-        #         time.sleep(SCANNER_IDLE_REFRESH_INTERVAL)
+                time.sleep(SCANNER_IDLE_REFRESH_INTERVAL)
             
         try:
             logger.log_debug_msg(f'Thread {self.name} starting run', with_std_out=True)
